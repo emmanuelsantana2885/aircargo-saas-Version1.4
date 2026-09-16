@@ -75,10 +75,11 @@ wait_health aircargo-gateway 8080 300 || exit 1
 wait_health aircargo-auth-service 9092 240 || exit 1
 
 # 3) The remaining 8 — booted sequentially so they don't collide on CPU/mem
-# Detect RabbitMQ for notification-service
+# Detect RabbitMQ for notification-service (port = RABBITMQ_PORT, default 5672)
 RABBITMQ_ENABLED=true
-(echo > /dev/tcp/127.0.0.1/5672) 2>/dev/null || {
-    echo "  ⚠️  RabbitMQ(:5672) no disponible — notification-service arranca SIN listeners AMQP"
+RMQ_PORT="${RABBITMQ_PORT:-5672}"
+(echo > /dev/tcp/127.0.0.1/"$RMQ_PORT") 2>/dev/null || {
+    echo "  ⚠️  RabbitMQ(:$RMQ_PORT) no disponible — notification-service arranca SIN listeners AMQP"
     RABBITMQ_ENABLED=false
 }
 

@@ -31,7 +31,22 @@ if [ -z "${RABBITMQ_PASSWORD:-}" ]; then
   exit 1
 fi
 
+# ── Fase 3: export the full connection set at startup ─────────────
+# (.env se carga arriba bajo `set -a`, así que todo lo que exista en .env
+#  ya queda exportado. Aquí materializamos defaults para las que faltan
+#  y las re-exportamos explícitamente: los servicios leen ${VAR:default}
+#  en application.properties, pero el arranque las deja fijas por ambiente.)
+: "${POSTGRES_HOST:=localhost}"
+: "${POSTGRES_PORT:=5432}"
+: "${RABBITMQ_HOST:=localhost}"
+: "${RABBITMQ_PORT:=5672}"
+: "${RABBITMQ_ENABLED:=true}"
+: "${REDIS_HOST:=localhost}"
+: "${REDIS_PORT:=6379}"
 export JWT_SECRET RABBITMQ_PASSWORD POSTGRES_PASSWORD POSTGRES_DB POSTGRES_USER RABBITMQ_USER
+export POSTGRES_HOST POSTGRES_PORT
+export RABBITMQ_HOST RABBITMQ_PORT RABBITMQ_ENABLED
+export REDIS_HOST REDIS_PORT
 
 # ── Java: prefer a JDK 21 (el proyecto compila a release 21) ────
 # El `java` por defecto del sistema puede ser 25 (Fedora/Arch) mientras

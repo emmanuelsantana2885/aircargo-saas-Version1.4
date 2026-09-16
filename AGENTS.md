@@ -1,5 +1,18 @@
 # Aircargo — agent notes
 
+## Recent session changes (Sep 15, 2026 (2) — Fase 3 completada: consumidor AMQP de auditoría verificado E2E + fix del probe de puerto RabbitMQ en start-backend.sh)
+
+**Contexto**: cerrar la "Pendiente" de la sesión previa (Fase 3). Las dos mitades: (a) el consumidor AMQP de **auth-service** (`aircargo.auth.audit-log`, gateado por `app.rabbitmq.enabled=${RABBITMQ_ENABLED:true}` en `RabbitConfig` + `AuditLogListener`) y (b) exportar en el arranque `POSTGRES_*`, `JWT_SECRET`, `RABBITMQ_*`, `REDIS_HOST/PORT`. El E2E previo (recibo→MAWB RECEIVED) ya había probado booking/mawb/notification consumiendo; faltaba verificar el consumidor de auditoría y el arranque.
+
+| File | Change |
+|------|--------|
+| `start-backend.sh` | **FIX probe de broker**: el chequeo de RabbitMQ usaba el puerto `5672` **hardcodeado** (L80) mientras el broker late en `RABBITMQ_PORT` (5673 en este entorno) → un arranque fresco marcaba `RABBITMQ_ENABLED=false` y mataba TODOS los listeners AMQP sin aviso. Ahora `RMQ_PORT="${RABBITMQ_PORT:-5672}"` y el `/dev/tcp` lo usa. (start-all.sh ya lo hacía bien con `port_up "$RMQ_PORT"`.)
+| `.env.example` | Añadidos `RABBITMQ_HOST=localhost` y `RABBITMQ_PORT=5673` (con comentario del mapping del compose) — antes solo existían `RABBITMQ_USER/PASSWORD/ENABLED`; el `.env` real ya los tenía. |
+
+**Verificación** (Fase 3 E2E real, sin tocar el broker): topología completa en mgmt API — `aircargo.auth.audit-log` (1 consumidor), `.dlq` (0), `aircargo.booking.receipt-sync` (1), `aircargo.loadplanning.invalidate` (1), `aircargo.mawb.receipt-status` (1), `aircargo.notifications` (1) + `.dlq` (0), `aircargo.uld.mawb-sync` (1). **Consumidor de auditoría probado**: evento `AuditLogEvent` (action `E2E_FASE3`, email `fase3-test@aircargo.com`, entityType `SITE`) publicado vía mgmt HTTP API (`POST /api/exchanges/%2f/aircargo.events/publish`, routing key `audit.log`, content_type application/json) → **200 `{"routed":true}`** → 2s después la fila aparece en `auth.audit_log` (action E2E_FASE3 | SITE | `d912de7b-…`). Limpieza: DELETE de la fila + ficheros de test, 0 registros residuales. `bash -n` de ambos scripts OK. Sin cambios de código de servicios (los consumers ya corrían). Sin commits — ver commit previo `88dd46f` que empaqueta Fase 1/RBAC/rotation/BI/audit-diffs + confirmar este delta.
+
+**Pendiente**: nada de Fase 3. (Recordatorio general: en el arranque manual los libs cargan `.env` vía `aircargo-env.sh`; los jars en marcha usan `RABBITMQ_ENABLED=true` por .env real.)
+
 ## Recent session changes (Sep 15, 2026 — Vista WarehouseReceipts: filtros como chips vivas + barra de pendientes de recibo 2 días)
 
 **Contexto**: pedido del usuario sobre `/receipts` (aprobado tras maqueta `~/Desktop/Prop1.html`): los filtros de estado eran un `<select>` de la lista `statusSteps` y el filtro «En proceso» estaba roto (la rama especial comparaba `!isReceiptComplete(m)`, que es PENDIENTE, no EN_PROCESO), y la barra de pendientes informaba «MAWB(s) pendientes de despacho» (recibidos sin despachar) cuando lo que quería el negocio es «MAWB pendiente de recibo mayor a 2 días». Solo frontend; lógica del status operativo previa (`mawbOperationalStatusMap`, `deriveMawbOperationalStatusPure`, `statusPriority`) intacta.
