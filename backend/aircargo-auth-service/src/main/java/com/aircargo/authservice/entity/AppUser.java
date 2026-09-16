@@ -81,6 +81,10 @@ public class AppUser {
     @Column(name = "failed_login_attempts", nullable = false, columnDefinition = "integer default 0")
     private Integer failedLoginAttempts = 0;
 
+    @Builder.Default
+    @Column(name = "mfa_failed_attempts", nullable = false, columnDefinition = "integer default 0")
+    private Integer mfaFailedAttempts = 0;
+
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 

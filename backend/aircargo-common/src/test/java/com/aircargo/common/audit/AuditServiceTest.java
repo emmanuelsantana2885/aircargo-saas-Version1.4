@@ -1,5 +1,6 @@
 package com.aircargo.common.audit;
 
+import com.aircargo.common.event.AuditLogEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -26,6 +27,24 @@ class AuditServiceTest {
 
         Object arg(int i) { return args == null ? null : args[i]; }
         RuntimeException boom;
+    }
+
+    /** Fake de RabbitTemplate: captura el publish sin tocar broker. */
+    static class FakeRabbit extends org.springframework.amqp.rabbit.core.RabbitTemplate {
+        int calls;
+        String exchange;
+        String routingKey;
+        Object payload;
+        RuntimeException boom;
+
+        @Override
+        public void convertAndSend(String exchange, String routingKey, Object message) {
+            calls++;
+            if (boom != null) throw boom;
+            this.exchange = exchange;
+            this.routingKey = routingKey;
+            this.payload = message;
+        }
     }
 
     @Test
@@ -75,5 +94,48 @@ class AuditServiceTest {
         // details (índice 6) nunca debe llegar null al INSERT (TextUtil.safe)
         assertNotNull(jdbc.arg(6));
         assertNull(jdbc.arg(4)); // entityType sí puede ser null
+    }
+
+    @Test
+    void conRabbit_publicaPorAmqpSinEscribirEnJdbc() {
+        FakeJdbc jdbc = new FakeJdbc();
+        FakeRabbit rabbit = new FakeRabbit();
+
+        AuditService svc = new AuditService(jdbc);
+        svc.setRabbitTemplate(rabbit);
+        svc.log(id, "a@x.com", "Ana", "FLIGHT_UPDATED", "FLIGHT", id.toString(), "{}", "10.1.2.3");
+
+        assertEquals(1, rabbit.calls);
+        assertEquals(AuditService.AUDIT_EXCHANGE, rabbit.exchange);
+        assertEquals(AuditService.AUDIT_ROUTING_KEY, rabbit.routingKey);
+        assertTrue(rabbit.payload instanceof AuditLogEvent);
+        assertEquals("FLIGHT_UPDATED", ((AuditLogEvent) rabbit.payload).action());
+        assertEquals(0, jdbc.calls);  // una sola escritura: AMQP, nunca doble
+    }
+
+    @Test
+    void siRabbitFalla_caeAlFallbackJdbcComoUnaSolaEscritura() {
+        FakeJdbc jdbc = new FakeJdbc();
+        FakeRabbit rabbit = new FakeRabbit();
+        rabbit.boom = new RuntimeException("broker caido");
+
+        AuditService svc = new AuditService(jdbc);
+        svc.setRabbitTemplate(rabbit);
+        assertDoesNotThrow(() ->
+                svc.log(id, "a@x.com", "Ana", "MAWB_DELETED", "MAWB", id.toString(), null, "192.168.23.45"));
+
+        assertEquals(1, rabbit.calls);   // el intento AMQP ocurrió
+        assertEquals(1, jdbc.calls);     // fallback JDBC cubrió el evento
+        assertEquals("192.168.23.0", jdbc.arg(7)); // IP pseudonimizada en el fallback
+    }
+
+    @Test
+    void conRabbit_elEventoLlevaIpPseudonimizada() {
+        AuditService svc = new AuditService(null);
+        FakeRabbit rabbit = new FakeRabbit();
+        svc.setRabbitTemplate(rabbit);
+        svc.log(id, "a@x.com", "Ana", "X", null, null, null, "192.168.23.45");
+
+        assertEquals("192.168.23.0", ((AuditLogEvent) rabbit.payload).ipAddress());
     }
 }

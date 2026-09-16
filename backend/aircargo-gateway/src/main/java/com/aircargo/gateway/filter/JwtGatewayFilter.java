@@ -29,6 +29,7 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
             "/api/auth/refresh",
             "/api/auth/mfa/enroll/",
             "/api/catalog",
+            "/fallback/",
             "/actuator/"
     );
 

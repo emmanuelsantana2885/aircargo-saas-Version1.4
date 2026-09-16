@@ -6,12 +6,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 
 @SpringBootApplication(scanBasePackages = {"com.aircargo.authservice", "com.aircargo.common"})
 @EntityScan(basePackages = {"com.aircargo.authservice.entity", "com.aircargo.authservice.event",
         "com.aircargo.common.entity"})
 @EnableCaching
 @EnableScheduling
+@EnableRabbit
 public class AuthServiceApplication {
 
     public static void main(String[] args) {

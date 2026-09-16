@@ -3,13 +3,16 @@ package com.aircargo.bookingservice.service;
 import com.aircargo.bookingservice.dto.BookingDTO;
 import com.aircargo.bookingservice.entity.Booking;
 import com.aircargo.bookingservice.repository.BookingRepository;
+import com.aircargo.bookingservice.config.RabbitConfig;
 import com.aircargo.common.dto.PageResponse;
 import com.aircargo.common.entity.CommodityType;
+import com.aircargo.common.event.BookingAwbUpdatedEvent;
 import com.aircargo.feign.client.FlightClient;
 import com.aircargo.feign.client.MawbClient;
 import com.aircargo.feign.dto.MawbDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -32,12 +35,14 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final FlightClient flightClient;
     private final MawbClient mawbClient;
+    private final RabbitTemplate rabbitTemplate;
 
     public BookingServiceImpl(BookingRepository bookingRepository, FlightClient flightClient,
-                              MawbClient mawbClient) {
+                              MawbClient mawbClient, RabbitTemplate rabbitTemplate) {
         this.bookingRepository = bookingRepository;
         this.flightClient = flightClient;
         this.mawbClient = mawbClient;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Override
@@ -160,6 +165,11 @@ public class BookingServiceImpl implements BookingService {
                         syncMawbWithBooking(saved, saved.getAwbNumber());
                     }
 
+                    // Publish AWB update for consumers (notification-service, receipts)
+                    if (dto.getAwbNumber() != null) {
+                        publishAwbUpdated(saved);
+                    }
+
                     return saved;
                 })
                 .map(BookingDTO::fromEntity);
@@ -177,8 +187,22 @@ public class BookingServiceImpl implements BookingService {
                     // Sync with MAWB service
                     syncMawbWithBooking(saved, awbNumber);
 
+                    // Publish AWB update for consumers (notification-service, receipts)
+                    publishAwbUpdated(saved);
+
                     return BookingDTO.fromEntity(saved);
                 });
+    }
+
+    /** Publica booking.awb.updated en el exchange compartido. Best-effort. */
+    private void publishAwbUpdated(Booking booking) {
+        try {
+            UUID flightId = booking.getFlight() != null ? booking.getFlight().getId() : null;
+            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.AWB_UPDATED_KEY,
+                    new BookingAwbUpdatedEvent(booking.getId(), booking.getAwbNumber(), flightId));
+        } catch (Exception e) {
+            log.warn("Failed to publish booking.awb.updated for booking {}: {}", booking.getId(), e.getMessage());
+        }
     }
 
     private void syncMawbWithBooking(Booking booking, String awbNumber) {

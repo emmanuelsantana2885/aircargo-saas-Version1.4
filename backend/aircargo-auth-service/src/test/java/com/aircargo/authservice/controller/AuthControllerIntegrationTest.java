@@ -139,6 +139,61 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    void login_wrongPasswordOnInactiveOrBlockedAccount_returnsGeneric401_notState() throws Exception {
+        // Audit 5d: el estado de la cuenta (inactivo/bloqueado) NO se revela a
+        // quien no conoce la contraseña — misma respuesta genérica que email inexistente.
+        userRepository.save(user("state@aircargo.com", UserRole.OPERATIONS));
+        AppUser inactivo = userRepository.findByEmail("state@aircargo.com").orElseThrow();
+        inactivo.setPasswordHash(passwordEncoder.encode("CorrectHorse1!"));
+        inactivo.setIsActive(false);
+        userRepository.save(inactivo);
+
+        userRepository.save(user("stateBlocked@aircargo.com", UserRole.OPERATIONS));
+        AppUser bloqueado = userRepository.findByEmail("stateBlocked@aircargo.com").orElseThrow();
+        bloqueado.setPasswordHash(passwordEncoder.encode("CorrectHorse1!"));
+        bloqueado.setBlocked(true);
+        userRepository.save(bloqueado);
+
+        String inactivoResp = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"state@aircargo.com\",\"password\":\"BadPassword9!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getResponse().getContentAsString();
+        String bloqueadoResp = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"stateBlocked@aircargo.com\",\"password\":\"BadPassword9!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getResponse().getContentAsString();
+        String unknownResp = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"nobody@aircargo.com\",\"password\":\"BadPassword9!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getResponse().getContentAsString();
+
+        String generic = objectMapper.readTree(unknownResp).get("error").asText();
+        org.junit.jupiter.api.Assertions.assertEquals(generic,
+                objectMapper.readTree(inactivoResp).get("error").asText());
+        org.junit.jupiter.api.Assertions.assertEquals(generic,
+                objectMapper.readTree(bloqueadoResp).get("error").asText());
+    }
+
+    @Test
+    void login_correctPasswordOnInactiveOrBlockedAccount_stillRevealsState() throws Exception {
+        // UX preservada: con la contraseña CORRECTA el estado sí se informa.
+        userRepository.save(user("stateok@aircargo.com", UserRole.OPERATIONS));
+        AppUser inactivo = userRepository.findByEmail("stateok@aircargo.com").orElseThrow();
+        inactivo.setPasswordHash(passwordEncoder.encode("CorrectHorse1!"));
+        inactivo.setIsActive(false);
+        userRepository.save(inactivo);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"stateok@aircargo.com\",\"password\":\"CorrectHorse1!\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("Usuario inactivo"));
+    }
+
+    @Test
     void login_locksAccountAfterFiveFailedAttempts() throws Exception {
         userRepository.save(user("lockme@aircargo.com", UserRole.OPERATIONS));
         AppUser u = userRepository.findByEmail("lockme@aircargo.com").orElseThrow();
@@ -263,6 +318,71 @@ class AuthControllerIntegrationTest {
                                 "email", "reset@aircargo.com", "password", "CorrectHorse1!"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").exists());
+    }
+
+    @Test
+    void refresh_rotationChain_graceThenReuse_revokesFamily() throws Exception {
+        userRepository.save(user("rot@aircargo.com", UserRole.OPERATIONS));
+
+        // login → la sesión emite el refresh token T1 y quedó latiendo (heartbeat)
+        String loginBody = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"rot@aircargo.com\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String t1 = objectMapper.readTree(loginBody).get("refreshToken").asText();
+        AppUser u = userRepository.findByEmail("rot@aircargo.com").orElseThrow();
+
+        // 1) refresh válido → 200 + sucesor T2 (rotación atómica)
+        String rotatedBody = mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + t1 + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String t2 = objectMapper.readTree(rotatedBody).get("refreshToken").asText();
+        org.junit.jupiter.api.Assertions.assertFalse(t2.isBlank());
+
+        // 2) re-presentación del MISMO T1 → 200 en gracia (multi-pestaña tolerada)
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + t1 + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+
+        // el sucesor legítimo T2 sigue rotando (la familia NO fue revocada)
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + t2 + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty());
+
+        // 3) reuso repetido del mismo T1 → robo → 401 y TODA la familia revocada
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + t1 + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        // el sucesor legítimo T2 ya NO refresca (revocado por la familia)
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"" + t2 + "\"}"))
+                .andExpect(status().isUnauthorized());
+
+        // auditoría de seguridad registró la gracia y el robo
+        mockMvc.perform(get("/api/audit-logs/security"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.action == 'REFRESH_TOKEN_GRACE_ROTATED')]").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.action == 'REFRESH_TOKEN_REUSE')]").isNotEmpty());
+
+        // TODAS las filas de la familia quedaron revoked=true en auth_session
+        entityManager.flush();
+        entityManager.clear();
+        Number revoked = (Number) entityManager.createNativeQuery(
+                "SELECT count(*) FROM auth_session WHERE user_id = :id AND revoked = true")
+                .setParameter("id", u.getId()).getSingleResult();
+        org.junit.jupiter.api.Assertions.assertTrue(revoked.longValue() >= 3,
+                "La familia de sesiones debe quedar revocada");
     }
 
     @Test

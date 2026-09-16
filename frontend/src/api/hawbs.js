@@ -1,7 +1,7 @@
 import api from './client'
 
 export const hawbsApi = {
-  getByMawb: (mawbId) => api.get(`/cargo/hawbs/mawb/${mawbId}`),
-  create: (dto) => api.post('/cargo/hawbs', dto),
-  update: (id, dto) => api.put(`/cargo/hawbs/${id}`, dto),
+  getByMawb: (mawbId) => api.get(`/hawbs/mawb/${mawbId}`),
+  create: (dto) => api.post('/hawbs', dto),
+  update: (id, dto) => api.put(`/hawbs/${id}`, dto),
 }

@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "airline")
+@Table(name = "airline", schema = "flight")
 @Getter
 @Setter
 @Builder

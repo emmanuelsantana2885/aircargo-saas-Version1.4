@@ -42,6 +42,12 @@ public class AuditLog {
     @Column(name = "details", columnDefinition = "text")
     private String details;
 
+    @Column(name = "before_value", columnDefinition = "text")
+    private String beforeValue;
+
+    @Column(name = "after_value", columnDefinition = "text")
+    private String afterValue;
+
     @Column(name = "ip_address", length = 50)
     private String ipAddress;
 

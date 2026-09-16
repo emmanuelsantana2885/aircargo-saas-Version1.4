@@ -43,7 +43,9 @@ public class WeightReportService {
                 COALESCE(r.chargeable_weight_lbs, 0) AS chargeable_weight_lbs,
                 COALESCE(r.chargeable_weight_kg, 0) AS chargeable_weight_kg
             FROM mawb m
-            INNER JOIN flight f ON f.id = m.flight_id
+            INNER JOIN uld_awb ua ON ua.mawb_id = m.id
+            INNER JOIN uld u ON u.id = ua.uld_id
+            INNER JOIN flight f ON f.id = u.flight_id
             LEFT JOIN warehouse_receipt r ON r.mawb_id = m.id AND r.superseded = false
             WHERE 1=1
         """);

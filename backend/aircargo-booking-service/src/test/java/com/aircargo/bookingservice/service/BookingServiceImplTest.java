@@ -32,12 +32,14 @@ class BookingServiceImplTest {
     private FlightClient flightClient;
     @Mock
     private MawbClient mawbClient;
+    @Mock
+    private org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
 
     private BookingServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new BookingServiceImpl(bookingRepository, flightClient, mawbClient);
+        service = new BookingServiceImpl(bookingRepository, flightClient, mawbClient, rabbitTemplate);
     }
 
     private Booking sampleBooking() {

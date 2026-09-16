@@ -409,6 +409,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUldsStore } from '../stores/ulds'
 import { useAppStore } from '../stores/app'
 import { uldsApi } from '../api/ulds'
@@ -432,6 +433,7 @@ import { useLiveRefresh } from '../composables/useLiveRefresh'
 const uldsStore = useUldsStore()
 const appStore = useAppStore()
 const toast = useToastStore()
+const route = useRoute()
 const { t, te } = useI18n()
 const icons = useIcons()
 const { confirm } = useConfirm()
@@ -1283,6 +1285,7 @@ onMounted(async () => {
   loadTypeConfig()
   loadUldCatalog()
   rebuildLocalList()
+  if (route.query.new === '1') createNewBlankUld()
 })
 
 watch(() => appStore.ulds, () => rebuildLocalList(), { deep: true })

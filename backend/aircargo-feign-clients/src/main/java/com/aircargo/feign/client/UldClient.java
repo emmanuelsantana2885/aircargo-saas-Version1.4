@@ -2,6 +2,7 @@ package com.aircargo.feign.client;
 
 import com.aircargo.feign.dto.UldDTO;
 import com.aircargo.feign.dto.UldAwbDTO;
+import com.aircargo.feign.fallback.UldClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "uld-service", url = "${uld-service.url:http://localhost:9097}")
+@FeignClient(name = "uld-service", url = "${uld-service.url:http://localhost:9097}",
+        fallbackFactory = UldClientFallbackFactory.class)
 public interface UldClient {
 
     @GetMapping("/api/ulds/{id}")

@@ -16,6 +16,7 @@ x-common-env: &common-env
   RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
   MFA_RESET_ON_STARTUP: ${MFA_RESET_ON_STARTUP:-false}
+  APP_MFA_MANDATORY: ${APP_MFA_MANDATORY:-true}
 
 services:
   aircargo-gateway:

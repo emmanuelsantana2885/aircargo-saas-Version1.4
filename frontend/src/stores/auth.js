@@ -27,6 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
   const selectedSiteId = ref(stored?.selectedSiteId || null)
   const mfaEnabled = ref(stored?.mfaEnabled ?? false)
   const mustChangePassword = ref(stored?.mustChangePassword ?? false)
+  const permissions = ref(stored?.permissions || [])
 
   const isAuthenticated = computed(() => !!userId.value && !!selectedSiteId.value)
   const hasSession = computed(() => !!userId.value)
@@ -51,6 +52,7 @@ export const useAuthStore = defineStore('auth', () => {
       selectedSiteId: selectedSiteId.value,
       mfaEnabled: mfaEnabled.value,
       mustChangePassword: mustChangePassword.value,
+      permissions: permissions.value,
     }))
   }
 
@@ -67,6 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
     selectedSiteId.value = null
     mfaEnabled.value = data.mfaEnabled ?? false
     mustChangePassword.value = data.mustChangePassword ?? false
+    permissions.value = data.permissions || []
     persist()   // los tokens ya fueron emitidos como cookies httpOnly
     return data
   }
@@ -87,6 +90,7 @@ export const useAuthStore = defineStore('auth', () => {
       airlineId.value = data.airlineId
       hasPasswordSet.value = data.hasPasswordSet
       mustChangePassword.value = data.mustChangePassword ?? false
+      permissions.value = data.permissions || []
       persist()
     } catch (e) {
       console.warn('Failed to refresh profile:', e)
@@ -104,12 +108,19 @@ export const useAuthStore = defineStore('auth', () => {
     selectedSiteId.value = null
     mfaEnabled.value = false
     mustChangePassword.value = false
+    permissions.value = []
     localStorage.removeItem(STORAGE_KEY)
   }
 
   async function logout() {
     authApi.logout().catch(() => {})   // el backend limpia las cookies y revoca
     clearProfile()
+  }
+
+  function can(code) {
+    // Backward-compat: sesiones viejas sin permissiones no bloquean (permit-all en UI).
+    if (!Array.isArray(permissions.value) || permissions.value.length === 0) return true
+    return permissions.value.includes(code)
   }
 
   function canView(viewName) {
@@ -129,9 +140,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     userId, email, fullName, role, airlineId, hasPasswordSet,
-    sites, selectedSiteId, selectedSite, mfaEnabled, mustChangePassword,
+    sites, selectedSiteId, selectedSite, mfaEnabled, mustChangePassword, permissions,
     isAuthenticated, hasSession, initials,
-    login, confirmSite, logout, canView,
+    login, confirmSite, logout, canView, can,
     refreshProfile, persist, clearProfile,
   }
 })

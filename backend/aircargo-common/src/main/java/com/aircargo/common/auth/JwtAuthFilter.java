@@ -7,6 +7,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,7 +17,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,23 +32,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final long REVOCATION_CACHE_MS = 30_000;
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login", "/api/auth/set-password", "/api/auth/set-password-token",
-            "/api/auth/reset-password/", "/api/auth/refresh", "/api/auth/heartbeat"
+            "/api/auth/reset-password/", "/api/auth/refresh", "/api/auth/heartbeat",
+            "/api/auth/mfa/enroll/"
     );
 
     private final JwtUtil jwtUtil;
-    // Opcional: habilita revocación central por-request (tokens_valid_from / blocked / is_active)
+    // Opcional: habilita revocación central por-request (tokens_valid_from / blocked / is_active).
+    // Redis es la fuente preferida (snapshot cache aircargo:user-state:<userId> publicado por auth);
+    // el JDBC sobre auth.app_user es el fallback fail-open cuando no hay Redis.
     private final JdbcTemplate jdbcTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final Map<UUID, UserState> stateCache = new ConcurrentHashMap<>();
+
+    private static final String USER_STATE_KEY_PREFIX = "aircargo:user-state:";
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private record UserState(boolean blocked, boolean active, OffsetDateTime tokensValidFrom, long loadedAtMs) {}
 
     public JwtAuthFilter(JwtUtil jwtUtil) {
-        this(jwtUtil, null);
+        this(jwtUtil, null, null);
     }
 
     public JwtAuthFilter(JwtUtil jwtUtil, JdbcTemplate jdbcTemplate) {
+        this(jwtUtil, jdbcTemplate, null);
+    }
+
+    public JwtAuthFilter(JwtUtil jwtUtil, JdbcTemplate jdbcTemplate, StringRedisTemplate redisTemplate) {
         this.jwtUtil = jwtUtil;
         this.jdbcTemplate = jdbcTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -91,10 +109,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String email = claims.get("email", String.class);
             String fullName = claims.get("fullName", String.class);
 
-            // Revocación central por-request (solo servicios con BD; caché 30s).
+            // Revocación central por-request (solo servicios con BD o Redis; caché 30s).
             // Los tokens de servicio (subject "service:...") no son usuarios: se saltan
             // el chequeo, que requiere un UUID real (UUID.fromString lanzaría).
-            if (jdbcTemplate != null && userId != null && !userId.startsWith("service:")) {
+            if ((jdbcTemplate != null || redisTemplate != null) && userId != null && !userId.startsWith("service:")) {
                 try {
                     if (isStale(UUID.fromString(userId), claims)) {
                         log.info("Session REVOKED for {} {}", method, uri);
@@ -108,9 +126,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
             UserPrincipal principal = new UserPrincipal(userId, role, airlineId, email, fullName);
-            SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+            SimpleGrantedAuthority roleAuthority = new SimpleGrantedAuthority(role);
+            List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(roleAuthority);
+            Object rawPerms = claims.get("permissions");
+            if (rawPerms instanceof List<?> list) {
+                for (Object p : list) {
+                    if (p instanceof String s && !s.isBlank()) {
+                        authorities.add(new SimpleGrantedAuthority(s));
+                    }
+                }
+            }
             UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(principal, null, List.of(authority));
+                    new UsernamePasswordAuthenticationToken(principal, null, authorities);
             SecurityContextHolder.getContext().setAuthentication(auth);
         } catch (Exception e) {
             log.info("JWT INVALID for {} {}: {}", method, uri, e.getMessage());
@@ -135,21 +163,52 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (prev != null && System.currentTimeMillis() - prev.loadedAtMs() < REVOCATION_CACHE_MS) {
                 return prev;
             }
-            try {
-                return jdbcTemplate.queryForObject(
-                        "SELECT blocked, is_active, COALESCE(tokens_valid_from, TIMESTAMP '1970-01-01 00:00:00+00') FROM app_user WHERE id = ?",
-                        (rs, n) -> new UserState(rs.getBoolean(1), rs.getBoolean(2),
-                                rs.getObject(3, OffsetDateTime.class), System.currentTimeMillis()),
-                        userId);
-            } catch (Exception e) {
-                log.warn("No se pudo leer estado de usuario {}: {}", userId, e.getMessage());
-                return prev != null ? prev : new UserState(false, true, null, System.currentTimeMillis());
-            }
+            return loadState(userId, prev);
         });
         if (s.blocked() || !s.active()) return true;
         java.util.Date iat = claims.getIssuedAt();
         return iat != null && s.tokensValidFrom() != null
                 && OffsetDateTime.ofInstant(iat.toInstant(), java.time.ZoneOffset.UTC).isBefore(s.tokensValidFrom());
+    }
+
+    /**
+     * Carga best-effort del estado de revocación del usuario:
+     * 1º Redis (snapshot aircargo:user-state:<uuid> publicado por auth-service — sin carga a la BD),
+     * 2º JDBC calificado contra auth.app_user (fallback fail-open cuando Redis no responde),
+     * y si ninguna fuente está disponible se permite el paso (comportamiento pre-revocación).
+     */
+    private UserState loadState(UUID userId, UserState prev) {
+        if (redisTemplate != null) {
+            try {
+                String json = redisTemplate.opsForValue().get(USER_STATE_KEY_PREFIX + userId);
+                if (json != null) {
+                    JsonNode n = MAPPER.readTree(json);
+                    Long epoch = n.has("tokensValidFrom") && !n.get("tokensValidFrom").isNull()
+                            ? n.get("tokensValidFrom").asLong() : null;
+                    OffsetDateTime vf = epoch != null
+                            ? OffsetDateTime.ofInstant(Instant.ofEpochMilli(epoch), ZoneOffset.UTC) : null;
+                    return new UserState(
+                            n.has("blocked") && n.get("blocked").asBoolean(false),
+                            !n.has("active") || n.get("active").asBoolean(true),
+                            vf,
+                            System.currentTimeMillis());
+                }
+            } catch (Exception e) {
+                log.warn("Redis user-state de {} ilegible (fallback SQL): {}", userId, e.getMessage());
+            }
+        }
+        if (jdbcTemplate != null) {
+            try {
+                return jdbcTemplate.queryForObject(
+                        "SELECT blocked, is_active, COALESCE(tokens_valid_from, TIMESTAMP '1970-01-01 00:00:00+00') FROM auth.app_user WHERE id = ?",
+                        (rs, n) -> new UserState(rs.getBoolean(1), rs.getBoolean(2),
+                                rs.getObject(3, OffsetDateTime.class), System.currentTimeMillis()),
+                        userId);
+            } catch (Exception e) {
+                log.warn("No se pudo leer estado de usuario {}: {}", userId, e.getMessage());
+            }
+        }
+        return prev != null ? prev : new UserState(false, true, null, System.currentTimeMillis());
     }
 
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {

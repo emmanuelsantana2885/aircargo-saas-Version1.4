@@ -1,5 +1,6 @@
 package com.aircargo.authservice.command;
 
+import com.aircargo.authservice.config.RolePermissionCatalog;
 import com.aircargo.authservice.entity.AppUser;
 import com.aircargo.authservice.event.AuditEventType;
 import com.aircargo.authservice.repository.AppUserRepository;
@@ -107,7 +108,8 @@ public class SetPasswordCommandHandler {
                 user.getAirline() != null && user.getAirline().getId() != null
                         ? user.getAirline().getId().toString() : "",
                 user.getEmail(),
-                user.getFullName()
+                user.getFullName(),
+                RolePermissionCatalog.codesFor(user.getRole())
         );
         return PasswordOutcome.success(Map.of(
                 "message", "Contraseña establecida correctamente",

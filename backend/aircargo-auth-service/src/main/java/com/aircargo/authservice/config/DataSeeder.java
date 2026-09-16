@@ -19,12 +19,14 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.dao.DataAccessException;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,6 +44,14 @@ public class DataSeeder implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
 
     public static final UUID UPS_AIRLINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+    /**
+     * flight.airline es single-writer de flight-service: auth NUNCA escribe ahí.
+     * Solo resuelve la aerolínea UPS por lectura, reintentando brevemente por si
+     * flight-service aún no ha aplicado su V1__init.sql (BD nueva arrancando en paralelo).
+     */
+    private static final int AIRLINE_RESOLVE_MAX_ATTEMPTS = 15;
+    private static final long AIRLINE_RESOLVE_RETRY_MS = 1000L;
 
     private static final UUID SDQ_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
     private static final UUID STI_ID = UUID.fromString("00000000-0000-0000-0000-000000000102");
@@ -70,32 +80,51 @@ public class DataSeeder implements ApplicationRunner {
     }
 
     @Override
-    @Transactional
     public void run(ApplicationArguments args) {
-        Airline ups = seedUpsAirline();
+        Airline ups = resolveUpsAirline();
         List<Site> sites = seedSites();
         Site sdq = sites.stream().filter(s -> "SDQ".equals(s.getCode())).findFirst().orElse(sites.get(0));
-        seedUsers(ups, sdq);
+        if (ups != null) {
+            seedUsers(ups, sdq);
+        } else {
+            log.error("DataSeeder: aerolínea UPS no resuelta en flight.airline — se omite el seed de usuarios (el ownership es de flight-service).");
+        }
         seedViewPermissions();
         seedRolePermissions();
         seedCommodityTypes();
         log.info("DataSeeder: master data verified (airline, sites, users, permissions, commodity types)");
     }
 
-    private Airline seedUpsAirline() {
-        return airlineRepository.findByCode("UPS").orElseGet(() -> {
-            Airline ups = Airline.builder()
-                    .id(UPS_AIRLINE_ID)
-                    .code("UPS")
-                    .name("United Parcel Service")
-                    .iataCode("5X")
-                    .country("USA")
-                    .isActive(true)
-                    .build();
-            Airline saved = airlineRepository.save(ups);
-            log.info("DataSeeder: seeded airline {}", saved.getCode());
-            return saved;
-        });
+    /**
+     * READ-ONLY: auth ya no crea ni actualiza flight.airline (single-writer = flight-service).
+     * Resuelve UPS por lectura con reintento (~15s) para tolerar el arranque paralelo en BD nueva.
+     */
+    private Airline resolveUpsAirline() {
+        for (int attempt = 1; attempt <= AIRLINE_RESOLVE_MAX_ATTEMPTS; attempt++) {
+            try {
+                Optional<Airline> ups = airlineRepository.findByCode("UPS");
+                if (ups.isPresent()) {
+                    return ups.get();
+                }
+            } catch (DataAccessException e) {
+                log.debug("DataSeeder: flight.airline aún no disponible (intento {}/{})", attempt, AIRLINE_RESOLVE_MAX_ATTEMPTS);
+            }
+            if (attempt < AIRLINE_RESOLVE_MAX_ATTEMPTS) {
+                sleep(AIRLINE_RESOLVE_RETRY_MS);
+            }
+        }
+        log.error("DataSeeder: aerolínea UPS no encontrada en flight.airline tras {} intentos (~{}s) — read-only, no se siembra.",
+                AIRLINE_RESOLVE_MAX_ATTEMPTS, (AIRLINE_RESOLVE_MAX_ATTEMPTS * AIRLINE_RESOLVE_RETRY_MS) / 1000);
+        return null;
+    }
+
+    private static void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("DataSeeder: interrumpido durante la resolución de aerolínea", e);
+        }
     }
 
     private List<Site> seedSites() {

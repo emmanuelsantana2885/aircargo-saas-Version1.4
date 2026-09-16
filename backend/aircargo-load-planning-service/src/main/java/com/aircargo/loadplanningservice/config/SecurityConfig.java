@@ -2,6 +2,7 @@ package com.aircargo.loadplanningservice.config;
 
 import com.aircargo.common.auth.JwtAuthFilter;
 import com.aircargo.common.auth.JwtUtil;
+import com.aircargo.common.auth.Permissions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -30,8 +31,9 @@ public class SecurityConfig {
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/load-planning/**").hasAnyAuthority("READ_ONLY", "OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
-                .requestMatchers("/api/load-planning/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.GET, "/api/load-planning/**").hasAuthority(Permissions.CAN_READ_LOAD_PLAN)
+                .requestMatchers(HttpMethod.POST, "/api/load-planning/flight/*/upload-manifest/**").hasAuthority(Permissions.CAN_IMPORT_RAMP_MANIFEST)
+                .requestMatchers("/api/load-planning/**").hasAnyAuthority(Permissions.CAN_CREATE_LOAD_PLAN, Permissions.CAN_ASSIGN_LOAD_PLAN, Permissions.CAN_CLOSE_LOAD_PLAN, Permissions.CAN_EXPORT_LOAD_PLAN)
                 .anyRequest().authenticated()
             )
             .exceptionHandling(eh -> eh.authenticationEntryPoint(

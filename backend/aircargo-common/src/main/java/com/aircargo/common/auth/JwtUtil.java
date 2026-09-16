@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,7 +23,8 @@ public class JwtUtil {
     private static final String DEV_DEFAULT = "dev-only-insecure-secret-do-not-use-in-production-please-change-me";
     private static final long ACCESS_TOKEN_MS = 15 * 60 * 1000L;       // 15 minutes
     private static final long ENROLL_TOKEN_MS = 15 * 60 * 1000L;       // 15 minutes
-    private static final long REFRESH_TOKEN_MS = 7 * 24 * 60 * 60 * 1000L; // 7 days
+    /** 7 días: TTL del refresh token (público para que auth_session calcule expires_at). */
+    public static final long REFRESH_TOKEN_MS = 7 * 24 * 60 * 60 * 1000L;
     private static final long CLEANUP_INTERVAL_MS = 60 * 60 * 1000L;   // 1 hour
 
     private final SecretKey key;
@@ -54,13 +56,29 @@ public class JwtUtil {
     }
 
     public String generateToken(String userId, String role, String airlineId, String email, String fullName) {
-        return generateAccessToken(userId, role, airlineId, email, fullName);
+        return generateAccessToken(userId, role, airlineId, email, fullName, null);
+    }
+
+    public String generateToken(String userId, String role, String airlineId, String email,
+                                String fullName, List<String> permissions) {
+        return generateAccessToken(userId, role, airlineId, email, fullName, permissions);
     }
 
     public String generateAccessToken(String userId, String role, String airlineId, String email, String fullName) {
+        return generateAccessToken(userId, role, airlineId, email, fullName, null);
+    }
+
+    /**
+     * Igual que {@link #generateAccessToken(String, String, String, String, String)}
+     * pero incluye el claim {@code permissions} (lista de códigos CAN_*).
+     * Permitir un valor {@code null} conserva la compatibilidad con llamadas
+     * previas; el claim solo se emite cuando la lista es no vacía.
+     */
+    public String generateAccessToken(String userId, String role, String airlineId, String email,
+                                      String fullName, List<String> permissions) {
         Date now = new Date();
         long ttlMs = expirationMs > 0 ? expirationMs : ACCESS_TOKEN_MS;
-        return Jwts.builder()
+        io.jsonwebtoken.JwtBuilder builder = Jwts.builder()
                 .subject(userId)
                 .claim("role", role)
                 .claim("airlineId", airlineId)
@@ -69,8 +87,11 @@ public class JwtUtil {
                 .claim("tokenType", "access")
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + ttlMs))
-                .signWith(key)
-                .compact();
+                .signWith(key);
+        if (permissions != null && !permissions.isEmpty()) {
+            builder.claim("permissions", permissions);
+        }
+        return builder.compact();
     }
 
     /**
@@ -104,6 +125,9 @@ public class JwtUtil {
                 .claim("email", email)
                 .claim("fullName", fullName != null ? fullName : "")
                 .claim("tokenType", "service")
+                // Los tokens de servicio (service-to-service) deben poder atravesar
+                // CUALQUIER matcher de permiso del servicio destino.
+                .claim("permissions", Permissions.allCodesAsList())
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + SERVICE_TOKEN_MS))
                 .signWith(key)
@@ -112,8 +136,12 @@ public class JwtUtil {
 
     public String generateRefreshToken(String userId) {
         Date now = new Date();
+        // jti obligatorio: JJWT serializa iat/exp a segundos, así que dos
+        // refresh tokens del mismo segundo serían byte-idénticos (mismo SHA-256
+        // en auth_session) y romperían la cadena de rotación por colisión.
         return Jwts.builder()
                 .subject(userId)
+                .id(java.util.UUID.randomUUID().toString())
                 .claim("tokenType", "refresh")
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + REFRESH_TOKEN_MS))

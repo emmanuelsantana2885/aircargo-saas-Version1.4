@@ -64,6 +64,40 @@
             </div>
           </div>
 
+          <!-- CALC METHOD / ROUND / MIN -->
+          <div class="grid grid-cols-5 gap-3">
+            <div>
+              <label class="block text-[12px] font-mono font-bold text-slate-500 uppercase mb-0.5">Método</label>
+              <select v-model="form.chargeableMethod"
+                class="w-full text-[13px] font-mono px-2 py-1 rounded border border-slate-300 outline-none focus:border-slate-500 transition bg-white">
+                <option value="MAX">MAX</option>
+                <option value="SUM">SUM</option>
+                <option value="SCALE">SCALE</option>
+                <option value="DIM">DIM</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[12px] font-mono font-bold text-slate-500 uppercase mb-0.5">Round KG</label>
+              <input v-model.number="form.roundUpKg" type="number" min="0" step="0.001"
+                class="w-full text-[13px] font-mono px-2 py-1 rounded border border-slate-300 outline-none focus:border-slate-500 transition" />
+            </div>
+            <div>
+              <label class="block text-[12px] font-mono font-bold text-slate-500 uppercase mb-0.5">Round LBS</label>
+              <input v-model.number="form.roundUpLbs" type="number" min="0" step="0.001"
+                class="w-full text-[13px] font-mono px-2 py-1 rounded border border-slate-300 outline-none focus:border-slate-500 transition" />
+            </div>
+            <div>
+              <label class="block text-[12px] font-mono font-bold text-slate-500 uppercase mb-0.5">Min KG</label>
+              <input v-model.number="form.minChargeableKg" type="number" min="0" step="0.001"
+                class="w-full text-[13px] font-mono px-2 py-1 rounded border border-slate-300 outline-none focus:border-slate-500 transition" />
+            </div>
+            <div>
+              <label class="block text-[12px] font-mono font-bold text-slate-500 uppercase mb-0.5">Min LBS</label>
+              <input v-model.number="form.minChargeableLbs" type="number" min="0" step="0.001"
+                class="w-full text-[13px] font-mono px-2 py-1 rounded border border-slate-300 outline-none focus:border-slate-500 transition" />
+            </div>
+          </div>
+
           <!-- CHECKBOXES -->
           <div class="flex flex-wrap gap-3 px-1">
             <label v-for="cb in checkboxes" :key="cb.key" class="flex items-center gap-1.5 cursor-pointer">
@@ -196,6 +230,11 @@ const form = ref({
   awbReportedPieces: 0,
   dimFactorKg: 366,
   dimFactorLbs: 194,
+  chargeableMethod: 'MAX',
+  roundUpKg: 0,
+  roundUpLbs: 0,
+  minChargeableKg: 0,
+  minChargeableLbs: 0,
   cashOnly: false,
   bookedInAcoms: false,
   docsProvided: false,
@@ -226,9 +265,28 @@ function calcPiece(pi) {
   const dfLbs = form.value.dimFactorLbs || 194
   p.dimWeightKg = vol > 0 ? vol / dfKg : 0
   p.dimWeightLbs = vol > 0 ? vol / dfLbs : 0
-  p.scaleWeightKg = p.scaleWeightLbs ? p.scaleWeightLbs / 2.20462 : 0
-  p.chargeableKg = Math.max(p.dimWeightKg, p.scaleWeightKg)
-  p.chargeableLbs = Math.max(p.scaleWeightLbs || 0, p.dimWeightLbs || 0)
+  const scaleLbs = Number(p.scaleWeightLbs) || 0
+  p.scaleWeightKg = scaleLbs ? scaleLbs / 2.20462 : 0
+  const method = (form.value.chargeableMethod || 'MAX').toUpperCase()
+  let baseLbs = Math.max(scaleLbs, p.dimWeightLbs || 0)
+  let baseKg = Math.max(p.scaleWeightKg, p.dimWeightKg || 0)
+  if (method === 'SUM') {
+    baseLbs = scaleLbs + (p.dimWeightLbs || 0)
+    baseKg = p.scaleWeightKg + (p.dimWeightKg || 0)
+  } else if (method === 'SCALE') {
+    baseLbs = scaleLbs
+    baseKg = p.scaleWeightKg
+  } else if (method === 'DIM') {
+    baseLbs = p.dimWeightLbs || 0
+    baseKg = p.dimWeightKg || 0
+  }
+  const roundUp = (v, step) => step > 0 ? Math.ceil(v / step) * step : v
+  const applyMin = (v, min) => min > 0 ? Math.max(v, min) : v
+  p.chargeableLbs = roundUp(applyMin(baseLbs, Number(form.value.minChargeableLbs) || 0), Number(form.value.roundUpLbs) || 0)
+  p.chargeableKg = roundUp(applyMin(baseKg, Number(form.value.minChargeableKg) || 0), Number(form.value.roundUpKg) || 0)
+  if (method === 'SCALE') {
+    p.chargeableKg = p.chargeableLbs / 2.20462
+  }
 }
 
 function recalcAll() {
@@ -258,7 +316,8 @@ watch(() => pieces.value.map(p => [p.lengthIn, p.widthIn, p.heightIn, p.pieces, 
   recalcAll()
 }, { deep: true })
 
-watch(() => [form.value.dimFactorKg, form.value.dimFactorLbs], () => {
+watch(() => [form.value.dimFactorKg, form.value.dimFactorLbs, form.value.chargeableMethod,
+  form.value.roundUpKg, form.value.roundUpLbs, form.value.minChargeableKg, form.value.minChargeableLbs], () => {
   recalcAll()
 })
 
@@ -287,6 +346,11 @@ async function open(receiptIdParam) {
       awbReportedPieces: r.awbReportedPieces || 0,
       dimFactorKg: r.dimFactorIntl ? Number(r.dimFactorIntl) : 366,
       dimFactorLbs: r.dimFactorDom ? Number(r.dimFactorDom) : 194,
+      chargeableMethod: (r.chargeableMethod || 'MAX').toUpperCase(),
+      roundUpKg: r.roundUpKg != null ? Number(r.roundUpKg) : 0,
+      roundUpLbs: r.roundUpLbs != null ? Number(r.roundUpLbs) : 0,
+      minChargeableKg: r.minChargeableKg != null ? Number(r.minChargeableKg) : 0,
+      minChargeableLbs: r.minChargeableLbs != null ? Number(r.minChargeableLbs) : 0,
       cashOnly: r.cashOnly || false,
       bookedInAcoms: r.bookedInAcoms || false,
       docsProvided: r.docsProvided || false,
@@ -344,6 +408,11 @@ async function save() {
       awbReportedPieces: form.value.awbReportedPieces || totalPcs,
       dimFactorIntl: form.value.dimFactorKg || 366,
       dimFactorDom: form.value.dimFactorLbs || 194,
+      chargeableMethod: form.value.chargeableMethod || 'MAX',
+      roundUpKg: form.value.roundUpKg || 0,
+      roundUpLbs: form.value.roundUpLbs || 0,
+      minChargeableKg: form.value.minChargeableKg || 0,
+      minChargeableLbs: form.value.minChargeableLbs || 0,
       pieceCount: totalPcs,
       cashOnly: form.value.cashOnly,
       bookedInAcoms: form.value.bookedInAcoms,

@@ -110,6 +110,9 @@ public class MawbServiceImpl implements MawbService {
     @Transactional
     @CacheEvict(value = "mawbs", allEntries = true)
     public MawbDTO create(MawbDTO dto) {
+        if (dto.getAwbNumber() == null || dto.getAwbNumber().isBlank()) {
+            throw new IllegalArgumentException("AWB number is required");
+        }
         Mawb entity = MawbDTO.toEntity(dto);
         if (entity.getStatus() == null) {
             entity.setStatus(MawbStatus.BOOKED);
@@ -126,7 +129,12 @@ public class MawbServiceImpl implements MawbService {
                 .map(existing -> {
                     if (dto.getAirlineId() != null) existing.setAirlineId(dto.getAirlineId());
                     if (dto.getFlightId() != null) existing.setFlightId(dto.getFlightId());
-                    if (dto.getAwbNumber() != null) existing.setAwbNumber(dto.getAwbNumber());
+                    if (dto.getAwbNumber() != null) {
+                        if (dto.getAwbNumber().isBlank()) {
+                            throw new IllegalArgumentException("AWB number cannot be blank");
+                        }
+                        existing.setAwbNumber(dto.getAwbNumber());
+                    }
                     if (dto.getShipperName() != null) existing.setShipperName(dto.getShipperName());
                     if (dto.getConsigneeName() != null) existing.setConsigneeName(dto.getConsigneeName());
                     if (dto.getOrigin() != null) existing.setOrigin(dto.getOrigin());
@@ -144,7 +152,12 @@ public class MawbServiceImpl implements MawbService {
                     if (dto.getLooseTender() != null) existing.setLooseTender(dto.getLooseTender());
                     if (dto.getSupportingDocs() != null) existing.setSupportingDocs(dto.getSupportingDocs());
                     if (dto.getNotes() != null) existing.setNotes(dto.getNotes());
-                    return mawbRepository.save(existing);
+                    try {
+                        return mawbRepository.save(existing);
+                    } catch (Exception e) {
+                        log.error("Error saving MAWB update for {}: {}", id, e.getMessage(), e);
+                        throw e;
+                    }
                 })
                 .map(saved -> {
                     publishUpdated(saved);
@@ -160,11 +173,16 @@ public class MawbServiceImpl implements MawbService {
                 .map(existing -> {
                     MawbStatus oldStatus = existing.getStatus();
                     existing.setStatus(status);
-                    Mawb saved = mawbRepository.save(existing);
-                    if (oldStatus != status) {
-                        publishStatusChanged(saved, oldStatus, status);
+                    try {
+                        Mawb saved = mawbRepository.save(existing);
+                        if (oldStatus != status) {
+                            publishStatusChanged(saved, oldStatus, status);
+                        }
+                        return saved;
+                    } catch (Exception e) {
+                        log.error("Error updating MAWB status for {}: {}", id, e.getMessage(), e);
+                        throw e;
                     }
-                    return saved;
                 })
                 .map(MawbDTO::fromEntity);
     }
@@ -206,7 +224,11 @@ public class MawbServiceImpl implements MawbService {
                 mawb.setSupportingDocs(json);
                 mawbRepository.save(mawb);
             } catch (JsonProcessingException e) {
+                log.error("Error serializing supporting docs for MAWB {}: {}", id, e.getMessage(), e);
                 throw new RuntimeException("Failed to serialize supporting docs", e);
+            } catch (Exception e) {
+                log.error("Error saving supporting docs for MAWB {}: {}", id, e.getMessage(), e);
+                throw e;
             }
         });
     }

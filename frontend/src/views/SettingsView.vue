@@ -409,11 +409,14 @@
 
     <!-- ============ AIRLINES TAB (ADMIN / SuperUser) ============ -->
     <template v-if="activeTab === 'airlines'">
-      <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
         <span class="ds-stat">{{ t('settings.airlines.count', { n: airlines.length }) }}</span>
-        <button @click="openAirlineCreate" class="ds-btn-primary">
-          + {{ t('settings.airlines.newAirline') }}
-        </button>
+        <div class="flex gap-2">
+          <button @click="openCalcGlobal" class="ds-btn-secondary">{{ t('settings.receiptCalc.title') }}</button>
+          <button @click="openAirlineCreate" class="ds-btn-primary">
+            + {{ t('settings.airlines.newAirline') }}
+          </button>
+        </div>
       </div>
 
       <div class="ds-table-section">
@@ -444,6 +447,7 @@
               </td>
               <td class="text-right">
                 <div class="flex gap-1 justify-end">
+                  <button @click="openCalcAirline(a)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">{{ t('settings.receiptCalc.rowBtn') }}</button>
                   <button @click="startAirlineEdit(a)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">{{ t('common.edit') }}</button>
                   <button @click="removeAirline(a)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">{{ t('common.delete') }}</button>
                 </div>
@@ -523,6 +527,69 @@
             <div class="flex gap-2 pt-2">
               <button @click="saveAirlineCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
               <button @click="showAirlineCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Receipt calc config modal -->
+      <div v-if="calcModalOpen" class="ds-modal-backdrop">
+        <div class="ds-modal-panel max-w-lg">
+          <div class="ds-modal-header">
+            <h2 class="ds-modal-title">
+              {{ calcAirline ? t('settings.receiptCalc.airlineTitle', { code: calcAirline.code }) : t('settings.receiptCalc.globalTitle') }}
+            </h2>
+          </div>
+          <div class="p-6 space-y-3">
+            <p class="text-[12px] text-slate-500">{{ t('settings.receiptCalc.globalHint') }}</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.dimFactorDom') }}</label>
+                <input v-model.number="calcForm.dimFactorDom" type="number" min="1" class="ds-input font-mono">
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.dimFactorIntl') }}</label>
+                <input v-model.number="calcForm.dimFactorIntl" type="number" min="1" class="ds-input font-mono">
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.method') }}</label>
+                <select v-model="calcForm.chargeableMethod" class="ds-input">
+                  <option value="MAX">{{ t('settings.receiptCalc.methodOption.max') }}</option>
+                  <option value="SUM">{{ t('settings.receiptCalc.methodOption.sum') }}</option>
+                  <option value="SCALE">{{ t('settings.receiptCalc.methodOption.scale') }}</option>
+                  <option value="DIM">{{ t('settings.receiptCalc.methodOption.dim') }}</option>
+                </select>
+              </div>
+              <div class="flex items-end pb-0.5">
+                <span class="ds-label">{{ calcAirline ? t('settings.receiptCalc.scopeAirline') : t('settings.receiptCalc.scopeGlobal') }}</span>
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.roundUpKg') }}</label>
+                <input v-model.number="calcForm.roundUpKg" type="number" min="0" step="0.001" class="ds-input font-mono">
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.roundUpLbs') }}</label>
+                <input v-model.number="calcForm.roundUpLbs" type="number" min="0" step="0.001" class="ds-input font-mono">
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.minChargeableKg') }}</label>
+                <input v-model.number="calcForm.minChargeableKg" type="number" min="0" step="0.001" class="ds-input font-mono">
+              </div>
+              <div>
+                <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.minChargeableLbs') }}</label>
+                <input v-model.number="calcForm.minChargeableLbs" type="number" min="0" step="0.001" class="ds-input font-mono">
+              </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+              <button @click="saveCalcConfig" class="ds-btn-primary flex-1 justify-center" :disabled="calcSaving">
+                {{ t('settings.receiptCalc.save') }}
+              </button>
+              <button v-if="calcAirline" @click="removeCalcConfig" class="ds-btn-secondary flex-1 justify-center">
+                {{ t('settings.receiptCalc.resetAirline') }}
+              </button>
+              <button @click="calcModalOpen = false" class="ds-btn-secondary flex-1 justify-center">
+                {{ t('settings.receiptCalc.cancel') }}
+              </button>
             </div>
           </div>
         </div>
@@ -1207,6 +1274,48 @@
               </div>
             </details>
 
+            <!-- Looker Studio -->
+            <details class="group">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+                <svg class="w-4 h-4 text-sky-600 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                Google Looker Studio
+              </summary>
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+                <ol class="list-decimal list-inside space-y-1">
+                  <li><code class="bg-slate-100 px-1 rounded font-mono text-[11px]">script.google.com</code> &rarr; proyecto nuevo &rarr; pega el contenido de <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi-integrations/looker-studio-connector.gs</code></li>
+                  <li><strong>Implementar &rarr; Nuevo despliegue</strong> &rarr; tipo <em>Add-on/Editor</em> &rarr; marcando la casilla <strong>Looker Studio</strong> &rarr; copia el <strong>ID del despliegue</strong></li>
+                  <li>En Looker Studio: <strong>Crear fuente de datos &rarr; Conectores (Partners)</strong> &rarr; <strong>Aircargo BI</strong></li>
+                  <li>Configura: URL base <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">{{ gatewayUrl }}</code> &middot; API Key <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">TOKEN_AQUI</code> &middot; Endpoint (ej. <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi/flights</code>) &middot; Filas máximas</li>
+                  <li>Las columnas se derivan del endpoint autom&aacute;ticamente</li>
+                </ol>
+                <div class="bg-amber-50 border border-amber-200 rounded p-2 text-[11px] text-amber-800 leading-relaxed">
+                  <strong>HTTPS obligatorio:</strong> Apps Script corre en la nube de Google. Si el servidor es HTTP/privado, pon un t&uacute;nel HTTPS delante (Caddy/Let's Encrypt, Cloudflare Tunnel, ngrok) o usa la <strong>conexi&oacute;n directa PostgreSQL</strong> (ver Apache Superset abajo): Looker Studio acepta el conector nativo PostgreSQL con <code class="bg-amber-100 px-1 rounded font-mono text-[10px]">bi_reader</code>.
+                </div>
+              </div>
+            </details>
+
+            <!-- Apache Superset -->
+            <details class="group">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+                <svg class="w-4 h-4 text-orange-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                Apache Superset (docker-compose incluido)
+              </summary>
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+                <ol class="list-decimal list-inside space-y-1">
+                  <li>Variables: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">SUPERSET_SECRET_KEY=$(openssl rand -base64 42)</code> y <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">SUPERSET_ADMIN_PASSWORD=... </code> en <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">.env</code></li>
+                  <li>Crear el rol de solo lectura: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">./scripts/configure-bi-reader.sh</code></li>
+                  <li>Levantar: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">docker compose -f docker/docker-compose.superset.yml up -d</code></li>
+                  <li>Abrir <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">http://localhost:8088</code> (admin / SUPERSET_ADMIN_PASSWORD)</li>
+                  <li><strong>Settings &rarr; Database Connections &rarr; + Database &rarr; PostgreSQL</strong>: host <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">host.docker.internal</code>, puerto <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">5432</code>, DB <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">aircargo</code>, usuario <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi_reader</code>, password de <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">BI_READER_PASSWORD</code></li>
+                </ol>
+                <div class="bg-slate-900 text-green-400 rounded p-2 font-mono text-[11px] overflow-x-auto">
+                  <div class="text-slate-500"># SQLAlchemy URI (con <strong class="text-slate-400">PASS</strong> sustituir por BI_READER_PASSWORD)</div>
+                  <div>postgresql+psycopg2://bi_reader:PASS@host.docker.internal:5432/aircargo</div>
+                </div>
+                <p class="text-[11px] text-slate-400">Superset solo LEE: la conexi&oacute;n usa <code class="bg-slate-100 px-1 rounded font-mono text-[10px]">bi_reader</code> (GRANT SELECT, sin INSERT/UPDATE/DELETE).</p>
+              </div>
+            </details>
+
             <!-- curl / Python -->
             <details class="group">
               <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
@@ -1242,6 +1351,7 @@ import { usersApi } from '../api/users'
 const { t } = useI18n()
 import { sitesApi } from '../api/sites'
 import { airlinesApi } from '../api/airlines'
+import { calcConfigApi } from '../api/receiptCalcConfig'
 import { uldTypeConfigApi } from '../api/uldTypeConfig'
 import { uldTypeCatalogApi } from '../api/uldTypeCatalog'
 import { commodityTypesApi } from '../api/commodityTypes'
@@ -1395,6 +1505,84 @@ const editingAirline = ref(null)
 const showAirlineCreate = ref(false)
 const airlineForm = ref({ id: null, code: '', name: '', iataCode: '', country: '', isActive: true })
 const airlineCreateForm = ref({ code: '', name: '', iataCode: '', country: '', isActive: true })
+
+// ── Parámetros de cálculo de recibos por aerolínea (config global + por aerolínea) ──
+const calcModalOpen = ref(false)
+const calcSaving = ref(false)
+const calcAirline = ref(null)
+const calcForm = ref({
+  dimFactorDom: 194,
+  dimFactorIntl: 366,
+  chargeableMethod: 'MAX',
+  roundUpKg: 0,
+  roundUpLbs: 0,
+  minChargeableKg: 0,
+  minChargeableLbs: 0,
+})
+
+function calcFormFrom(p) {
+  calcForm.value = {
+    dimFactorDom: p.dimFactorDom != null ? Number(p.dimFactorDom) : 194,
+    dimFactorIntl: p.dimFactorIntl != null ? Number(p.dimFactorIntl) : 366,
+    chargeableMethod: (p.chargeableMethod || 'MAX').toUpperCase(),
+    roundUpKg: p.roundUpKg != null ? Number(p.roundUpKg) : 0,
+    roundUpLbs: p.roundUpLbs != null ? Number(p.roundUpLbs) : 0,
+    minChargeableKg: p.minChargeableKg != null ? Number(p.minChargeableKg) : 0,
+    minChargeableLbs: p.minChargeableLbs != null ? Number(p.minChargeableLbs) : 0,
+  }
+}
+
+async function openCalcGlobal() {
+  calcAirline.value = null
+  try {
+    const res = await calcConfigApi.getDefault()
+    calcFormFrom(res.data || {})
+  } catch {
+    calcFormFrom({})
+  }
+  calcModalOpen.value = true
+}
+
+async function openCalcAirline(a) {
+  calcAirline.value = a
+  try {
+    const res = await calcConfigApi.resolve(a.id)
+    calcFormFrom(res.data || {})
+  } catch {
+    calcFormFrom({})
+  }
+  calcModalOpen.value = true
+}
+
+async function saveCalcConfig() {
+  calcSaving.value = true
+  const payload = { ...calcForm.value }
+  try {
+    if (calcAirline.value) {
+      await calcConfigApi.saveForAirline(calcAirline.value.id, payload)
+    } else {
+      await calcConfigApi.saveDefault(payload)
+    }
+    toast.success(t('settings.receiptCalc.toastSaved'))
+    calcModalOpen.value = false
+  } catch (e) {
+    toast.error(extractError(e, t('settings.receiptCalc.toastError')))
+  } finally {
+    calcSaving.value = false
+  }
+}
+
+async function removeCalcConfig() {
+  if (!calcAirline.value) return
+  if (!(await confirm({ message: t('settings.receiptCalc.resetAirlineConfirm'), danger: true }))) return
+  try {
+    await calcConfigApi.deleteForAirline(calcAirline.value.id)
+    toast.success(t('settings.receiptCalc.toastDeleted'))
+    calcModalOpen.value = false
+  } catch (e) {
+    toast.error(extractError(e, t('settings.receiptCalc.toastError')))
+  }
+}
 
 // Catálogo dinámico de tipos ULD (normas IATA) — fallback a la lista legacy si el catálogo no responde
 const LEGACY_ULD_TYPES = ['PMC', 'PAH', 'PAG', 'PAJ', 'AAY', 'AAZ', 'AAD', 'PIP', 'BULK', 'AMP', 'AMJ']

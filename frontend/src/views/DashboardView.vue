@@ -16,6 +16,8 @@
       </div>
     </header>
 
+    <QuickActionsPanel class="mb-2" />
+
     <div class="ds-tabs mb-2">
       <button @click="activeTab = 'flights'" class="ds-tab" :class="activeTab === 'flights' ? 'ds-tab-active' : ''">
         {{ t('dashboard.tabs.flights') }}
@@ -34,6 +36,13 @@
       :show-search="false"
       container-class="shrink-0"
     />
+    <div class="flex items-center gap-2 shrink-0">
+      <label for="dashboard-flight-select" class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 shrink-0">{{ t('dashboard.flightSelector') }}</label>
+      <select id="dashboard-flight-select" v-model="dashboardFlightId" @change="onFlightSelect" class="ds-input cursor-pointer min-w-[220px] max-w-full text-[12px] font-mono font-semibold">
+        <option value="">{{ t('dashboard.allFlights') }}</option>
+        <option v-for="f in flightOptions" :key="f.id" :value="f.id">{{ flightOptionLabel(f) }}</option>
+      </select>
+    </div>
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
       <div class="ds-card border-l-emerald-500 flex items-center gap-3">
         <span class="shrink-0 w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><component :is="icons.Scale" :size="18" :stroke-width="2.2" /></span>
@@ -53,7 +62,7 @@
         <span class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="18" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalMawbs') }}</div>
-          <div class="ds-card-value text-slate-900">{{ totalMawbsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.mawbShort') }}</span></div>
+          <div class="ds-card-value text-slate-900">{{ reservedMawbsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.mawbShort') }}</span></div>
         </div>
       </div>
     </section>
@@ -476,6 +485,7 @@ import EmptyState from '../components/EmptyState.vue'
 import { useIcons } from '../composables/useIcons'
 import { useHeaderFilters } from '../composables/useHeaderFilters'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import QuickActionsPanel from '../components/QuickActionsPanel.vue'
 
 const { t } = useI18n()
 const icons = useIcons()
@@ -487,6 +497,7 @@ const dateFrom = ref('')
 const dateTo = ref('')
 const loading = ref(false)
 const expandedFlights = ref(new Set())
+const dashboardFlightId = ref('')
 const activeTab = ref('flights')
 
 watch(activeTab, (tab) => {
@@ -614,6 +625,9 @@ function exportWeightCSV() {
 }
 
 const filteredFlights = computed(() => {
+  if (dashboardFlightId.value) {
+    return appStore.flights.filter(f => f.id === dashboardFlightId.value)
+  }
   let list = appStore.flights
   if (dateFrom.value) {
     list = list.filter(f => f.flightDate >= dateFrom.value)
@@ -634,6 +648,21 @@ const filteredFlights = computed(() => {
   if (cf.payload !== null && cf.payload !== undefined) list = list.filter(f => payloadLbs(f.id) === Number(cf.payload))
   return list
 })
+
+const flightOptions = computed(() =>
+  [...appStore.flights].sort(
+    (a, b) => String(b.flightDate || '').localeCompare(String(a.flightDate || ''))
+      || String(a.flightNumber).localeCompare(String(b.flightNumber), undefined, { numeric: true })
+  )
+)
+
+function flightOptionLabel(f) {
+  return `UPS-${f.flightNumber} · ${f.origin || ''}→${f.destination || ''} · ${f.flightDate || ''}`
+}
+
+function onFlightSelect() {
+  hf.setColumnFilter('flight', null)
+}
 
 const flightUniq = computed(() => {
   const rows = appStore.flights
@@ -797,8 +826,15 @@ const totalUldsCount = computed(() => {
   return filteredFlights.value.reduce((s, f) => s + flightUlds(f.id).length, 0)
 })
 
-const totalMawbsCount = computed(() => {
-  return filteredFlights.value.reduce((s, f) => s + flightMawbs(f.id).length, 0)
+const reservedMawbsCount = computed(() => {
+  const bookedIds = new Set((appStore.bookings || []).map(b => b.mawbId).filter(Boolean))
+  if (!bookedIds.size || !appStore.mawbs.length) return 0
+  const flightIds = new Set(filteredFlights.value.map(f => f.id))
+  return new Set(
+    appStore.mawbs
+      .filter(m => flightIds.has(m.flightId) && bookedIds.has(m.id))
+      .map(m => m.id)
+  ).size
 })
 
 const totalPositionsAll = computed(() => {
@@ -930,7 +966,7 @@ onMounted(async () => {
       appStore.loadUlds(),
       appStore.loadAllMawbs(),
       appStore.loadUldAwbs(),
-
+      appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
     ])
   }
   loading.value = false
@@ -943,6 +979,7 @@ useLiveRefresh(() => {
     appStore.loadUlds({ silent: true }),
     appStore.loadAllMawbs({ silent: true }),
     appStore.loadUldAwbs(),
+    appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
   ]
   if (activeTab.value === 'weight-report') tasks.push(loadWeightReport())
   return Promise.all(tasks)

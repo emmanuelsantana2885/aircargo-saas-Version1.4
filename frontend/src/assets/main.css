@@ -24,10 +24,17 @@
   --shadow-glow: 0 8px 28px -8px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-violet) 12%, transparent);
   --gradient-accent: linear-gradient(135deg, #0d1f4d 0%, color-mix(in srgb, var(--accent-strong) 80%, #0b1a3d) 45%, var(--accent) 82%, var(--accent-cyan) 130%);
   --gradient-title: linear-gradient(120deg, #0f172a 0%, color-mix(in srgb, var(--accent-strong) 78%, #0f172a) 60%, var(--accent-violet) 130%);
+  --bottom-nav-h: 0px;
   /* Font selector (data-font on <html>): 'consolas' | 'nerd' | 'sans' | 'cascadia' | 'bodoni' | 'combo' */
   --font-family-mono: 'JetBrains Mono', 'Courier New', monospace;
   --font-family-sans: 'JetBrains Mono', 'Courier New', monospace;
   --font-family: var(--font-family-mono);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --bottom-nav-h: calc(58px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Font selector: Consolas */
@@ -180,6 +187,16 @@ input:focus, select:focus, textarea:focus {
       radial-gradient(1200px 600px at 50% -25%, color-mix(in srgb, var(--accent-cyan) 5%, transparent), transparent 55%),
       radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.035) 1px, transparent 1.5px);
     background-size: auto, auto, auto, 22px 22px;
+  }
+
+  /* ── Bottom Navigation (mobile only) ── */
+  .bottom-nav {
+    height: var(--bottom-nav-h, 58px);
+    background: var(--surface, #ffffff);
+    border-top: 1px solid var(--border, #cbd5e1);
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    position: relative;
+    z-index: 10;
   }
 
   /* ── Card (elevación en capas + hover lift) ─── */
@@ -712,12 +729,12 @@ input:focus, select:focus, textarea:focus {
   }
   .ds-modal-backdrop { padding: 0 !important; align-items: stretch !important; }
 
-  /* Grillas puras (Bookings/Flights): también en móvil mantienen app-shell
-     (altura acotada + scroll interno del wrapper) en vez de crecer la página
-     completa, para que la cabecera sticky y el scroll de las filas funcionen. */
+/* Grillas puras (Bookings/Flights): también en móvil mantienen app-shell
+      (altura acotada + scroll interno del wrapper) en vez de crecer la página
+      completa, para que la cabecera sticky y el scroll de las filas funcionen. */
   .ds-page-grid {
-    height: 100dvh !important;
-    max-height: 100dvh !important;
+    height: calc(100dvh - var(--bottom-nav-h, 0px)) !important;
+    max-height: calc(100dvh - var(--bottom-nav-h, 0px)) !important;
     overflow: hidden !important;
   }
 }

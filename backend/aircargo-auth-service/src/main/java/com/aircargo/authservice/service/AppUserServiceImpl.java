@@ -21,10 +21,13 @@ public class AppUserServiceImpl implements AppUserService {
 
     private final AppUserRepository repository;
     private final SiteRepository siteRepository;
+    private final UserStateRedisService statePublisher;
 
-    public AppUserServiceImpl(AppUserRepository repository, SiteRepository siteRepository) {
+    public AppUserServiceImpl(AppUserRepository repository, SiteRepository siteRepository,
+                              UserStateRedisService statePublisher) {
         this.repository = repository;
         this.siteRepository = siteRepository;
+        this.statePublisher = statePublisher;
     }
 
     @Override
@@ -55,6 +58,7 @@ public class AppUserServiceImpl implements AppUserService {
             e.setSites(sites);
         }
         AppUser saved = repository.save(e);
+        statePublisher.publish(saved.getId(), saved.getTokensValidFrom(), saved.getBlocked(), saved.getIsActive());
         return AppUserDTO.fromEntity(saved);
     }
 
@@ -80,7 +84,10 @@ public class AppUserServiceImpl implements AppUserService {
                                 .collect(Collectors.toSet());
                         existing.setSites(sites);
                     }
-                    return repository.save(existing);
+                    AppUser updated = repository.save(existing);
+                    statePublisher.publish(updated.getId(), updated.getTokensValidFrom(),
+                            updated.getBlocked(), updated.getIsActive());
+                    return updated;
                 })
                 .map(AppUserDTO::fromEntity);
     }
@@ -90,6 +97,7 @@ public class AppUserServiceImpl implements AppUserService {
     public boolean delete(UUID id) {
         if (!repository.existsById(id)) return false;
         repository.deleteById(id);
+        statePublisher.evict(id);
         return true;
     }
 

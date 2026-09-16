@@ -1,5 +1,5 @@
 # AirCargo Microservices Migration Plan
-## Version 1.2 — Full Migration from Monolith to Microservices
+## Version 1.3 — Full Migration from Monolith to Microservices
 
 **Date:** July 28, 2026
 **Author:** AI Migration Assistant
@@ -573,7 +573,7 @@ CREATE TABLE notification (
 ## 13. Phase 11: Frontend Migration
 
 ### What Changes
-The frontend currently calls `localhost:9091` (monolith). After migration, ALL calls go through gateway at `localhost:8080`.
+Before migration the frontend called `localhost:9091` (monolith). After migration, ALL calls go through gateway at `localhost:8080`.
 
 ### Vite Proxy Update
 ```javascript

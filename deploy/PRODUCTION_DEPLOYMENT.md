@@ -60,10 +60,12 @@ kubectl create secret generic aircargo-secrets -n aircargo \
   --from-literal=SMTP_USERNAME=noreply@example.com \
   --from-literal=SMTP_PASSWORD=your-smtp-password \
   --from-literal=SMTP_FROM=noreply@example.com \
+  --from-literal=APP_MFA_MANDATORY=true \
   --from-literal=MFA_RESET_ON_STARTUP=false
 ```
 
-> **MFA en producción** — El auth-service hace el MFA **obligatorio** (`app.mfa.mandatory=true`).
+> **MFA en producción** — El auth-service hace el MFA **obligatorio** (`app.mfa.mandatory`,
+> default `true`; override con `APP_MFA_MANDATORY`).
 > `MFA_RESET_ON_STARTUP` (default `true`) fuerza en cada arranque del auth-service que
 > TODOS los usuarios re-enrolen su 2FA. En producción **usa `false`** para no obligar a
 > reconfigurar el 2FA en cada deploy/reinicio (crash recovery, scaling). La rotación la
@@ -220,7 +222,7 @@ kubectl scale deployment --all --replicas=3 -n aircargo
 - [ ] JWT_SECRET rotated quarterly
 - [ ] APP_ENCRYPTION_KEY backed up securely
 - [ ] Audit logs shipped to SIEM
-- [ ] MFA obligatorio habilitado (`app.mfa.mandatory=true`) y `MFA_RESET_ON_STARTUP=false`
+- [ ] MFA obligatorio habilitado (`APP_MFA_MANDATORY=true`, default) y `MFA_RESET_ON_STARTUP=false`
 
 ## Troubleshooting
 

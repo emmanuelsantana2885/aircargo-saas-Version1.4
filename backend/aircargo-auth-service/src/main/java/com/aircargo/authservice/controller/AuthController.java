@@ -1,5 +1,6 @@
 package com.aircargo.authservice.controller;
 
+import com.aircargo.authservice.config.RolePermissionCatalog;
 import com.aircargo.authservice.command.ChangePasswordCommand;
 import com.aircargo.authservice.command.LoginCommand;
 import com.aircargo.authservice.command.LoginCommandHandler;
@@ -20,11 +21,13 @@ import com.aircargo.authservice.repository.AppUserRepository;
 import com.aircargo.authservice.repository.SiteRepository;
 import com.aircargo.authservice.service.ActiveSessionTracker;
 import com.aircargo.authservice.service.AuditService;
+import com.aircargo.authservice.service.AuthSessionService;
 import com.aircargo.authservice.service.MfaPolicyService;
 import com.aircargo.authservice.service.MfaPolicyService.MfaEligibility;
 import com.aircargo.authservice.service.MfaService;
 import com.aircargo.authservice.service.PasswordResetService;
 import com.aircargo.authservice.service.TokenRevocationService;
+import com.aircargo.authservice.service.UserStateRedisService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -67,6 +70,8 @@ public class AuthController {
     private final CacheManager cacheManager;
     private final PasswordResetService passwordResetService;
     private final TokenRevocationService tokenRevocationService;
+    private final AuthSessionService authSessionService;
+    private final UserStateRedisService userStateRedisService;
 
     @org.springframework.beans.factory.annotation.Value("${app.jwt.cookie-secure:false}")
     private boolean cookieSecure;
@@ -85,6 +90,8 @@ public class AuthController {
                           CacheManager cacheManager,
                           PasswordResetService passwordResetService,
                           TokenRevocationService tokenRevocationService,
+                          AuthSessionService authSessionService,
+                          UserStateRedisService userStateRedisService,
                           org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.loginHandler = loginHandler;
         this.setPasswordHandler = setPasswordHandler;
@@ -99,6 +106,8 @@ public class AuthController {
         this.cacheManager = cacheManager;
         this.passwordResetService = passwordResetService;
         this.tokenRevocationService = tokenRevocationService;
+        this.authSessionService = authSessionService;
+        this.userStateRedisService = userStateRedisService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -179,14 +188,32 @@ public class AuthController {
                     user.getRole().name(),
                     airlineIdStr,
                     user.getEmail(),
-                    user.getFullName()
+                    user.getFullName(),
+                    RolePermissionCatalog.codesFor(user.getRole())
             );
-            String newRefreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
 
-            return withCookies(Map.of(
-                    "token", newAccessToken,
-                    "refreshToken", newRefreshToken
-            ), 200);
+            // Rotación del refresh token con detección de reuso (cadena auth_session):
+            // ROTATED / GRACE_ROTATED → emite cookies con el sucesor;
+            // THEFT_REVOKED → revoca toda la familia y borra cookies + sesión;
+            // REJECTED → token inválido o familia ya revocada.
+            AuthSessionService.RefreshResult result = authSessionService.processRefresh(
+                    user, refreshToken,
+                    servletRequest.getRemoteAddr(),
+                    servletRequest.getHeader("User-Agent"));
+            return switch (result.status()) {
+                case ROTATED, GRACE_ROTATED -> withCookies(Map.of(
+                        "token", newAccessToken,
+                        "refreshToken", result.newRefreshToken()
+                ), 200);
+                case THEFT_REVOKED -> {
+                    CookieAuthSupport.clear(servletResponse, cookieSecure);
+                    sessionTracker.removeSession(user.getId());
+                    yield ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(Map.of("error", "Sesión invalidada por posible robo de sesión. Inicie sesión nuevamente."));
+                }
+                case REJECTED -> ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid refresh token"));
+            };
 
         } catch (Exception e) {
             log.warn("Refresh token validation failed: {}", e.getMessage());
@@ -273,7 +300,8 @@ public class AuthController {
                 user.getAirline() != null && user.getAirline().getId() != null
                         ? user.getAirline().getId().toString() : "",
                 user.getEmail(),
-                user.getFullName()
+                user.getFullName(),
+                RolePermissionCatalog.codesFor(user.getRole())
         );
         return withCookies(java.util.Map.of(
                 "message", "Contraseña establecida correctamente",
@@ -517,6 +545,75 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Sesión cerrada correctamente"));
     }
 
+    /**
+     * Autodescable: permite al usuario autenticado reiniciar su propio MFA.
+     * Deshabilita MFA, limpia el secreto y revoca tokens → al próximo login
+     * se forzará el enrolamiento (428 MFA_ENROLLMENT_REQUIRED).
+     */
+    @PostMapping("/mfa/reset")
+    public ResponseEntity<?> resetOwnMfa(@AuthenticationPrincipal UserPrincipal principal,
+                                          HttpServletRequest servletRequest,
+                                          HttpServletResponse servletResponse) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AppUser user = userRepository.findById(principal.getUserIdAsUuid()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
+        }
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
+        mfaService.disableMfa(user.getId());
+        user.setTokensValidFrom(java.time.OffsetDateTime.now()); // revoca sesiones activas
+        userRepository.save(user);
+        tokenRevocationService.evict(user.getId());
+        // Limpia cookies del usuario actual
+        CookieAuthSupport.clear(servletResponse, cookieSecure);
+        auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                "MFA_RESET_SELF", "USER", user.getId().toString(),
+                "Usuario reinició su propio MFA",
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(Map.of(
+                "message", "MFA reiniciado correctamente. En el próximo inicio de sesión deberá configurarlo nuevamente.",
+                "requiresReenrollment", true
+        ));
+    }
+
+    /**
+     * Admin: permite a ADMIN/SUPER_USER reiniciar el MFA de cualquier usuario.
+     * Útil para soporte en EC2/producción cuando el usuario pierde su autenticador.
+     */
+    @PostMapping("/mfa/reset/{userId}")
+    public ResponseEntity<?> resetUserMfa(@PathVariable UUID userId,
+                                           @AuthenticationPrincipal UserPrincipal principal,
+                                           HttpServletRequest servletRequest) {
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        AppUser caller = userRepository.findById(principal.getUserIdAsUuid()).orElse(null);
+        if (caller == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        if (caller.getRole() != UserRole.SUPER_USER && caller.getRole() != UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Insufficient permissions"));
+        }
+        AppUser user = userRepository.findById(userId).orElse(null);
+        if (user == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (userId.equals(principal.getUserIdAsUuid())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Use /mfa/reset para reiniciar su propio MFA"));
+        }
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
+        mfaService.disableMfa(user.getId());
+        user.setTokensValidFrom(java.time.OffsetDateTime.now()); // revoca sesiones del usuario afectado
+        userRepository.save(user);
+        tokenRevocationService.evict(userId);
+        auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                "MFA_RESET_ADMIN", "USER", userId.toString(),
+                "Admin reinició MFA de " + user.getEmail(),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(Map.of(
+                "message", "MFA de " + user.getEmail() + " reiniciado. Deberá configurarlo en su próximo login.",
+                "email", user.getEmail()
+        ));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<LoginResponse> me(@AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {
@@ -542,7 +639,9 @@ public class AuthController {
                 user.getRole(), user.getAirline() != null ? user.getAirline().getId() : null,
                 hasPasswordSet, userSites,
                 Boolean.TRUE.equals(user.getMustChangePassword()),
-                Boolean.TRUE.equals(user.getMfaEnabled())
+                Boolean.TRUE.equals(user.getMfaEnabled()),
+                RolePermissionCatalog.codesFor(user.getRole()),
+                false, null, null
         ));
     }
 
@@ -622,14 +721,18 @@ public class AuthController {
         }
         AppUser user = userRepository.findById(userId).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
         user.setBlocked(true);
         user.setTokensValidFrom(java.time.OffsetDateTime.now());  // mata sesiones activas del bloqueado
         userRepository.save(user);
         tokenRevocationService.evict(userId);
+        userStateRedisService.publish(user.getId(), user.getTokensValidFrom(), user.getBlocked(), user.getIsActive());
         evictUsersCache();
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "USER_BLOCKED", "USER", userId.toString(),
-                "Blocked user " + user.getEmail(), servletRequest.getRemoteAddr());
+                "Blocked user " + user.getEmail(),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                servletRequest.getRemoteAddr());
         return ResponseEntity.ok(Map.of("message", "User blocked", "blocked", true));
     }
 
@@ -645,14 +748,18 @@ public class AuthController {
         }
         AppUser user = userRepository.findById(userId).orElse(null);
         if (user == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
         user.setBlocked(false);
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         userRepository.save(user);
+        userStateRedisService.publish(user.getId(), user.getTokensValidFrom(), user.getBlocked(), user.getIsActive());
         evictUsersCache();
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "USER_UNBLOCKED", "USER", userId.toString(),
-                "Unblocked user " + user.getEmail(), servletRequest.getRemoteAddr());
+                "Unblocked user " + user.getEmail(),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                servletRequest.getRemoteAddr());
         return ResponseEntity.ok(Map.of("message", "User unblocked", "blocked", false));
     }
 

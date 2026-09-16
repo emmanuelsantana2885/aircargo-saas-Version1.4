@@ -193,19 +193,33 @@ class MfaMandatoryIntegrationTest {
                 .andExpect(jsonPath("$.mfaEnrollmentRequired").doesNotExist());
 
         // Reinicio de la aplicación → epoch adelantado → mismo login ahora exige re-enrolar
+        // Nuevo comportamiento: devuelve mfaRequired con mfaReenrollmentNeeded=true
         mfaPolicyService.resetNow();
 
-        JsonNode resetBody = readBody(mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\"}"))
                 .andExpect(status().isPreconditionRequired())
-                .andExpect(jsonPath("$.mfaEnrollmentRequired").value(true))
+                .andExpect(jsonPath("$.mfaRequired").value(true))
+                .andExpect(jsonPath("$.mfaReenrollmentNeeded").value(true))
                 .andExpect(jsonPath("$.mfaReason").value("reset"))
+                .andExpect(jsonPath("$.mfaEnrollmentRequired").doesNotExist());
+
+        // El usuario debe proporcionar TOTP válido primero → login exitoso con enrollToken para re-enrolar
+        String code = totpCode(secret);
+        JsonNode loginWithTotp = readBody(mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "email", email, "totpCode", code))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.mfaReenrollmentNeeded").value(true))
                 .andExpect(jsonPath("$.enrollToken").isNotEmpty())
                 .andReturn().getResponse().getContentAsString());
-        String reEnrollToken = resetBody.get("enrollToken").asText();
 
-        // Re-enrolamiento permitido aun con mfaEnabled=true (está caducado por reinicio)
+        String reEnrollToken = loginWithTotp.get("enrollToken").asText();
+
+        // Con el token de enrolamiento, hacer setup→enable para re-enrolar
         JsonNode reSetup = readBody(mockMvc.perform(post("/api/auth/mfa/enroll/setup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of("enrollToken", reEnrollToken))))
@@ -234,13 +248,47 @@ class MfaMandatoryIntegrationTest {
         stale.setMfaEnrolledAt(java.time.OffsetDateTime.now().minusDays(8));
         userRepository.save(stale);
 
+        // Nuevo comportamiento: devuelve mfaRequired con mfaReenrollmentNeeded=true
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\"}"))
                 .andExpect(status().isPreconditionRequired())
-                .andExpect(jsonPath("$.mfaEnrollmentRequired").value(true))
+                .andExpect(jsonPath("$.mfaRequired").value(true))
+                .andExpect(jsonPath("$.mfaReenrollmentNeeded").value(true))
                 .andExpect(jsonPath("$.mfaReason").value("expired"))
-                .andExpect(jsonPath("$.enrollToken").isNotEmpty());
+                .andExpect(jsonPath("$.mfaEnrollmentRequired").doesNotExist());
+
+        // Usuario debe proporcionar TOTP válido primero
+        String secret = userRepository.findByEmail(email).orElseThrow().getMfaSecret();
+        String code = totpCode(secret);
+        
+        JsonNode loginWithTotp = readBody(mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "email", email, "totpCode", code))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaReenrollmentNeeded").value(true))
+                .andExpect(jsonPath("$.enrollToken").isNotEmpty())
+                .andReturn().getResponse().getContentAsString());
+
+        String reEnrollToken = loginWithTotp.get("enrollToken").asText();
+
+        // Con el token de enrolamiento, hacer setup→enable para re-enrolar
+        JsonNode reSetup = readBody(mockMvc.perform(post("/api/auth/mfa/enroll/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("enrollToken", reEnrollToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.secret").isNotEmpty())
+                .andReturn().getResponse().getContentAsString());
+        String newSecret = reSetup.get("secret").asText();
+
+        String newCode = totpCode(newSecret);
+        mockMvc.perform(post("/api/auth/mfa/enroll/enable")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "enrollToken", reEnrollToken, "secret", newSecret, "totpCode", newCode))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.enrollSuccess").value(true));
     }
 
     @Test
@@ -253,6 +301,42 @@ class MfaMandatoryIntegrationTest {
                 .andExpect(status().isPreconditionRequired())
                 .andExpect(jsonPath("$.mfaEnrollmentRequired").value(true))
                 .andExpect(jsonPath("$.mfaReason").value("required"));
+    }
+
+    @Test
+    void login_codigoTOTPErroneo_repiteIntentos_yBloqueaElMFA() throws Exception {
+        String email = "mfamax@aircargo.com";
+        userRepository.save(user(email, UserRole.OPERATIONS));
+        String secret = enrollUser(email);
+
+        // El usuario ya tiene MFA → el login exige código (no re-enrolamiento)
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\"}"))
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.mfaRequired").value(true));
+
+        // 4 códigos erróneos → 401 con mensaje de código inválido
+        for (int i = 0; i < 4; i++) {
+            mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                    "email", email, "totpCode", wrongTOTP(secret)))))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error").value("Código de autenticación inválido"));
+        }
+
+        // El 5º error cruza MAX_MFA_ATTEMPTS → bloqueo de MFA (403)
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "email", email, "totpCode", wrongTOTP(secret)))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("bloqueada")));
+
+        AppUser blocked = userRepository.findByEmail(email).orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(Boolean.TRUE.equals(blocked.getMfaLocked()));
+        org.junit.jupiter.api.Assertions.assertEquals(5, blocked.getMfaFailedAttempts());
     }
 
     /** Completa el flujo completo de enrolamiento para un usuario y devuelve el secreto. */
@@ -292,5 +376,12 @@ class MfaMandatoryIntegrationTest {
         } catch (dev.samstevens.totp.exceptions.CodeGenerationException e) {
             throw new IllegalStateException("No se pudo generar código TOTP", e);
         }
+    }
+
+    /** Código TOTP determinísticamente inválido para jamás acertar por azar: mutación del primer dígito. */
+    private String wrongTOTP(String secret) {
+        String valid = totpCode(secret);
+        char first = valid.charAt(0) == '1' ? '2' : '1';
+        return first + valid.substring(1);
     }
 }

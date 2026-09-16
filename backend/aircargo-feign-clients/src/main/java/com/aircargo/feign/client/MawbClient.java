@@ -3,6 +3,7 @@ package com.aircargo.feign.client;
 import com.aircargo.feign.dto.MawbDTO;
 import com.aircargo.feign.dto.HawbDTO;
 import com.aircargo.feign.dto.LabelTemplateDTO;
+import com.aircargo.feign.fallback.MawbClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,7 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.List;
 import java.util.UUID;
 
-@FeignClient(name = "mawb-service", url = "${mawb-service.url:http://localhost:9095}")
+@FeignClient(name = "mawb-service", url = "${mawb-service.url:http://localhost:9095}",
+        fallbackFactory = MawbClientFallbackFactory.class)
 public interface MawbClient {
 
     @GetMapping("/api/mawbs/{id}")

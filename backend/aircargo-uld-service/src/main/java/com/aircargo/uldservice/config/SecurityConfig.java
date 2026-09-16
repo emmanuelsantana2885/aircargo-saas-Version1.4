@@ -2,6 +2,7 @@ package com.aircargo.uldservice.config;
 
 import com.aircargo.common.auth.JwtAuthFilter;
 import com.aircargo.common.auth.JwtUtil;
+import com.aircargo.common.auth.Permissions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -23,24 +24,25 @@ public class SecurityConfig {
 
     @Bean
     @Profile("!test")
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil, org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil, org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                             org.springframework.data.redis.core.StringRedisTemplate redisTemplate) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/uld-type-catalog/**", "/api/scan/**").hasAnyAuthority("READ_ONLY", "OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
-                .requestMatchers("/api/ulds/labels/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
-                .requestMatchers(HttpMethod.POST, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAnyAuthority("ADMIN", "SUPER_USER")
-                .requestMatchers(HttpMethod.PUT, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAnyAuthority("ADMIN", "SUPER_USER")
-                .requestMatchers(HttpMethod.DELETE, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAnyAuthority("ADMIN", "SUPER_USER")
-                .requestMatchers("/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/uld-type-catalog/**", "/api/scan/**").hasAnyAuthority("OPERATIONS", "TRAFFIC", "LOAD_PLANNER", "ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.GET, "/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/uld-type-catalog/**", "/api/scan/**").hasAuthority(Permissions.CAN_READ_ULD)
+                .requestMatchers(HttpMethod.POST, "/api/ulds/labels/**").hasAuthority(Permissions.CAN_PRINT_PALLET_LABEL)
+                .requestMatchers(HttpMethod.POST, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)
+                .requestMatchers(HttpMethod.PUT, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)
+                .requestMatchers(HttpMethod.DELETE, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)
+                .requestMatchers("/api/ulds/**", "/api/uld-awbs/**", "/api/scan/**").hasAnyAuthority(Permissions.CAN_CREATE_ULD, Permissions.CAN_UPDATE_ULD, Permissions.CAN_DELETE_ULD, Permissions.CAN_SCAN_ULD)
                 .anyRequest().authenticated()
             )
             .exceptionHandling(eh -> eh.authenticationEntryPoint(
                 new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
-            .addFilterBefore(new JwtAuthFilter(jwtUtil, jdbcTemplate), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtAuthFilter(jwtUtil, jdbcTemplate, redisTemplate), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

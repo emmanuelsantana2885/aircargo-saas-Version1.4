@@ -1,6 +1,7 @@
 package com.aircargo.common.feign;
 
 import com.aircargo.common.auth.JwtUtil;
+import com.aircargo.common.auth.Permissions;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import org.slf4j.Logger;
@@ -61,7 +62,8 @@ public class FeignServiceAuthInterceptor implements RequestInterceptor {
             return cachedToken;
         }
         String token = jwtUtil.generateAccessToken(
-                "service:" + serviceName, "SUPER_USER", null, "service@" + serviceName, serviceName);
+                "service:" + serviceName, "SUPER_USER", null, "service@" + serviceName, serviceName,
+                Permissions.allCodesAsList());
         cachedToken = token;
         cachedAt = now;
         return token;

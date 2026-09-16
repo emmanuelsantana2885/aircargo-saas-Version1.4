@@ -72,11 +72,11 @@ class SecurityConfigConsistencyTest {
                 }
                 // I2/I3 — wiring del filtro según tenga o no BD
                 if (WITH_DB.contains(name)) {
-                    if (!src.contains("new JwtAuthFilter(jwtUtil, jdbcTemplate)")) {
-                        violations.add(name + ": JwtAuthFilter sin jdbcTemplate → sin revocación central por-request");
+                    if (!src.contains("new JwtAuthFilter(jwtUtil, jdbcTemplate, redisTemplate)")) {
+                        violations.add(name + ": JwtAuthFilter sin (jwtUtil, jdbcTemplate, redisTemplate) → sin revocación central Redis/JDBC");
                     }
-                    if (!src.contains("JdbcTemplate jdbcTemplate")) {
-                        violations.add(name + ": filterChain no inyecta JdbcTemplate");
+                    if (!src.contains("JdbcTemplate jdbcTemplate") || !src.contains("StringRedisTemplate redisTemplate")) {
+                        violations.add(name + ": filterChain no inyecta JdbcTemplate + StringRedisTemplate");
                     }
                 } else if (name.equals(STATELESS)) {
                     if (!src.contains("new JwtAuthFilter(jwtUtil)")) {

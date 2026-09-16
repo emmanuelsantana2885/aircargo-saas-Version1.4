@@ -32,6 +32,9 @@ class AppUserServiceImplTest {
     @Mock
     private SiteRepository siteRepository;
 
+    @Mock
+    private UserStateRedisService statePublisher;
+
     @InjectMocks
     private AppUserServiceImpl service;
 

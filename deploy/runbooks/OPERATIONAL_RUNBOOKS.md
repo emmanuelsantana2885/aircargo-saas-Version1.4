@@ -111,6 +111,27 @@ kubectl rollout status deployment -n aircargo --timeout=300s
 ./deploy/verify-deployment.sh
 ```
 
+### Native EC2: Backup / Restore / DR Drill
+Topología actual en producción (jars EC2 + Postgres/RabbitMQ del sistema). Comandos reales que
+hacen DR sin infraestructura K8s/AWS:
+
+```bash
+# Backup manual (local + copia OFFSITE si BACKUP_OFFSITE_TARGET está en .env)
+./scripts/db-backup.sh manual          # → $HOME/aircargo-backups/<name>_manual_<stamp>.dump
+
+# Restore real a producción (crea SIEMPRE backup de protección previo, valida PGDMP)
+./scripts/db-restore.sh --file <ruta.dump>
+./scripts/db-restore.sh --url  <https://.../backup.dump>
+
+# DRILL offsite SIN tocar producción: trae el dump desde el target rsync/rclone,
+# restaura en BD temporal aircargo_drill_<stamp> y reporta RTO/RPO + conteos.
+./scripts/db-restore-drill.sh            # inspeccionar la BD temporal
+./scripts/db-restore-drill.sh --cleanup  # eliminar BDs temporales y el dir de pull
+```
+
+Tras un restore real, reiniciar el stack para limpiar cachés/pools:
+`./start-all.sh --skip-build` (o `sudo systemctl restart 'aircargo-*.service'` con systemd).
+
 ### Full Cluster Restore (GitOps)
 ```bash
 # 1. Restore etcd (if using self-managed)

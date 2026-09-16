@@ -75,7 +75,9 @@ public class AppUserController {
         AppUserDTO created = appUserService.create(dto);
         auditService.logUserCreate(
                 principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                created.getId(), created.getEmail(), request.getRemoteAddr());
+                created.getId(),
+                AuditService.snapshot(userRepository.findById(created.getId()).orElse(null)),
+                request.getRemoteAddr());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -84,11 +86,15 @@ public class AppUserController {
                                               @AuthenticationPrincipal UserPrincipal principal,
                                               HttpServletRequest request) {
         if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        AppUser beforeEntity = userRepository.findById(id).orElse(null);
         return appUserService.update(id, dto)
                 .map(updated -> {
                     auditService.logUserUpdate(
                             principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                            id, "{\"role\":\"" + dto.getRole() + "\",\"isActive\":" + dto.getIsActive() + "}",
+                            id,
+                            AuditService.snapshot(beforeEntity),
+                            AuditService.snapshot(userRepository.findById(id).orElse(null)),
+                            "{\"role\":\"" + dto.getRole() + "\",\"isActive\":" + dto.getIsActive() + "}",
                             request.getRemoteAddr());
                     return ResponseEntity.ok(updated);
                 })
@@ -105,11 +111,12 @@ public class AppUserController {
         if (existing.getId().equals(principal.getUserIdAsUuid())) {
             return ResponseEntity.badRequest().build();
         }
+        AppUser beforeEntity = userRepository.findById(id).orElse(null);
         boolean removed = appUserService.delete(id);
         if (!removed) return ResponseEntity.notFound().build();
         auditService.logUserDelete(
                 principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
-                id, existing.getEmail(), request.getRemoteAddr());
+                id, AuditService.snapshot(beforeEntity), request.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 
@@ -204,6 +211,30 @@ public class AppUserController {
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "MFA_UNLOCKED", "USER", id.toString(), null, request.getRemoteAddr());
         return ResponseEntity.ok(Map.of("message", "Cuenta desbloqueada"));
+    }
+
+    /**
+     * Admin: reinicia el MFA de un usuario (deshabilita + limpia secreto + revoca tokens).
+     * Fuerza re-enrolamiento en el próximo login (428 MFA_ENROLLMENT_REQUIRED).
+     */
+    @PostMapping("/{id}/mfa/reset")
+    public ResponseEntity<?> resetMfa(@PathVariable UUID id,
+                                       @AuthenticationPrincipal UserPrincipal principal,
+                                       HttpServletRequest request) {
+        AppUserDTO user = appUserService.getById(id).orElse(null);
+        if (user == null) return ResponseEntity.notFound().build();
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(userRepository.findById(id).orElse(null));
+        mfaService.disableMfa(id);
+        tokenRevocationService.bump(id); // revoca todas las sesiones del usuario
+        auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
+                "MFA_RESET_ADMIN", "USER", id.toString(),
+                "Admin reinició MFA de " + user.getEmail(),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(userRepository.findById(id).orElse(null)),
+                request.getRemoteAddr());
+        return ResponseEntity.ok(Map.of(
+                "message", "MFA de " + user.getEmail() + " reiniciado. Deberá configurarlo en su próximo login.",
+                "email", user.getEmail()
+        ));
     }
 
     @PostMapping("/{id}/generate-reset-link")

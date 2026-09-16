@@ -2,6 +2,7 @@ package com.aircargo.warehouseservice.config;
 
 import com.aircargo.common.auth.JwtAuthFilter;
 import com.aircargo.common.auth.JwtUtil;
+import com.aircargo.common.auth.Permissions;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -23,7 +24,8 @@ import java.util.List;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil, org.springframework.jdbc.core.JdbcTemplate jdbcTemplate) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtUtil jwtUtil, org.springframework.jdbc.core.JdbcTemplate jdbcTemplate,
+                                             org.springframework.data.redis.core.StringRedisTemplate redisTemplate) throws Exception {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
@@ -31,11 +33,16 @@ public class SecurityConfig {
             .exceptionHandling(eh -> eh.authenticationEntryPoint(new org.springframework.security.web.authentication.HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/receipts/**", "/api/warehouse/**").hasAnyAuthority("READ_ONLY", "WAREHOUSE_ASSISTANT", "ADMIN", "SUPER_USER")
-                .requestMatchers("/api/receipts/**", "/api/warehouse/**").hasAnyAuthority("WAREHOUSE_ASSISTANT", "ADMIN", "SUPER_USER")
+                .requestMatchers(HttpMethod.GET, "/api/receipt-calc-config/**").hasAuthority(Permissions.CAN_READ_RECEIPT)
+                .requestMatchers("/api/receipt-calc-config/**").hasAuthority(Permissions.CAN_MANAGE_RECEIPT_CALC)
+                .requestMatchers(HttpMethod.GET, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_READ_RECEIPT)
+                .requestMatchers(HttpMethod.POST, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_CREATE_RECEIPT)
+                .requestMatchers(HttpMethod.PUT, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_UPDATE_RECEIPT)
+                .requestMatchers(HttpMethod.PATCH, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_UPDATE_RECEIPT)
+                .requestMatchers(HttpMethod.DELETE, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_DELETE_RECEIPT)
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(new JwtAuthFilter(jwtUtil, jdbcTemplate), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtAuthFilter(jwtUtil, jdbcTemplate, redisTemplate), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

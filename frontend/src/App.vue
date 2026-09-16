@@ -12,6 +12,7 @@
           </router-view>
         </ErrorBoundary>
       </main>
+      <BottomNav />
     </div>
   </div>
   <router-view v-else />
@@ -34,6 +35,7 @@ import { useToastStore } from './stores/toast'
 import ErrorBoundary from './components/ErrorBoundary.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import Header from './components/layout/Header.vue'
+import BottomNav from './components/layout/BottomNav.vue'
 import ToastNotifications from './components/ToastNotifications.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import IdleWarningModal from './components/IdleWarningModal.vue'

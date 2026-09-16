@@ -27,6 +27,13 @@ public class AuditEventStore {
     @Transactional
     public void append(UUID userId, String email, String fullName, String eventType,
                        String entityType, String entityId, String payload, String ipAddress) {
+        append(userId, email, fullName, eventType, entityType, entityId, payload, null, null, ipAddress);
+    }
+
+    @Transactional
+    public void append(UUID userId, String email, String fullName, String eventType,
+                       String entityType, String entityId, String payload,
+                       String beforeValue, String afterValue, String ipAddress) {
         try {
             repository.save(AuditEvent.builder()
                     .userId(userId)
@@ -36,6 +43,8 @@ public class AuditEventStore {
                     .entityType(entityType)
                     .entityId(entityId)
                     .payload(payload)
+                    .beforeValue(beforeValue)
+                    .afterValue(afterValue)
                     .ipAddress(com.aircargo.common.util.IpAnonymizer.truncate(ipAddress))
                     .build());
         } catch (Exception e) {

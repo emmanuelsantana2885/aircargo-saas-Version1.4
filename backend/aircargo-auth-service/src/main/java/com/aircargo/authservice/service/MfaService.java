@@ -56,6 +56,7 @@ public class MfaService {
             user.setMfaSecret(secret);
             user.setMfaEnabled(true);
             user.setMfaLocked(false);
+            user.setMfaFailedAttempts(0);
             user.setMfaEnrolledAt(java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC));
             userRepository.save(user);
         });
@@ -66,6 +67,7 @@ public class MfaService {
             user.setMfaSecret(null);
             user.setMfaEnabled(false);
             user.setMfaLocked(false);
+            user.setMfaFailedAttempts(0);
             user.setMfaEnrolledAt(null);
             userRepository.save(user);
         });
@@ -81,6 +83,7 @@ public class MfaService {
     public void unlockMfa(UUID userId) {
         userRepository.findById(userId).ifPresent(user -> {
             user.setMfaLocked(false);
+            user.setMfaFailedAttempts(0);
             userRepository.save(user);
         });
     }

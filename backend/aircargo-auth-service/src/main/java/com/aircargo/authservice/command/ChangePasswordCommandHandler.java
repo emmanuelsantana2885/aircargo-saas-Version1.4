@@ -1,5 +1,6 @@
 package com.aircargo.authservice.command;
 
+import com.aircargo.authservice.config.RolePermissionCatalog;
 import com.aircargo.authservice.entity.AppUser;
 import com.aircargo.authservice.entity.UserRole;
 import com.aircargo.authservice.event.AuditEventType;
@@ -93,7 +94,8 @@ public class ChangePasswordCommandHandler {
                 user.getAirline() != null && user.getAirline().getId() != null
                         ? user.getAirline().getId().toString() : "",
                 user.getEmail(),
-                user.getFullName()
+                user.getFullName(),
+                RolePermissionCatalog.codesFor(user.getRole())
         );
 
         return PasswordOutcome.success(Map.of(

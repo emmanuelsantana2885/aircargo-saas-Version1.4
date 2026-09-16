@@ -90,6 +90,8 @@ public class AuditQueryService {
                     .entityType(e.getEntityType())
                     .entityId(e.getEntityId())
                     .details(e.getPayload())
+                    .beforeValue(e.getBeforeValue())
+                    .afterValue(e.getAfterValue())
                     .ipAddress(e.getIpAddress())
                     .createdAt(e.getCreatedAt())
                     .build());

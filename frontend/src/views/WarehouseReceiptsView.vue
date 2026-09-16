@@ -18,7 +18,7 @@
           </select>
         </div>
         <div class="flex flex-col gap-0.5 flex-1 min-w-[140px] max-w-[280px]">
-          <span class="ds-label hidden sm:block">{{ t('common.search') }} (* &lt; &gt; =)</span>
+          <span class="ds-label hidden sm:block">{{ t('common.search') }} (* < > =)</span>
           <div class="ds-search max-w-none">
             <component :is="icons.Search" :size="14" class="ds-search-icon" :stroke-width="2" />
             <input v-model="filterTextRaw" type="text" :placeholder="t('common.search')"
@@ -29,9 +29,20 @@
           <span class="ds-label hidden sm:block">{{ t('common.date') }}</span>
           <LocaleDatePicker v-model="filterDate" class="w-[150px]" />
         </div>
-      </div>
-        <div class="flex items-center gap-2 text-[13px] font-mono font-bold text-slate-950 shrink-0">
-        <span class="ds-chip">{{ filteredMawbs.length }}/{{ store.mawbs.length }} MAWBs</span>
+        <!-- Status chips with live counts (redesign per Prop1) -->
+        <div class="flex flex-col gap-0.5 ml-auto shrink-0">
+          <span class="ds-label hidden sm:block">{{ t('common.status') }}</span>
+          <div class="chips">
+            <button v-for="c in statusChips" :key="c.key" type="button"
+              class="chip"
+              :class="[c.cls, { on: statusFilter === c.value }]"
+              @click="setStatusFilter(c.value)">
+              <span class="d"></span>
+              <span>{{ t(c.i18n) }}</span>
+              <span class="n">{{ statusCounts[c.key] }}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -53,105 +64,66 @@
       <button @click="overdueMawbsDismissed = true" class="text-amber-400 hover:text-amber-600 text-[18px] leading-none shrink-0 mt-0.5" title="Cerrar">&times;</button>
     </div>
 
+    <!-- Summary bar with counters -->
+    <div class="mx-3 mb-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg flex flex-wrap items-center gap-4">
+      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.summary.total') }}</span>
+        <span class="font-bold text-slate-800 text-lg">{{ store.mawbs.length }}</span>
+      </div>
+      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.pending') }}</span>
+        <span class="font-bold text-slate-600 text-lg">{{ pendingCount }}</span>
+      </div>
+      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.received') }}</span>
+        <span class="font-bold text-amber-700 text-lg">{{ receivedCount }}</span>
+      </div>
+      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.loaded') }}</span>
+        <span class="font-bold text-emerald-700 text-lg">{{ loadedCount }}</span>
+      </div>
+      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.dispatched') }}</span>
+        <span class="font-bold text-blue-700 text-lg">{{ dispatchedCount }}</span>
+      </div>
+      <div class="flex flex-col items-center px-4 min-w-[80px]">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.summary.visible') }}</span>
+        <span class="font-bold text-slate-600 text-lg">{{ filteredMawbs.length }}</span>
+      </div>
+    </div>
+
     <section class="ds-table-section mb-1.5">
       <div class="overflow-x-auto shrink-0">
-      <div class="ds-table-header border-b border-slate-600 receipt-list-header" style="min-width: 1000px">
-        <div class="col-span-1 text-left flex items-center gap-1">
-          <input type="checkbox" :checked="selectedMawbIds.size === filteredMawbs.length && filteredMawbs.length > 0"
-            @change="toggleSelectAll"
-            class="accent-slate-700 rounded w-4 h-4 cursor-pointer" />
-        </div>
-        <div class="col-span-2 text-left relative">
-          <span @click="toggleHeaderFilter('mawb')"
-            class="cursor-pointer select-none transition-all duration-150"
-            :class="columnFilters.mawb ? 'text-slate-300' : 'hover:text-white/80'">
-            MAWB <span class="text-[10px]" :class="columnFilters.mawb ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'mawb'"
-            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('mawb', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.mawb ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="v in uniqueValues.mawb" :key="v" @click="setColumnFilter('mawb', v)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.mawb === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
-          </div>
-        </div>
-        <div class="col-span-2 text-left relative receipt-list-cell" data-col="shipper">
-          <span @click="toggleHeaderFilter('shipper')"
-            class="cursor-pointer select-none transition-all duration-150"
-            :class="columnFilters.shipper ? 'text-slate-300' : 'hover:text-white/80'">
-            Shipper <span class="text-[10px]" :class="columnFilters.shipper ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'shipper'"
-            class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[200px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('shipper', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.shipper ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="v in uniqueValues.shipper" :key="v" @click="setColumnFilter('shipper', v)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.shipper === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
-          </div>
-        </div>
-        <div class="col-span-1 text-center relative">
-          <span @click="toggleHeaderFilter('pieces')"
-            class="cursor-pointer select-none transition-all duration-150"
-            :class="columnFilters.pieces ? 'text-slate-300' : 'hover:text-white/80'">
-            {{ t('common.pieces') }} <span class="text-[10px]" :class="columnFilters.pieces ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'pieces'"
-            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[150px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('pieces', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!columnFilters.pieces ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="v in uniqueValues.pieces" :key="v" @click="setColumnFilter('pieces', v)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="columnFilters.pieces === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
-          </div>
-        </div>
-        <div class="col-span-1 text-right pr-2 relative">
-          <span @click="toggleHeaderFilter('weight')"
-            class="cursor-pointer select-none transition-all duration-150"
-            :class="columnFilters.weight ? 'text-slate-300' : 'hover:text-white/80'">
-            Peso (kg) <span class="text-[10px]" :class="columnFilters.weight ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'weight'"
-            class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[150px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('weight', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!columnFilters.weight ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="v in uniqueValues.weight" :key="v" @click="setColumnFilter('weight', v)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="columnFilters.weight === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
-          </div>
-        </div>
-        <div class="col-span-1 text-center relative receipt-list-cell" data-col="dest">
-          <span @click="toggleHeaderFilter('dest')"
-            class="cursor-pointer select-none transition-all duration-150"
-            :class="columnFilters.dest ? 'text-slate-300' : 'hover:text-white/80'">
-            Dest <span class="text-[10px]" :class="columnFilters.dest ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'dest'"
-            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[200px] overflow-y-auto text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('dest', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!columnFilters.dest ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="v in uniqueValues.dest" :key="v" @click="setColumnFilter('dest', v)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="columnFilters.dest === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
-          </div>
-        </div>
-        <div class="col-span-2 text-center receipt-list-cell" data-col="docs">Docs</div>
-        <div class="col-span-2 text-center relative">
-          <span @click="toggleHeaderFilter('status')"
-            class="cursor-pointer select-none transition-all duration-150 inline-flex items-center gap-1"
-            :class="columnFilters.status ? 'text-slate-300' : 'hover:text-white/80'">
-            <span v-if="columnFilters.status" class="w-1.5 h-1.5 rounded-full inline-block"
-              :class="statusDotClass[columnFilters.status] || 'bg-slate-400'"></span>
-            Estado <span class="text-[10px]" :class="columnFilters.status ? 'opacity-100' : 'opacity-40'">&#9660;</span>
-          </span>
-          <div v-if="headerFilterOpen === 'status'"
-            class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] text-[13px] text-slate-950 font-normal normal-case">
-            <div @click="setColumnFilter('status', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!columnFilters.status ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-            <div v-for="opt in extraStatusOptions" :key="opt.key" @click="setColumnFilter('status', opt.key)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 flex items-center gap-2" :class="columnFilters.status === opt.key ? 'bg-slate-50 text-slate-700 font-bold' : ''">
-              <span class="w-2 h-2 rounded-full" :class="opt.dotClass"></span>
-              {{ opt.label }}
+        <div class="bg-slate-800 border-b border-slate-700 receipt-list-header sticky top-0 z-10" style="min-width: 1000px">
+          <div class="grid grid-cols-12 gap-0">
+            <div class="col-span-1 text-center flex items-center justify-center px-2">
+              <input type="checkbox" :checked="selectedMawbIds.size === filteredMawbs.length && filteredMawbs.length > 0"
+                @change="toggleSelectAll"
+                class="accent-slate-700 rounded w-4 h-4 cursor-pointer" />
             </div>
-            <div class="my-1 border-t border-slate-200"></div>
-            <div v-for="opt in statusOptions" :key="opt.key" @click="setColumnFilter('status', opt.key)"
-              class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 flex items-center gap-2" :class="columnFilters.status === opt.key ? 'bg-slate-50 text-slate-700 font-bold' : ''">
-              <span class="w-2 h-2 rounded-full" :class="opt.dotClass"></span>
-              {{ opt.label }}
+            <div class="col-span-2 text-left px-5">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">MAWB</span>
+            </div>
+            <div class="col-span-2 text-left px-5 receipt-list-cell" data-col="shipper">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Shipper</span>
+            </div>
+            <div class="col-span-1 text-center px-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.pieces') }}</span>
+            </div>
+            <div class="col-span-1 text-right font-mono font-bold pr-2">
+              <span class="text-[11px] uppercase tracking-wider text-white/70">{{ t('common.weightKg') }}</span>
+            </div>
+            <div class="col-span-1 text-center px-2 receipt-list-cell" data-col="dest">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Dest</span>
+            </div>
+            <div class="col-span-2 text-center">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Docs</span>
+            </div>
+            <div class="col-span-2 text-center">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.status') }} <span style="opacity:.35;font-size:9px">· control por fila</span></span>
             </div>
           </div>
         </div>
-      </div>
       </div>
       <div v-if="selectedMawbIds.size > 0" class="flex items-center gap-2 px-5 py-1.5 bg-slate-50 border-b border-slate-200 text-[13px] flex-wrap">
         <span class="font-mono font-bold text-slate-950">{{ selectedMawbIds.size }} seleccionados</span>
@@ -216,18 +188,40 @@
               </template>
             </div>
             <div class="col-span-2 flex items-center gap-2 relative z-10">
-              <div class="flex items-center gap-1">
-                <span v-for="s in statusSteps" :key="s.key"
-                  @click.stop="changeMawbStatus(m, s.key)"
-                  class="h-3 w-3 rounded-full border-2 transition-all duration-150 cursor-pointer hover:scale-150"
-                  :class="getStatusDot(m, s)"
-                  :title="s.key + ((m.status || 'BOOKED') === s.key ? ' (actual)' : ' → clic')"></span>
+              <div class="status-cell min-w-[168px]">
+                <div class="row flex items-center gap-2">
+                  <span class="badge flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[11px] font-bold uppercase tracking-wider"
+                    :class="[
+                      (() => { const d = deriveMawbOperationalStatus(m); return d === 'DESPACHADA' ? 'st-despachada' : d === 'MANIFESTADA' ? 'st-manifestada' : d === 'EN_PROCESO' ? 'st-en-proceso' : d === 'RECIBIDA' ? 'st-recibida' : 'st-pendiente'; })()
+                    ]">
+                    <span class="cir w-2 h-2 rounded-full" :class="[
+                      (() => { const d = deriveMawbOperationalStatus(m); return d === 'DESPACHADA' ? 'bg-blue-500' : d === 'MANIFESTADA' ? 'bg-emerald-500' : d === 'EN_PROCESO' ? 'bg-amber-500' : d === 'RECIBIDA' ? 'bg-amber-500' : 'bg-slate-400'; })()
+                    ]"></span>
+                    {{ t(`warehouse.derivedStatus.${deriveMawbOperationalStatus(m)}`) }}
+                  </span>
+                </div>
+                <div class="row flex items-center gap-2">
+                  <select v-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) !== 'DESPACHADA'"
+                    @change="changeMawbStatus(m, $event.target.value)"
+                    class="change-select flex-1 min-w-0 border border-slate-300 bg-white rounded-lg px-2 py-1.5 font-mono text-[10px] font-bold">
+                    <option value="">— {{ t('warehouse.status.changeTo') }}…</option>
+                    <option v-if="deriveMawbOperationalStatus(m) === 'PENDIENTE'" value="RECIBIDA">→ {{ t('warehouse.status.received') }}</option>
+                    <option v-if="deriveMawbOperationalStatus(m) === 'RECIBIDA'" value="MANIFESTADA">→ {{ t('warehouse.status.loaded') }}</option>
+                    <option v-if="deriveMawbOperationalStatus(m) === 'MANIFESTADA'" value="DESPACHADA">→ {{ t('warehouse.status.dispatched') }}</option>
+                    <option v-if="deriveMawbOperationalStatus(m) === 'EN_PROCESO'" value="DESPACHADA">→ {{ t('warehouse.status.dispatched') }}</option>
+                  </select>
+                  <span v-else-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) === 'DESPACHADA'"
+                    class="now-tag text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-white"
+                    :title="t('warehouse.status.finalTooltip')">{{ t('warehouse.status.final') }}</span>
+                  <span v-else-if="deriveMawbOperationalStatus(m) !== 'PENDIENTE'"
+                    class="pending-state text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-amber-700">
+                    <span class="spinner w-2 h-2 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></span>
+                    {{ t('warehouse.status.processing') }}
+                  </span>
+                </div>
               </div>
-              <span class="text-[12px] font-mono font-bold uppercase tracking-wider whitespace-nowrap"
-                :class="statusLabelClass(m)">{{ statusLabel(m) }}</span>
               <span v-if="overdueSet.has(m.id)"
                 class="text-amber-500 text-[16px] leading-none animate-pulse" title="Recibido pero vuelo ya pasó — pendiente de despacho">&#9888;</span>
-            </div>
           </div>
           </div>
 
@@ -806,6 +800,7 @@
           </div>
         </div>
       </div>
+    </div>
     </section>
 
     <!-- MAWB Evidence Manager Modal -->
@@ -990,7 +985,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, reactive } from 'vue'
+import { ref, computed, onMounted, watch, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
@@ -1007,6 +1002,7 @@ import { hawbsApi } from '../api/hawbs'
 const icons = useIcons()
 import { mawbsApi } from '../api/mawbs'
 import { receiptsApi } from '../api/receipts'
+import { calcConfigApi } from '../api/receiptCalcConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 import { useConfirm } from '../composables/useConfirm'
@@ -1037,18 +1033,116 @@ function normAwbCode(s) {
   return (s || '').toUpperCase().replace(/[\s\-_/]/g, '')
 }
 
-function isMawbReceived(m) {
-  return (store.receipts || []).some(r => (r.mawb?.id || r.mawbId) === m.id)
+// Deriva el estado operativo de la MAWB según lógica de negocio:
+// 1. PENDIENTE: recibo no completado (5 pasos) o sin recibo
+// 2. RECIBIDA: recibo completado (5 pasos OK) pero piezas NO en ULDs
+// 3. EN_PROCESO: piezas en ULDs pero suma < piezas recibidas
+// 4. MANIFESTADA (completed): todas las piezas recibidas están en ULDs, vuelos NO despachados
+// 5. DESPACHADA: todas las piezas en vuelos DEPARTED
+function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
+  const mawbId = m.id
+  const targetCode = normAwbCode(m.awbNumber)
+
+  // 1. Verificar si el recibo está completo (5 pasos del wizard)
+  const receiptComplete = isReceiptCompletePure(m, receipts)
+  if (!receiptComplete) {
+    return 'PENDIENTE'
+  }
+
+  // Obtener links de ULD-AWB para esta MAWB
+  const links = (uldAwbs || []).filter(ua => {
+    if (ua.mawbId && ua.mawbId === mawbId) return true
+    return ua.mawbLabel && normAwbCode(ua.mawbLabel) === targetCode
+  })
+
+  // 2. RECIBIDA: recibo completo pero SIN piezas en ULDs
+  if (!links.length) {
+    return 'RECIBIDA'
+  }
+
+  // Sumar piezas en ULDs
+  let totalUldPieces = 0
+  let dispatchedPieces = 0
+  let allOnDepartedFlights = true
+
+  const uldToFlightId = {}
+  for (const u of store.ulds || []) {
+    if (u.flightId) uldToFlightId[u.id] = u.flightId
+  }
+  const flightStatusMap = {}
+  for (const f of store.flights || []) {
+    flightStatusMap[f.id] = f.status
+  }
+
+  for (const link of links) {
+    const pieces = link.pieces || 0
+    totalUldPieces += pieces
+
+    const uldId = link.uldId
+    if (!uldId) continue
+    const flightId = uldToFlightId[uldId]
+    if (!flightId) {
+      allOnDepartedFlights = false
+      continue
+    }
+    const fstatus = flightStatusMap[flightId]
+    if (fstatus === 'DEPARTED') {
+      dispatchedPieces += pieces
+    } else {
+      allOnDepartedFlights = false
+    }
+  }
+
+  // Obtener total de piezas recibidas del recibo
+  const receivedPieces = (() => {
+    const totals = {}
+    for (const r of receipts || []) {
+      if (r.superseded) continue
+      const mid = r.mawb?.id || r.mawbId
+      if (!mid) continue
+      if (!totals[mid]) totals[mid] = { pieces: 0 }
+      totals[mid].pieces += (r.pieceCount || 0)
+    }
+    return totals[mawbId]?.pieces || 0
+  })()
+
+  // 3. EN_PROCESO: piezas en ULDs pero suma < piezas recibidas
+  if (totalUldPieces < receivedPieces) {
+    return 'EN_PROCESO'
+  }
+
+  // 4-5. Todas las piezas recibidas están en ULDs
+  // DESPACHADA: todas en vuelos DEPARTED
+  if (allOnDepartedFlights && dispatchedPieces >= receivedPieces) {
+    return 'DESPACHADA'
+  }
+  // MANIFESTADA (completed): todas en ULDs pero vuelos NO despachados
+  return 'MANIFESTADA'
 }
 
-function isMawbDispatched(m) {
-  const target = normAwbCode(m.awbNumber)
-  if (!target) return false
-  return (store.uldAwbs || []).some(ua => {
-    if (ua.mawbId && ua.mawbId === m.id) return true
-    return ua.mawbLabel && normAwbCode(ua.mawbLabel) === target
-  })
+function isReceiptCompletePure(m, receipts) {
+  const rid = (receipts || []).find(r => (r.mawb?.id || r.mawbId) === m.id && !r.superseded)
+  if (!rid) return false
+  return !!rid && !!rid.pieceCount && rid.pieceCount > 0
 }
+
+function deriveMawbOperationalStatus(m) {
+  return deriveMawbOperationalStatusPure(m, store.uldAwbs, store.flights, store.receipts)
+}
+
+function isReceiptComplete(m) {
+  const rid = (store.receipts || []).find(r => (r.mawb?.id || r.mawbId) === m.id && !r.superseded)
+  if (!rid) return false
+  return !!rid.pieceCount && rid.pieceCount > 0
+}
+
+const mawbOperationalStatusMap = computed(() => {
+  const map = {}
+  for (const m of store.mawbs) {
+    map[m.id] = deriveMawbOperationalStatusPure(m, store.uldAwbs, store.flights, store.receipts)
+  }
+  return map
+})
 
 const localFlightId = ref(store.selectedFlightId || '')
 watch(() => store.selectedFlightId, (id) => { localFlightId.value = id || '' })
@@ -1113,6 +1207,11 @@ function saveDraft(mawbId) {
       mawbWeightGreatest: f.mawbWeightGreatest,
       dimFactorKg: f.dimFactorKg,
       dimFactorLbs: f.dimFactorLbs,
+      chargeableMethod: f.chargeableMethod,
+      roundUpKg: f.roundUpKg,
+      roundUpLbs: f.roundUpLbs,
+      minChargeableKg: f.minChargeableKg,
+      minChargeableLbs: f.minChargeableLbs,
       cashOnly: f.cashOnly,
       bookedInAcoms: f.bookedInAcoms,
       docsProvided: f.docsProvided,
@@ -1170,6 +1269,11 @@ function applyDraftToForm(mawbId) {
     mawbWeightGreatest: draft.mawbWeightGreatest ?? f.mawbWeightGreatest,
     dimFactorKg: draft.dimFactorKg ?? f.dimFactorKg,
     dimFactorLbs: draft.dimFactorLbs ?? f.dimFactorLbs,
+    chargeableMethod: draft.chargeableMethod ?? f.chargeableMethod,
+    roundUpKg: draft.roundUpKg ?? f.roundUpKg,
+    roundUpLbs: draft.roundUpLbs ?? f.roundUpLbs,
+    minChargeableKg: draft.minChargeableKg ?? f.minChargeableKg,
+    minChargeableLbs: draft.minChargeableLbs ?? f.minChargeableLbs,
     cashOnly: draft.cashOnly ?? f.cashOnly,
     bookedInAcoms: draft.bookedInAcoms ?? f.bookedInAcoms,
     docsProvided: draft.docsProvided ?? f.docsProvided,
@@ -1201,28 +1305,19 @@ function applyDraftToForm(mawbId) {
   f.pieces.forEach((_, pi) => calcPiece(mawbId, pi))
 }
 
-// Auto-save watch (debounced on active form)
+// Auto-save watch (debounced on active form) - SOLO campos de piezas (dimensiones/pesos)
 const activeFormJson = computed(() => {
   const mId = expandedId.value
   if (!mId || !receiptForms[mId]) return null
   const f = receiptForms[mId]
+  // Solo serializa dimensiones/pesos de piezas (campos que cambian visualmente al tipear)
   return JSON.stringify({
-    gc: f.gatewayCfs, sn: f.shipperName, cn: f.consigneeName,
-    or: f.origin, de: f.destination, arp: f.awbReportedPieces,
-    mwg: f.mawbWeightGreatest, dfk: f.dimFactorKg, dfl: f.dimFactorLbs, co: f.cashOnly, bi: f.bookedInAcoms,
-    dp: f.docsProvided, cc: f.customsCompleted, pb: f.preBuilt,
-    hc: f.hawbCount, he: f.hawbEntries.map(e => ({
-      hn: e.hawbNumber, cn: e.consigneeName, p: e.pieces,
-      wk: e.weightKg, d: e.destination
-    })),
-    pcs: f.pieces.map(p => ({
-      p: p.pieces, l: p.lengthIn, w: p.widthIn, h: p.heightIn,
-      sl: p.scaleWeightLbs
-    })),
-    r: f.remarks, pn: f.printName, dbn: f.deliveredByName,
-    dbi: f.deliveredByIdNum, ds: f.dockSignature?.length || 0,
-    dbs: f.deliveredBySig?.length || 0,
-    bn: f.brokerName, bii: f.brokerIdNum, bs: f.brokerSig?.length || 0,
+    step: localStep.value,
+    pieces: f.pieces.map(p => ({
+      l: p.lengthIn, w: p.widthIn, h: p.heightIn,
+      sl: p.scaleWeightLbs, sk: p.scaleWeightKg,
+      dl: p.dimWeightLbs, dk: p.dimWeightKg
+    }))
   })
 })
 
@@ -1239,59 +1334,34 @@ watch(activeFormJson, (json) => {
 const filterTextRaw = ref('')
 const filterText = ref('')
 const filterDate = ref('')
+const statusFilter = ref('')
 
-// Column header filters
-const headerFilterOpen = ref(null)
-const columnFilters = reactive({ mawb: null, shipper: null, dest: null, status: null, pieces: null, weight: null })
-
-function displayPieces(m) {
-  return receiptTotals.value[m.id]?.pieces || m.pieces || 0
-}
-
-function displayWeightKg(m) {
-  return Math.round(Number(receiptTotals.value[m.id]?.weightKg || m.reportedWeightKg || 0))
-}
-
-const uniqueValues = computed(() => {
-  const mawbs = store.mawbs
-  return {
-    mawb: [...new Set(mawbs.map(m => m.awbNumber).filter(Boolean))].sort(),
-    shipper: [...new Set(mawbs.map(m => m.shipperName).filter(Boolean))].sort(),
-    dest: [...new Set(mawbs.map(m => m.destination).filter(Boolean))].sort(),
-    pieces: [...new Set(mawbs.map(displayPieces))].sort((a, b) => a - b),
-    weight: [...new Set(mawbs.map(displayWeightKg))].sort((a, b) => a - b),
-  }
-})
-
-const statusOptions = [
-  { key: 'BOOKED', label: 'Pendientes', dotClass: 'bg-slate-400' },
-  { key: 'RECEIVED', label: 'Recibidos', dotClass: 'bg-amber-400' },
-  { key: 'MANIFESTED', label: 'Manifestados', dotClass: 'bg-emerald-500' },
-  { key: 'DEPARTED', label: 'Despachados', dotClass: 'bg-blue-500' },
+// Status chips (redesign per Prop1) — Todos + 5 estados, with a separate "all" key
+const STATUS_KEYS = ['PENDIENTE', 'EN_PROCESO', 'RECIBIDA', 'MANIFESTADA', 'DESPACHADA']
+const statusChips = [
+  { key: 'ALL', value: '', cls: 'chi-all', i18n: 'common.all' },
+  { key: 'PENDIENTE', value: 'PENDIENTE', cls: 'chi-pend', i18n: 'warehouse.derivedStatus.PENDIENTE' },
+  { key: 'EN_PROCESO', value: 'EN_PROCESO', cls: 'chi-pro',  i18n: 'warehouse.derivedStatus.EN_PROCESO' },
+  { key: 'RECIBIDA', value: 'RECIBIDA', cls: 'chi-rec',  i18n: 'warehouse.derivedStatus.RECIBIDA' },
+  { key: 'MANIFESTADA', value: 'MANIFESTADA', cls: 'chi-man',  i18n: 'warehouse.derivedStatus.MANIFESTADA' },
+  { key: 'DESPACHADA', value: 'DESPACHADA', cls: 'chi-desp', i18n: 'warehouse.derivedStatus.DESPACHADA' },
 ]
-
-const extraStatusOptions = computed(() => [
-  { key: '__NOT_RECEIVED', label: t('warehouse.notReceived'), dotClass: 'bg-slate-300 border border-slate-400' },
-  { key: '__NOT_DISPATCHED', label: t('warehouse.notDispatched'), dotClass: 'bg-white border border-blue-400' },
-])
-
-const statusDotClass = {
-  BOOKED: 'bg-slate-400',
-  RECEIVED: 'bg-amber-400',
-  MANIFESTED: 'bg-emerald-500',
-  DEPARTED: 'bg-blue-500',
-  __NOT_RECEIVED: 'bg-slate-400',
-  __NOT_DISPATCHED: 'bg-blue-400',
+const statusCounts = computed(() => {
+  const counts = { ALL: store.mawbs.length }
+  for (const key of STATUS_KEYS) {
+    counts[key] = store.mawbs.filter(m => mawbOperationalStatusMap.value[m.id] === key).length
+  }
+  return counts
+})
+function setStatusFilter(value) {
+  statusFilter.value = value
 }
 
-function toggleHeaderFilter(col) {
-  headerFilterOpen.value = headerFilterOpen.value === col ? null : col
-}
-
-function setColumnFilter(col, val) {
-  columnFilters[col] = val
-  headerFilterOpen.value = null
-}
+// Summary counters (delegated to the per-status count map)
+const pendingCount = computed(() => statusCounts.value.PENDIENTE)
+const receivedCount = computed(() => statusCounts.value.RECIBIDA)
+const loadedCount = computed(() => statusCounts.value.MANIFESTADA)
+const dispatchedCount = computed(() => statusCounts.value.DESPACHADA)
 
 // Bulk selection
 const selectedMawbIds = reactive(new Set())
@@ -1316,9 +1386,10 @@ async function applyBulkStatus() {
   const ids = [...selectedMawbIds]
   if (!(await confirm({ message: `¿Cambiar estado de ${ids.length} MAWB(s) a "${statusSteps.find(s => s.key === target)?.label}"?` }))) return
   let ok = 0, fail = 0
+  const backendTarget = mapStatusToBackend(target)
   for (const id of ids) {
     try {
-      await mawbsApi.updateStatus(id, target)
+      await mawbsApi.updateStatus(id, backendTarget)
       ok++
     } catch { fail++ }
   }
@@ -1334,35 +1405,12 @@ watch(filterTextRaw, (val) => {
   filterDebounce = setTimeout(() => { filterText.value = val }, 200)
 })
 
-const statusPriority = { BOOKED: 0, RECEIVED: 1, MANIFESTED: 2, DEPARTED: 3 }
+const statusPriority = { PENDIENTE: 0, RECIBIDA: 1, EN_PROCESO: 2, MANIFESTADA: 3, DESPACHADA: 4 }
 
 const filteredMawbs = computed(() => {
   let list = store.mawbs
-  if (columnFilters.status) {
-    if (columnFilters.status === 'BOOKED') {
-      list = list.filter(m => !m.status || m.status === 'BOOKED')
-    } else if (columnFilters.status === '__NOT_RECEIVED') {
-      list = list.filter(m => !isMawbReceived(m))
-    } else if (columnFilters.status === '__NOT_DISPATCHED') {
-      list = list.filter(m => !isMawbDispatched(m))
-    } else {
-      list = list.filter(m => m.status === columnFilters.status)
-    }
-  }
-  if (columnFilters.mawb) {
-    list = list.filter(m => m.awbNumber === columnFilters.mawb)
-  }
-  if (columnFilters.shipper) {
-    list = list.filter(m => m.shipperName === columnFilters.shipper)
-  }
-  if (columnFilters.dest) {
-    list = list.filter(m => m.destination === columnFilters.dest)
-  }
-  if (columnFilters.pieces !== null) {
-    list = list.filter(m => displayPieces(m) === columnFilters.pieces)
-  }
-  if (columnFilters.weight !== null) {
-    list = list.filter(m => displayWeightKg(m) === columnFilters.weight)
+  if (statusFilter.value) {
+    list = list.filter(m => mawbOperationalStatusMap.value[m.id] === statusFilter.value)
   }
   if (filterDate.value) {
     const target = filterDate.value
@@ -1379,8 +1427,8 @@ const filteredMawbs = computed(() => {
   if (ft) list = list.filter(m => applyFilter(m, ft))
 
   return [...list].sort((a, b) => {
-    const pa = statusPriority[a.status || 'BOOKED'] ?? 0
-    const pb = statusPriority[b.status || 'BOOKED'] ?? 0
+    const pa = statusPriority[mawbOperationalStatusMap.value[a.id]] ?? 0
+    const pb = statusPriority[mawbOperationalStatusMap.value[b.id]] ?? 0
     if (pa !== pb) return pa - pb
     return (b.awbNumber || '').localeCompare(a.awbNumber || '')
   })
@@ -1428,47 +1476,21 @@ function matchAnyField(m, fn) {
 
 const steps = ['HEADER', 'PIECES', 'REMARKS', 'EVIDENCE', 'SIGNATURES']
 const statusSteps = [
-  { key: 'BOOKED',     color: 'bg-slate-500 border-slate-600',  label: 'Pendiente',  tone: 'slate' },
-  { key: 'RECEIVED',   color: 'bg-amber-500 border-amber-600',  label: 'Recibido',   tone: 'amber' },
-  { key: 'MANIFESTED', color: 'bg-emerald-500 border-emerald-600', label: 'Manifestado', tone: 'emerald' },
-  { key: 'DEPARTED',   color: 'bg-blue-500 border-blue-600',    label: 'Despachado', tone: 'blue' },
+  { key: 'PENDIENTE',    label: 'Pendiente',   tone: 'slate',  badge: 'bg-slate-100 text-slate-700 border-slate-200' },
+  { key: 'RECIBIDA',     label: 'Recibida',    tone: 'amber',  badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { key: 'EN_PROCESO',   label: 'En proceso',  tone: 'amber',  badge: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { key: 'MANIFESTADA',  label: 'Manifestada', tone: 'emerald', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { key: 'DESPACHADA',   label: 'Despachada',  tone: 'blue',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
 ]
-const statusOrder = ['BOOKED', 'RECEIVED', 'MANIFESTED', 'DEPARTED']
-
-function getStatusDot(m, s) {
-  const cur = m.status || 'BOOKED'
-  const idx = statusOrder.indexOf(cur)
-  const stepIdx = statusOrder.indexOf(s.key)
-  if (idx < 0) return 'bg-slate-200 border-slate-300'
-  if (stepIdx < idx) return s.color + ' opacity-60'
-  if (stepIdx === idx) return s.color + ' scale-125 ring-2 ring-offset-1 ring-slate-400'
-  return 'bg-slate-200 border-slate-300'
-}
 
 const statusLabels = {
-  BOOKED: 'Pendiente',
-  RECEIVED: 'Recibido',
-  MANIFESTED: 'Manifestado',
-  DEPARTED: 'Despachado',
-  ARRIVED: 'Llegado',
-  CANCELLED: 'Cancelado',
-}
-
-function statusLabel(m) {
-  return statusLabels[m.status] || m.status || 'Pendiente'
-}
-
-const statusLabelCls = {
-  BOOKED: 'text-slate-500',
-  RECEIVED: 'text-amber-700',
-  MANIFESTED: 'text-emerald-700',
-  DEPARTED: 'text-blue-700',
-  ARRIVED: 'text-slate-700',
-  CANCELLED: 'text-red-600',
-}
-
-function statusLabelClass(m) {
-  return statusLabelCls[m.status] || 'text-slate-500'
+  PENDIENTE:   'Pendiente',
+  RECIBIDA:    'Recibida',
+  MANIFESTADA: 'Manifestada',
+  EN_PROCESO:  'En proceso',
+  DESPACHADA:  'Despachada',
+  ARRIVED:     'Llegado',
+  CANCELLED:   'Cancelado',
 }
 
 function editOrExpandReceipt(m) {
@@ -1518,8 +1540,13 @@ function initForm(m) {
       destination: m.destination || store.selectedFlight?.destination || 'MIA',
       awbReportedPieces: m.pieces || (hawbs.length > 0 ? hawbs.reduce((s, h) => s + (h.pieces || 0), 0) : 0) || 0,
       mawbWeightGreatest: 0, // auto-calculado desde scaleWeightLbs de las piezas al cargar
-      dimFactorKg: 366, // factor dimensional (KG); se sincroniza con dimFactorIntl del backend al cargar un recibo existente
-      dimFactorLbs: 194, // factor dimensional (LBS); se sincroniza con dimFactorDom del backend
+      dimFactorKg: 366, // factor dimensional internacional (KG); dimFactorIntl del backend
+      dimFactorLbs: 194, // factor dimensional doméstico (LBS); dimFactorDom del backend
+      chargeableMethod: 'MAX', // MAX | SUM | SCALE | DIM — calculado/resuelto por el backend
+      roundUpKg: 0,
+      roundUpLbs: 0,
+      minChargeableKg: 0,
+      minChargeableLbs: 0,
       cashOnly: false,
       bookedInAcoms: false,
       docsProvided: false,
@@ -1546,6 +1573,7 @@ function initForm(m) {
       receiptDate: null,
       startDatetime: null,
       _piecesLoadedFromDb: false,
+      _loadedFromConfig: false,
       pieceCount: 0,
       totalWeightKg: 0,
     }
@@ -1576,6 +1604,12 @@ async function loadExistingReceiptData(m) {
   f.mawbWeightGreatest = sourceReceipt.mawbWeightGreatest ?? f.mawbWeightGreatest
   f.dimFactorKg = sourceReceipt.dimFactorIntl ? Number(sourceReceipt.dimFactorIntl) : f.dimFactorKg
   f.dimFactorLbs = sourceReceipt.dimFactorDom ? Number(sourceReceipt.dimFactorDom) : f.dimFactorLbs
+  f.chargeableMethod = sourceReceipt.chargeableMethod ?? f.chargeableMethod
+  f.roundUpKg = Number(sourceReceipt.roundUpKg ?? f.roundUpKg ?? 0)
+  f.roundUpLbs = Number(sourceReceipt.roundUpLbs ?? f.roundUpLbs ?? 0)
+  f.minChargeableKg = Number(sourceReceipt.minChargeableKg ?? f.minChargeableKg ?? 0)
+  f.minChargeableLbs = Number(sourceReceipt.minChargeableLbs ?? f.minChargeableLbs ?? 0)
+  f._loadedFromConfig = true // recibos existentes son la fuente de verdad
   f.cashOnly = sourceReceipt.cashOnly ?? f.cashOnly
   f.bookedInAcoms = sourceReceipt.bookedInAcoms ?? f.bookedInAcoms
   f.docsProvided = sourceReceipt.docsProvided ?? f.docsProvided
@@ -1638,23 +1672,83 @@ async function loadExistingReceiptData(m) {
 
 function calcPiece(mawbId, pi) {
   const p = receiptForms[mawbId].pieces[pi]
-  const l = p.lengthIn || 0
-  const w = p.widthIn || 0
-  const h = p.heightIn || 0
+  const f = receiptForms[mawbId]
+  const l = Number(p.lengthIn) || 0
+  const w = Number(p.widthIn) || 0
+  const h = Number(p.heightIn) || 0
   const qty = p.pieces || 1
   const vol = l * w * h * qty
-  const dimFactorKg = receiptForms[mawbId]?.dimFactorKg || 366
-  const dimFactorLbs = receiptForms[mawbId]?.dimFactorLbs || 194
+  const dimFactorKg = f?.dimFactorKg || 366
+  const dimFactorLbs = f?.dimFactorLbs || 194
   p.dimWeightKg = vol > 0 ? vol / dimFactorKg : 0
   p.dimWeightLbs = vol > 0 ? vol / dimFactorLbs : 0
   p.dimWeight = p.dimWeightLbs
-  p.scaleWeightKg = p.scaleWeightLbs ? p.scaleWeightLbs / 2.20462 : 0
-  p.chargeableKg = Math.max(p.dimWeightKg, p.scaleWeightKg)
-  p.chargeableLbs = Math.max(p.scaleWeightLbs || 0, p.dimWeightLbs || 0)
+  const scaleLbs = Number(p.scaleWeightLbs) || 0
+  p.scaleWeightKg = scaleLbs ? scaleLbs / 2.20462 : 0
+  // Método: MAX | SUM | SCALE | DIM (perfil por aerolínea resuelto por el backend)
+  const method = (f?.chargeableMethod || 'MAX').toUpperCase()
+  let baseLbs = Math.max(scaleLbs, p.dimWeightLbs || 0)
+  let baseKg = Math.max(p.scaleWeightKg, p.dimWeightKg || 0)
+  if (method === 'SUM') {
+    baseLbs = scaleLbs + (p.dimWeightLbs || 0)
+    baseKg = p.scaleWeightKg + (p.dimWeightKg || 0)
+  } else if (method === 'SCALE') {
+    baseLbs = scaleLbs
+    baseKg = p.scaleWeightKg
+  } else if (method === 'DIM') {
+    baseLbs = p.dimWeightLbs || 0
+    baseKg = p.dimWeightKg || 0
+  }
+  const roundUp = (v, step) => step > 0 ? Math.ceil(v / step) * step : v
+  const applyMin = (v, min) => min > 0 ? Math.max(v, min) : v
+  p.chargeableLbs = roundUp(applyMin(baseLbs, Number(f?.minChargeableLbs) || 0), Number(f?.roundUpLbs) || 0)
+  p.chargeableKg = roundUp(applyMin(baseKg, Number(f?.minChargeableKg) || 0), Number(f?.roundUpKg) || 0)
+  if (method === 'SCALE') {
+    // báscula en ambos ejes: derivar kg del valor redondeado en lbs
+    p.chargeableKg = p.chargeableLbs / 2.20462
+  }
   // MAWB weight = suma de pesos de bascula de todas las piezas
-  const f = receiptForms[mawbId]
   if (f) f.mawbWeightGreatest = totalScaleLbs(mawbId, null)
   bumpFormVersionDebounced() // refresca (con debounce) el bloque memoizado del MAWB para reflejar totales al tipear
+}
+
+function numOr(v, dflt) {
+  if (v === null || v === undefined || v === '') return dflt
+  const n = Number(v)
+  return Number.isFinite(n) ? n : dflt
+}
+
+function normMethod(v) {
+  const m = (v || 'MAX').toUpperCase()
+  return ['MAX', 'SUM', 'SCALE', 'DIM'].includes(m) ? m : 'MAX'
+}
+
+// Pre-carga el perfil de cálculo resuelto para la aerolínea del MAWB
+// (solo rellena el formulario nuevo; recibos existentes y drafts prevalecen).
+async function preloadCalcConfig(m) {
+  const f = receiptForms[m.id]
+  if (!f || f._loadedFromConfig) return
+  const airlineId = m.airline?.id || m.airlineId || store.selectedFlight?.airlineId || null
+  try {
+    const res = await calcConfigApi.resolve(airlineId)
+    const p = res.data || {}
+    const draft = loadDraft(m.id)
+    if (draft && draft.chargeableMethod !== undefined) {
+      // el borrador ya arrastra los parámetros de cálculo completos
+      f._loadedFromConfig = true
+      return
+    }
+    f.chargeableMethod = normMethod(p.method)
+    f.roundUpKg = numOr(p.roundUpKg, 0)
+    f.roundUpLbs = numOr(p.roundUpLbs, 0)
+    f.minChargeableKg = numOr(p.minChargeableKg, 0)
+    f.minChargeableLbs = numOr(p.minChargeableLbs, 0)
+    if (!draft) {
+      f.dimFactorKg = numOr(p.dimFactorIntl, f.dimFactorKg)
+      f.dimFactorLbs = numOr(p.dimFactorDom, f.dimFactorLbs)
+    }
+    f._loadedFromConfig = true
+  } catch { /* fallback a los defaults del formulario */ }
 }
 
 function allPieces(mawbId, hawbId) {
@@ -1792,21 +1886,39 @@ async function syncMawbName(m, field) {
   }
 }
 
+// Mapea estados de UI a estados de backend
+function mapStatusToBackend(uiStatus) {
+  switch (uiStatus) {
+    case 'MANIFESTADA': return 'MANIFESTED'
+    case 'EN_PROCESO': return 'MANIFESTED'
+    case 'DESPACHADA': return 'DEPARTED'
+    case 'RECIBIDA': return 'RECEIVED'
+    case 'PENDIENTE': return 'BOOKED'
+    default: return uiStatus
+  }
+}
+
 async function changeMawbStatus(m, newStatus) {
-  const cur = m.status || 'BOOKED'
+  const cur = deriveMawbOperationalStatus(m)
   if (cur === newStatus) return
+
+  // Gate: solo permite cambio si el recibo está completo
+  if (!isReceiptComplete(m)) {
+    toast.warning('No se puede cambiar el estado: el recibo está incompleto (Procesando recibo)')
+    return
+  }
+
   if (!(await confirm({ message: `¿Cambiar estado de ${m.awbNumber || m.id.slice(0, 8)} de "${statusLabels[cur] ?? cur}" a "${statusLabels[newStatus] ?? newStatus}"?` }))) return
-  m.status = newStatus
   try {
-    await mawbsApi.updateStatus(m.id, newStatus)
+    const backendStatus = mapStatusToBackend(newStatus)
+    await mawbsApi.updateStatus(m.id, backendStatus)
     if (store.selectedFlightId) {
       await store.loadMawbs(store.selectedFlightId)
     } else {
       await store.loadAllMawbs()
     }
+    toast.success('Estado actualizado')
   } catch (e) {
-    toast.error(extractError(e))
-    m.status = cur
     toast.error('Error al actualizar estado: ' + (e.response?.data?.error || e.message))
   }
 }
@@ -1892,6 +2004,7 @@ async function toggleExpand(m) {
         f.mawbEvidence = (docsRes.data || []).filter(d => d.type === 'image' || d.type === 'document')
 
         await loadExistingReceiptData(m)
+        await preloadCalcConfig(m)
         bumpFormVersion()
 
         if (hawbData.length > 0) {
@@ -2254,6 +2367,11 @@ async function submitReceipt(m) {
         mawbWeightGreatest: f.mawbWeightGreatest || 0,
         dimFactorIntl: f.dimFactorKg || 366,
         dimFactorDom: f.dimFactorLbs || 194,
+        chargeableMethod: f.chargeableMethod || 'MAX',
+        roundUpKg: f.roundUpKg || 0,
+        roundUpLbs: f.roundUpLbs || 0,
+        minChargeableKg: f.minChargeableKg || 0,
+        minChargeableLbs: f.minChargeableLbs || 0,
         pieceCount: pieceList.reduce((s, p) => s + (p.pieces || 1), 0),
         cashOnly: f.cashOnly || false,
         bookedInAcoms: f.bookedInAcoms || false,
@@ -2385,16 +2503,16 @@ const receiptTotals = computed(() => {
 })
 
 const overdueMawbs = computed(() => {
-  const today = new Date().toISOString().slice(0, 10)
+  // MAWB pendiente de recibo con vuelo programado hace más de 2 días
+  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
   const flightMap = {}
   for (const f of store.flights) flightMap[f.id] = f
   const result = []
   for (const m of store.mawbs) {
-    const hasReceipt = !!receiptById.value[m.id]
-    const st = m.status || 'BOOKED'
-    if (hasReceipt && st !== 'DEPARTED') {
+    const derived = mawbOperationalStatusMap.value[m.id]
+    if (derived === 'PENDIENTE') {
       const flight = flightMap[m.flightId]
-      if (flight && flight.flightDate && flight.flightDate < today) {
+      if (flight && flight.flightDate && flight.flightDate < cutoff) {
         result.push({ mawb: m, flight })
       }
     }
@@ -2589,7 +2707,7 @@ onMounted(async () => {
   if (!store.airlines.length) await store.loadAirlines()
   if (!store.flights.length) await store.loadFlights()
   await store.loadReceipts()
-  await Promise.all([store.loadUldAwbs(), store.loadAllMawbs()])
+  await Promise.all([store.loadUldAwbs(), store.loadAllMawbs(), store.loadUlds()])
   if (route.query.mawbId && store.mawbs.length) {
     const m = store.mawbs.find(x => x.id === route.query.mawbId)
     if (m) {
@@ -2698,32 +2816,50 @@ onMounted(async () => {
       }
     }
   }
-})
 
-watch(expandedId, (id) => {
-  if (id) localStorage.setItem('WAREHOUSE_EXPANDED_MAWB', id)
-  else localStorage.removeItem('WAREHOUSE_EXPANDED_MAWB')
-})
-
-watch(() => store.mawbs, (mawbs) => {
-  if (expandedId.value) {
-    const m = mawbs.find(x => x.id === expandedId.value)
-    if (m) {
-      initForm(m)
+  if (route.query.addHawb === '1' && store.mawbs.length) {
+    const persisted = localStorage.getItem('WAREHOUSE_EXPANDED_MAWB')
+    const target =
+      (expandedId.value && store.mawbs.find(x => x.id === expandedId.value)) ||
+      (persisted && store.mawbs.find(x => x.id === persisted)) ||
+      store.mawbs[0]
+    if (target) {
+      expandedId.value = target.id
+      if (!receiptForms[target.id]) initForm(target)
+      addHawbEntry(target)
+      bumpFormVersion()
     }
   }
 })
 
-function onDocumentClick(e) {
-  if (!headerFilterOpen.value) return
-  const headerRow = document.querySelector('.bg-slate-950.border-b.border-slate-700')
-  if (headerRow && !headerRow.contains(e.target)) {
-    headerFilterOpen.value = null
+watch(expandedId, async (id) => {
+  if (id) {
+    localStorage.setItem('WAREHOUSE_EXPANDED_MAWB', id)
+    const m = store.mawbs.find(x => x.id === id)
+    if (m) {
+      initForm(m)
+      try {
+        const [hawbRes, docsRes] = await Promise.all([
+          hawbsApi.getByMawb(id),
+          mawbsApi.getSupportingDocs(id).catch(() => ({ data: [] })),
+        ])
+        receiptHawbs[id] = hawbRes.data
+        const f = receiptForms[id]
+        if (f) {
+          f.mawbEvidence = (docsRes.data || []).filter(d => d.type === 'image' || d.type === 'document')
+          await loadExistingReceiptData(m)
+          await preloadCalcConfig(m)
+          bumpFormVersion()
+        }
+      } catch (e) {
+        toast.error(extractError(e))
+        receiptHawbs[id] = []
+      }
+    }
+  } else {
+    localStorage.removeItem('WAREHOUSE_EXPANDED_MAWB')
   }
-}
-
-onMounted(() => document.addEventListener('click', onDocumentClick))
-onUnmounted(() => document.removeEventListener('click', onDocumentClick))
+})
 
 useLiveRefresh(() =>
   Promise.all([
@@ -2741,6 +2877,34 @@ useLiveRefresh(() =>
 .thin-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
 .thin-scrollbar { scrollbar-width: thin; scrollbar-color: #94a3b8 transparent; }
 .overscroll-contain { overscroll-behavior: contain; }
+
+/* Status badge colors matching PropuestaVisual.html */
+.st-pendiente { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
+.st-pendiente .cir { background: #94a3b8; }
+.st-recibida { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+.st-recibida .cir { background: #f59e0b; }
+.st-manifestada { background: #d1fae5; border-color: #10b981; color: #065f46; }
+.st-manifestada .cir { background: #10b981; }
+.st-en-proceso { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+.st-en-proceso .cir { background: #f59e0b; }
+.st-despachada { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
+.st-despachada .cir { background: #3b82f6; }
+
+/* ── Status chips con conteo en vivo (redesign per Prop1) ── */
+.chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px;
+  cursor: pointer; user-select: none; border: 1.5px solid transparent; font-size: 12px; font-weight: 800;
+  transition: transform .12s, box-shadow .12s, border-color .12s; }
+.chip:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(15,23,42,.12); }
+.chip .n { background: rgba(0,0,0,.10); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 800; }
+.chip.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
+.chip .d { width: 9px; height: 9px; border-radius: 50%; }
+.chi-all  { background: #e2e8f0; color: #334155; } .chi-all  .d { background: #334155; }
+.chi-pend { background: #f1f5f9; color: #475569; } .chi-pend .d { background: #94a3b8; }
+.chi-rec  { background: #fef3c7; color: #b45309; } .chi-rec  .d { background: #f59e0b; }
+.chi-pro  { background: #fde68a; color: #b45309; } .chi-pro  .d { background: #f59e0b; }
+.chi-man  { background: #d1fae5; color: #047857; } .chi-man  .d { background: #10b981; }
+.chi-desp { background: #dbeafe; color: #1d4ed8; } .chi-desp .d { background: #3b82f6; }
 
 /* ── Formulario de recibo: distribución vertical compacta y responsiva.
    La altura se adapta al viewport (dvh, funciona en móvil con barras de

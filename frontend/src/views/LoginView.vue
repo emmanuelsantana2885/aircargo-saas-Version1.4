@@ -317,6 +317,7 @@ const enrollSecret = ref('')
 const enrollOtpAuthUrl = ref('')
 const enrollCode = ref('')
 const mfaReason = ref('required')
+const mfaReenrollmentNeeded = ref(false)
 
 const selectedSiteLabel = computed(() => {
   if (!selectedSite.value) return ''
@@ -342,6 +343,8 @@ async function handleLogin() {
     if (status === 428 && data?.mfaRequired) {
       pendingEmail.value = loginEmail.value
       pendingPassword.value = password.value
+      mfaReenrollmentNeeded.value = !!data?.mfaReenrollmentNeeded
+      mfaReason.value = data?.mfaReason || 'required'
       step.value = 'mfa'
       totpCode.value = ''
       errorMsg.value = ''
@@ -381,7 +384,13 @@ async function handleMfa() {
   errorMsg.value = ''
   loading.value = true
   try {
-    await auth.login(pendingEmail.value, pendingPassword.value, totpCode.value)
+    const data = await auth.login(pendingEmail.value, pendingPassword.value, totpCode.value)
+    if (data?.mfaReenrollmentNeeded) {
+      // MFA válido pero política exige re-enrolamiento → iniciar flujo de enrolamiento
+      mfaReason.value = data.mfaReason || 'required'
+      startMfaEnrollment(data.enrollToken)
+      return
+    }
     if (auth.mustChangePassword) {
       router.push('/change-password')
       return

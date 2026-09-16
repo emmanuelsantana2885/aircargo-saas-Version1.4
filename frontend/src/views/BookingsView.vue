@@ -393,7 +393,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { mawbsApi } from '../api/mawbs'
 import { useIcons } from '../composables/useIcons'
@@ -412,6 +412,7 @@ import { useLiveRefresh } from '../composables/useLiveRefresh'
 
 const store = useAppStore()
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 const hf = useHeaderFilters({ containerSelector: '.ds-table-header' })
 const { headerFilterOpen, columnFilters, toggleHeaderFilter, setColumnFilter, uniqueValues } = hf
@@ -796,6 +797,7 @@ async function confirmImport() {
   for (const row of parsedRows.value) {
     idx++
     try {
+      const isSkid = row.eaType === 'SKID'
       const dto = {
         airlineId: store.selectedFlight?.airlineId,
         flightId: store.selectedFlightId,
@@ -805,9 +807,9 @@ async function confirmImport() {
         shipperName: row.shipperName || row.clientName,
         cnee: row.cnee,
         reservedKg: row.reservedKg,
-        skids: row.skids || row.units || 1,
-        units: row.units || 0,
-        eaType: row.eaType || 'SKID',
+        skids: isSkid ? (row.skids || 1) : 0,
+        units: isSkid ? 0 : (row.units || 0),
+        eaType: isSkid ? 'SKID' : 'BOX',
         destination: row.destination,
         commodityType: row.commodityType,
         priority: row.priority,
@@ -888,19 +890,20 @@ async function saveBooking() {
   }
   try {
     saving.value = true
-    const dto = {
-      airlineId: store.selectedFlight?.airlineId,
-      flightId: store.selectedFlightId,
-      awbNumber: form.value.awbNumber,
-      clientName: form.value.clientName,
-      contactName: form.value.contactName,
-      shipperName: form.value.shipperName || form.value.clientName,
-      cnee: form.value.cnee,
-      reservedKg: form.value.reservedKg || 0,
-      skids: form.value.skids || form.value.units || 1,
-      units: form.value.units || 0,
-      eaType: form.value.eaType || 'SKID',
-      destination: form.value.destination,
+const isSkid = (form.value.eaType || 'SKID') === 'SKID'
+      const dto = {
+        airlineId: store.selectedFlight?.airlineId,
+        flightId: store.selectedFlightId,
+        awbNumber: form.value.awbNumber,
+        clientName: form.value.clientName,
+        contactName: form.value.contactName,
+        shipperName: form.value.shipperName || form.value.clientName,
+        cnee: form.value.cnee,
+        reservedKg: form.value.reservedKg || 0,
+        skids: isSkid ? (form.value.skids || form.value.units || 1) : 0,
+        units: isSkid ? 0 : (form.value.units || form.value.skids || 0),
+        eaType: isSkid ? 'SKID' : 'BOX',
+        destination: form.value.destination,
       commodityType: form.value.commodityType,
       priority: form.value.priority,
       notes: form.value.notes,
@@ -996,6 +999,7 @@ onMounted(async () => {
   store.loadBookings()
   store.loadAllMawbs()
   loadCommodities()
+  if (route.query.new === '1') openCreate()
 })
 
 useLiveRefresh(() =>

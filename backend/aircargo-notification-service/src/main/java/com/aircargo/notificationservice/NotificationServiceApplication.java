@@ -8,7 +8,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 @org.springframework.scheduling.annotation.EnableScheduling
-@SpringBootApplication(scanBasePackages = {"com.aircargo.notificationservice", "com.aircargo.common"})
+@SpringBootApplication(scanBasePackages = {"com.aircargo.notificationservice", "com.aircargo.common", "com.aircargo.feign.fallback"})
 @EnableCaching
 @EnableAsync
 @EnableFeignClients(basePackages = "com.aircargo.feign.client")

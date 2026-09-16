@@ -28,11 +28,19 @@ public final class AuditEventType {
     public static final String PASSWORD_RESET = "PASSWORD_RESET";
     public static final String TEMP_PASSWORD_GENERATED = "TEMP_PASSWORD_GENERATED";
 
+    // Refresh-token rotation (Sesión 5)
+    /** Primer reuso de un refresh token ya rotado, tolerado (posible multi-pestaña): la cadena rota en gracia. */
+    public static final String REFRESH_TOKEN_GRACE_ROTATED = "REFRESH_TOKEN_GRACE_ROTATED";
+    /** Reuso repetido del mismo refresh token → robo → familia de sesiones revocada. */
+    public static final String REFRESH_TOKEN_REUSE = "REFRESH_TOKEN_REUSE";
+
     // MFA
     public static final String MFA_ENABLED = "MFA_ENABLED";
     public static final String MFA_DISABLED = "MFA_DISABLED";
     public static final String MFA_LOCKED = "MFA_LOCKED";
     public static final String MFA_UNLOCKED = "MFA_UNLOCKED";
+    /** Código TOTP incorrecto (contador de intentos; al llegar al límite se emite MFA_LOCKED). */
+    public static final String MFA_INVALID = "MFA_INVALID";
     /** Reinicio/actualización de la app → epoch de MFA movido (los MFA previos caducan). */
     public static final String MFA_POLICY_RESET = "MFA_POLICY_RESET";
     public static final String MFA_REENROLLMENT_REQUIRED = "MFA_REENROLLMENT_REQUIRED";
@@ -47,6 +55,8 @@ public final class AuditEventType {
             USER_BLOCKED, USER_UNBLOCKED,
             USER_CREATED, USER_DELETED,
             MFA_ENABLED, MFA_DISABLED, MFA_POLICY_RESET, MFA_REENROLLMENT_REQUIRED,
+            MFA_INVALID, MFA_LOCKED, MFA_UNLOCKED,
+            REFRESH_TOKEN_GRACE_ROTATED, REFRESH_TOKEN_REUSE,
             // legacy names written before event sourcing (kept for historical queries)
             "LOGIN", "CREATE", "DELETE"
     );

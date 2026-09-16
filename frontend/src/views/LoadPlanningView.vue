@@ -774,6 +774,9 @@ onMounted(async () => {
   await loadAllUlds()
   appStore.loadReceipts({ silent: true })
   autoRefreshId = window.setInterval(refreshIfIdle, 20000)
+  if (route.query.import === '1') {
+    toast.info(t('loadPlanning.importStub'))
+  }
 })
 
 onUnmounted(() => {

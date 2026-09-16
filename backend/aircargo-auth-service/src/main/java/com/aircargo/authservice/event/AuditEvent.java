@@ -57,6 +57,14 @@ public class AuditEvent {
     @Column(name = "payload", columnDefinition = "text", updatable = false)
     private String payload;
 
+    /** JSON snapshot of the entity state before the mutation (null when not applicable). */
+    @Column(name = "before_value", columnDefinition = "text", updatable = false)
+    private String beforeValue;
+
+    /** JSON snapshot of the entity state after the mutation (null when not applicable). */
+    @Column(name = "after_value", columnDefinition = "text", updatable = false)
+    private String afterValue;
+
     @Column(name = "ip_address", length = 50, updatable = false)
     private String ipAddress;
 

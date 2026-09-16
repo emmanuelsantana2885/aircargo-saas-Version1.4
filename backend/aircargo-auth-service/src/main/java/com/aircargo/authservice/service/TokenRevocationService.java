@@ -30,12 +30,14 @@ public class TokenRevocationService {
     private static final long CACHE_MS = 30_000;
 
     private final AppUserRepository userRepository;
+    private final UserStateRedisService statePublisher;
     private final Map<UUID, CacheEntry> cache = new ConcurrentHashMap<>();
 
     private record CacheEntry(OffsetDateTime validFrom, long loadedAtMs) {}
 
-    public TokenRevocationService(AppUserRepository userRepository) {
+    public TokenRevocationService(AppUserRepository userRepository, UserStateRedisService statePublisher) {
         this.userRepository = userRepository;
+        this.statePublisher = statePublisher;
     }
 
     @org.springframework.transaction.annotation.Transactional
@@ -44,6 +46,7 @@ public class TokenRevocationService {
             u.setTokensValidFrom(OffsetDateTime.now());
             userRepository.save(u);
             cache.remove(userId);
+            statePublisher.publish(userId, u.getTokensValidFrom(), u.getBlocked(), u.getIsActive());
             log.info("Tokens revocados centralmente para usuario {}", userId);
         });
     }

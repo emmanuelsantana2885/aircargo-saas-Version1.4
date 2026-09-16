@@ -32,6 +32,11 @@ public class WarehouseReceiptDTO {
     private Integer pieceCount;
     private Integer dimFactorDom;
     private Integer dimFactorIntl;
+    private String chargeableMethod;
+    private BigDecimal roundUpKg;
+    private BigDecimal roundUpLbs;
+    private BigDecimal minChargeableKg;
+    private BigDecimal minChargeableLbs;
     private BigDecimal actualWeightLbs;
     private BigDecimal actualWeightKg;
     private BigDecimal chargeableWeightLbs;
@@ -118,6 +123,16 @@ public class WarehouseReceiptDTO {
     public void setDimFactorDom(Integer dimFactorDom) { this.dimFactorDom = dimFactorDom; }
     public Integer getDimFactorIntl() { return dimFactorIntl; }
     public void setDimFactorIntl(Integer dimFactorIntl) { this.dimFactorIntl = dimFactorIntl; }
+    public String getChargeableMethod() { return chargeableMethod; }
+    public void setChargeableMethod(String chargeableMethod) { this.chargeableMethod = chargeableMethod; }
+    public BigDecimal getRoundUpKg() { return roundUpKg; }
+    public void setRoundUpKg(BigDecimal roundUpKg) { this.roundUpKg = roundUpKg; }
+    public BigDecimal getRoundUpLbs() { return roundUpLbs; }
+    public void setRoundUpLbs(BigDecimal roundUpLbs) { this.roundUpLbs = roundUpLbs; }
+    public BigDecimal getMinChargeableKg() { return minChargeableKg; }
+    public void setMinChargeableKg(BigDecimal minChargeableKg) { this.minChargeableKg = minChargeableKg; }
+    public BigDecimal getMinChargeableLbs() { return minChargeableLbs; }
+    public void setMinChargeableLbs(BigDecimal minChargeableLbs) { this.minChargeableLbs = minChargeableLbs; }
     public BigDecimal getActualWeightLbs() { return actualWeightLbs; }
     public void setActualWeightLbs(BigDecimal actualWeightLbs) { this.actualWeightLbs = actualWeightLbs; }
     public BigDecimal getActualWeightKg() { return actualWeightKg; }
@@ -217,6 +232,11 @@ public class WarehouseReceiptDTO {
         dto.setPieceCount(entity.getPieceCount());
         dto.setDimFactorDom(entity.getDimFactorDom());
         dto.setDimFactorIntl(entity.getDimFactorIntl());
+        dto.setChargeableMethod(entity.getChargeableMethod());
+        dto.setRoundUpKg(entity.getRoundUpKg());
+        dto.setRoundUpLbs(entity.getRoundUpLbs());
+        dto.setMinChargeableKg(entity.getMinChargeableKg());
+        dto.setMinChargeableLbs(entity.getMinChargeableLbs());
         dto.setActualWeightLbs(entity.getActualWeightLbs());
         dto.setActualWeightKg(entity.getActualWeightKg());
         dto.setChargeableWeightLbs(entity.getChargeableWeightLbs());
@@ -280,6 +300,11 @@ public class WarehouseReceiptDTO {
         entity.setPieceCount(dto.getPieceCount());
         entity.setDimFactorDom(dto.getDimFactorDom());
         entity.setDimFactorIntl(dto.getDimFactorIntl());
+        entity.setChargeableMethod(dto.getChargeableMethod());
+        entity.setRoundUpKg(dto.getRoundUpKg());
+        entity.setRoundUpLbs(dto.getRoundUpLbs());
+        entity.setMinChargeableKg(dto.getMinChargeableKg());
+        entity.setMinChargeableLbs(dto.getMinChargeableLbs());
         entity.setActualWeightLbs(dto.getActualWeightLbs());
         entity.setActualWeightKg(dto.getActualWeightKg());
         entity.setChargeableWeightLbs(dto.getChargeableWeightLbs());

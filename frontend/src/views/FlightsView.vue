@@ -197,7 +197,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { airlinesApi } from '../api/airlines'
@@ -215,6 +215,7 @@ const icons = useIcons()
 const { t } = useI18n()
 const store = useAppStore()
 const router = useRouter()
+const route = useRoute()
 const toast = useToastStore()
 const { confirm } = useConfirm()
 
@@ -299,6 +300,7 @@ onMounted(async () => {
     airlinesApi.getAll().then(r => { airlines.value = r.data }).catch((e) => { toast.error(extractError(e)); airlinesError.value = true }),
   ])
   loadFlightWeights()
+  if (route.query.new === '1') openCreate()
 })
 
 useLiveRefresh(() => {

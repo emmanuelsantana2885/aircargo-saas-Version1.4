@@ -93,6 +93,21 @@ public class WarehouseReceipt {
     @Column(name = "dim_factor_intl")
     private Integer dimFactorIntl;
 
+    @Column(name = "chargeable_method", length = 10)
+    private String chargeableMethod;
+
+    @Column(name = "round_up_kg", precision = 10, scale = 3)
+    private BigDecimal roundUpKg;
+
+    @Column(name = "round_up_lbs", precision = 10, scale = 3)
+    private BigDecimal roundUpLbs;
+
+    @Column(name = "min_chargeable_kg", precision = 10, scale = 3)
+    private BigDecimal minChargeableKg;
+
+    @Column(name = "min_chargeable_lbs", precision = 10, scale = 3)
+    private BigDecimal minChargeableLbs;
+
     @Column(name = "actual_weight_lbs", precision = 10, scale = 2)
     private BigDecimal actualWeightLbs;
 
@@ -257,6 +272,16 @@ public class WarehouseReceipt {
     public void setDimFactorDom(Integer dimFactorDom) { this.dimFactorDom = dimFactorDom; }
     public Integer getDimFactorIntl() { return dimFactorIntl; }
     public void setDimFactorIntl(Integer dimFactorIntl) { this.dimFactorIntl = dimFactorIntl; }
+    public String getChargeableMethod() { return chargeableMethod; }
+    public void setChargeableMethod(String chargeableMethod) { this.chargeableMethod = chargeableMethod; }
+    public BigDecimal getRoundUpKg() { return roundUpKg; }
+    public void setRoundUpKg(BigDecimal roundUpKg) { this.roundUpKg = roundUpKg; }
+    public BigDecimal getRoundUpLbs() { return roundUpLbs; }
+    public void setRoundUpLbs(BigDecimal roundUpLbs) { this.roundUpLbs = roundUpLbs; }
+    public BigDecimal getMinChargeableKg() { return minChargeableKg; }
+    public void setMinChargeableKg(BigDecimal minChargeableKg) { this.minChargeableKg = minChargeableKg; }
+    public BigDecimal getMinChargeableLbs() { return minChargeableLbs; }
+    public void setMinChargeableLbs(BigDecimal minChargeableLbs) { this.minChargeableLbs = minChargeableLbs; }
     public BigDecimal getActualWeightLbs() { return actualWeightLbs; }
     public void setActualWeightLbs(BigDecimal actualWeightLbs) { this.actualWeightLbs = actualWeightLbs; }
     public BigDecimal getActualWeightKg() { return actualWeightKg; }

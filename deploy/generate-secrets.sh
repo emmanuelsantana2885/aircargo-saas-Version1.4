@@ -75,6 +75,7 @@ stringData:
   SMTP_FROM: "${SMTP_FROM}"
   
   # MFA Policy
+  APP_MFA_MANDATORY: "true"
   MFA_RESET_ON_STARTUP: "false"
   MFA_MAX_AGE_DAYS: "7"
   

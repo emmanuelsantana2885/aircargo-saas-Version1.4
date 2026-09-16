@@ -21,6 +21,8 @@ import java.util.UUID;
 @RequestMapping("/api/mawbs")
 public class MawbController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MawbController.class);
+
     private final MawbService mawbService;
     private final AuditService auditService;
 
@@ -83,41 +85,55 @@ public class MawbController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MawbDTO> update(@PathVariable UUID id, @Valid @RequestBody MawbDTO dto,
-                                           @AuthenticationPrincipal UserPrincipal principal,
-                                           HttpServletRequest request) {
-        return mawbService.update(id, dto)
-                .map(updated -> {
-                    auditService.log(
-                            principal != null ? principal.getUserIdAsUuid() : null,
-                            principal != null ? principal.email() : "system",
-                            principal != null ? principal.fullName() : "system",
-                            "UPDATE", "MAWB", id.toString(),
-                            "{\"awbNumber\":\"" + safe(updated.getAwbNumber()) + "\"}",
-                            request.getRemoteAddr()
-                    );
-                    return ResponseEntity.ok(updated);
-                })
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody MawbDTO dto,
+                                     @AuthenticationPrincipal UserPrincipal principal,
+                                     HttpServletRequest request) {
+        try {
+            return mawbService.update(id, dto)
+                    .map(updated -> {
+                        auditService.log(
+                                principal != null ? principal.getUserIdAsUuid() : null,
+                                principal != null ? principal.email() : "system",
+                                principal != null ? principal.fullName() : "system",
+                                "UPDATE", "MAWB", id.toString(),
+                                "{\"awbNumber\":\"" + safe(updated.getAwbNumber()) + "\"}",
+                                request.getRemoteAddr()
+                        );
+                        return ResponseEntity.ok(updated);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error updating MAWB {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error updating MAWB", "details", e.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<MawbDTO> updateStatus(@PathVariable UUID id, @RequestBody MawbStatus status,
                                                  @AuthenticationPrincipal UserPrincipal principal,
                                                  HttpServletRequest request) {
-        return mawbService.updateStatus(id, status)
-                .map(updated -> {
-                    auditService.log(
-                            principal != null ? principal.getUserIdAsUuid() : null,
-                            principal != null ? principal.email() : "system",
-                            principal != null ? principal.fullName() : "system",
-                            "UPDATE_STATUS", "MAWB", id.toString(),
-                            "{\"status\":\"" + status.name() + "\"}",
-                            request.getRemoteAddr()
-                    );
-                    return ResponseEntity.ok(updated);
-                })
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            return mawbService.updateStatus(id, status)
+                    .map(updated -> {
+                        auditService.log(
+                                principal != null ? principal.getUserIdAsUuid() : null,
+                                principal != null ? principal.email() : "system",
+                                principal != null ? principal.fullName() : "system",
+                                "UPDATE_STATUS", "MAWB", id.toString(),
+                                "{\"status\":\"" + status.name() + "\"}",
+                                request.getRemoteAddr()
+                        );
+                        return ResponseEntity.ok(updated);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error updating MAWB status {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
     }
 
     @GetMapping("/{id}/supporting-docs")
@@ -133,14 +149,19 @@ public class MawbController {
                                                       @RequestBody Map<String, Object> body,
                                                       @AuthenticationPrincipal UserPrincipal principal,
                                                       HttpServletRequest request) {
-        mawbService.updateSupportingDocs(id, body);
-        auditService.log(
-                principal != null ? principal.getUserIdAsUuid() : null,
-                principal != null ? principal.email() : "system",
-                principal != null ? principal.fullName() : "system",
-                "UPDATE_SUPPORTING_DOCS", "MAWB", id.toString(), null, request.getRemoteAddr()
-        );
-        return ResponseEntity.noContent().build();
+        try {
+            mawbService.updateSupportingDocs(id, body);
+            auditService.log(
+                    principal != null ? principal.getUserIdAsUuid() : null,
+                    principal != null ? principal.email() : "system",
+                    principal != null ? principal.fullName() : "system",
+                    "UPDATE_SUPPORTING_DOCS", "MAWB", id.toString(), null, request.getRemoteAddr()
+            );
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("Error updating supporting docs for MAWB {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/{id}/supporting-docs/pdf")

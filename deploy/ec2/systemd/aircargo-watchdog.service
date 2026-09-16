@@ -1,0 +1,8 @@
+[Unit]
+Description=Aircargo SSH de mantenimiento: watchdog de los 10 servicios
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/aircargo-saas/deploy/ec2/systemd/aircargo-watchdog.sh

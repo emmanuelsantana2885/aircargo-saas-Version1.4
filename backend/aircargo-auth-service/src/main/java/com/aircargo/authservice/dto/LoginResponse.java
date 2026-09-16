@@ -16,6 +16,10 @@ public record LoginResponse(
     boolean hasPasswordSet,
     List<SiteDTO> sites,
     boolean mustChangePassword,
-    boolean mfaEnabled
+    boolean mfaEnabled,
+    List<String> permissions,
+    boolean mfaReenrollmentNeeded,
+    String mfaReason,
+    String enrollToken
 ) {}
 

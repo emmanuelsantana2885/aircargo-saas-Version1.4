@@ -1,15 +1,20 @@
 package com.aircargo.warehouseservice.service;
 
+import com.aircargo.warehouseservice.calc.CalcParams;
+import com.aircargo.warehouseservice.calc.CalcParamsResolver;
+import com.aircargo.warehouseservice.calc.ChargeableCalculator;
 import com.aircargo.warehouseservice.dto.ReceiptPieceDTO;
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.entity.ReceiptPiece;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.ReceiptPieceRepository;
 import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
-import com.aircargo.feign.client.MawbClient;
-import com.aircargo.feign.client.BookingClient;
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.common.event.ReceiptCreatedEvent;
+import com.aircargo.feign.client.MawbClient;
+import com.aircargo.warehouseservice.config.RabbitConfig;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
@@ -30,31 +35,34 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final WarehouseReceiptRepository receiptRepository;
     private final ReceiptPieceRepository pieceRepository;
     private final MawbClient mawbClient;
-    private final BookingClient bookingClient;
     private final ReceiptExportService receiptExportService;
     private final ReceiptFullPdfService receiptFullPdfService;
     private final PdfGenerationService pdfGenerationService;
     private final ObjectMapper objectMapper;
     private final MawbNumberResolver mawbNumberResolver;
+    private final CalcParamsResolver calcParamsResolver;
+    private final RabbitTemplate rabbitTemplate;
 
     public WarehouseServiceImpl(WarehouseReceiptRepository receiptRepository,
                                  ReceiptPieceRepository pieceRepository,
                                  MawbClient mawbClient,
-                                 BookingClient bookingClient,
                                  ReceiptExportService receiptExportService,
                                  ReceiptFullPdfService receiptFullPdfService,
                                  PdfGenerationService pdfGenerationService,
                                  ObjectMapper objectMapper,
-                                 MawbNumberResolver mawbNumberResolver) {
+                                 MawbNumberResolver mawbNumberResolver,
+                                 CalcParamsResolver calcParamsResolver,
+                                 RabbitTemplate rabbitTemplate) {
         this.receiptRepository = receiptRepository;
         this.pieceRepository = pieceRepository;
         this.mawbClient = mawbClient;
-        this.bookingClient = bookingClient;
         this.receiptExportService = receiptExportService;
         this.receiptFullPdfService = receiptFullPdfService;
         this.pdfGenerationService = pdfGenerationService;
         this.objectMapper = objectMapper;
         this.mawbNumberResolver = mawbNumberResolver;
+        this.calcParamsResolver = calcParamsResolver;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @Override
@@ -71,13 +79,17 @@ public class WarehouseServiceImpl implements WarehouseService {
         // Resolve MAWB number: stored value → Feign → shared-DB fallback
         dto.setMawbNumber(mawbNumberResolver.resolve(dto.getMawbId(), dto.getMawbNumber()));
 
+        // Resolve calc params (airline profile → default) and persist on the DTO
+        CalcParams params = calcParamsResolver.resolveFor(dto, null);
+        applyParamsToDto(dto, params);
+
         // Process pieces
-        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), params);
         dto.setPieces(pieces);
         dto.setPieceCount(pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum());
 
         // Calculate totals
-        calculateTotals(dto);
+        calculateTotals(dto, params);
 
         // Save receipt FIRST to get a real ID
         WarehouseReceipt entity = WarehouseReceiptDTO.toEntity(dto);
@@ -96,13 +108,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         // Generate async artifacts
         generatePersistedArtifacts(saved.getId());
 
-        // Sync MAWB and booking
-        syncMawbAndBooking(saved);
-
-        // Auto-set MAWB status to RECEIVED if currently BOOKED
-        updateMawbStatusToReceived(saved.getMawbId());
-
-        // Publish event
+        // Publish event (consumers: notification-service, booking-service AWB sync, mawb-service status sync)
         publishReceiptCreatedEvent(saved);
 
         return WarehouseReceiptDTO.fromEntity(saved);
@@ -152,14 +158,17 @@ public class WarehouseServiceImpl implements WarehouseService {
             existing.setPrintName(dto.getPrintName());
             existing.setCorrectionReason(dto.getCorrectionReason());
             existing.setCorrectedByName(dto.getCorrectedByName());
-            existing.setDimFactorDom(dto.getDimFactorDom());
-            existing.setDimFactorIntl(dto.getDimFactorIntl());
+
+            // Resolve calc params: request > existing > profile > defaults, persist on entity+DTO
+            CalcParams params = calcParamsResolver.resolveFor(dto, existing);
+            applyParamsToEntity(existing, params);
+            applyParamsToDto(dto, params);
 
             // Update pieces
             pieceRepository.deleteByReceiptId(existing.getId());
-            List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+            List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), params);
             dto.setPieces(pieces);
-            calculateTotals(dto);
+            calculateTotals(dto, params);
 
             List<ReceiptPiece> pieceEntities = pieces.stream()
                     .map(p -> ReceiptPieceDTO.toEntity(p))
@@ -182,21 +191,17 @@ public class WarehouseServiceImpl implements WarehouseService {
             // Regenerate artifacts
             generatePersistedArtifacts(existing.getId());
 
-            // Sync
-            syncMawbAndBooking(existing);
-
-            // Auto-set MAWB status to RECEIVED if currently BOOKED
-            updateMawbStatusToReceived(existing.getMawbId());
-
             return WarehouseReceiptDTO.fromEntity(saved);
         });
     }
 
     @Override
     public WarehouseReceiptDTO validateReceipt(WarehouseReceiptDTO dto) {
-        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), dto.getDimFactorDom(), dto.getDimFactorIntl());
+        CalcParams params = calcParamsResolver.resolveFor(dto, null);
+        applyParamsToDto(dto, params);
+        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), params);
         dto.setPieces(pieces);
-        calculateTotals(dto);
+        calculateTotals(dto, params);
         return dto;
     }
 
@@ -546,32 +551,36 @@ public class WarehouseServiceImpl implements WarehouseService {
         return receiptFullPdfService.generateReceiptPdf(receiptId);
     }
 
-    private List<ReceiptPieceDTO> processPieces(List<ReceiptPieceDTO> pieces,
-                                                 Integer dimFactorDom, Integer dimFactorIntl) {
+    private List<ReceiptPieceDTO> processPieces(List<ReceiptPieceDTO> pieces, CalcParams params) {
         if (pieces == null || pieces.isEmpty()) return List.of();
-        int factor = dimFactorDom != null ? dimFactorDom : 194;
         return pieces.stream()
-                .peek(p -> calculatePieceWeights(p, factor))
+                .peek(p -> ChargeableCalculator.apply(p, params))
                 .collect(Collectors.toList());
     }
 
-    private void calculatePieceWeights(ReceiptPieceDTO piece, int dimFactor) {
-        if (piece.getLengthIn() != null && piece.getWidthIn() != null && piece.getHeightIn() != null) {
-            BigDecimal pieces = piece.getPieces() != null ? BigDecimal.valueOf(piece.getPieces()) : BigDecimal.ONE;
-            BigDecimal volume = piece.getLengthIn().multiply(piece.getWidthIn())
-                    .multiply(piece.getHeightIn()).multiply(pieces);
-            BigDecimal dimWeightLbs = volume.divide(BigDecimal.valueOf(dimFactor), 2, BigDecimal.ROUND_HALF_UP);
-            piece.setDimWeightLbs(dimWeightLbs);
-            piece.setDimWeightKg(dimWeightLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
-        }
-        BigDecimal scaleLbs = piece.getScaleWeightLbs() != null ? piece.getScaleWeightLbs() : BigDecimal.ZERO;
-        BigDecimal dimLbs = piece.getDimWeightLbs() != null ? piece.getDimWeightLbs() : BigDecimal.ZERO;
-        BigDecimal chargeableLbs = scaleLbs.max(dimLbs);
-        piece.setChargeableLbs(chargeableLbs);
-        piece.setChargeableKg(chargeableLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+    private void applyParamsToDto(WarehouseReceiptDTO dto, CalcParams params) {
+        if (dto == null) return;
+        dto.setDimFactorDom(params.dimFactorDom());
+        dto.setDimFactorIntl(params.dimFactorIntl());
+        dto.setChargeableMethod(params.method().name());
+        dto.setRoundUpKg(params.roundUpKg());
+        dto.setRoundUpLbs(params.roundUpLbs());
+        dto.setMinChargeableKg(params.minChargeableKg());
+        dto.setMinChargeableLbs(params.minChargeableLbs());
     }
 
-    private void calculateTotals(WarehouseReceiptDTO dto) {
+    private void applyParamsToEntity(WarehouseReceipt entity, CalcParams params) {
+        if (entity == null) return;
+        entity.setDimFactorDom(params.dimFactorDom());
+        entity.setDimFactorIntl(params.dimFactorIntl());
+        entity.setChargeableMethod(params.method().name());
+        entity.setRoundUpKg(params.roundUpKg());
+        entity.setRoundUpLbs(params.roundUpLbs());
+        entity.setMinChargeableKg(params.minChargeableKg());
+        entity.setMinChargeableLbs(params.minChargeableLbs());
+    }
+
+    private void calculateTotals(WarehouseReceiptDTO dto, CalcParams params) {
         if (dto.getPieces() == null || dto.getPieces().isEmpty()) {
             dto.setActualWeightLbs(BigDecimal.ZERO);
             dto.setActualWeightKg(BigDecimal.ZERO);
@@ -581,19 +590,12 @@ public class WarehouseServiceImpl implements WarehouseService {
             return;
         }
 
-        int pieceCount = dto.getPieces().stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
-        BigDecimal totalScaleLbs = dto.getPieces().stream()
-                .map(p -> p.getScaleWeightLbs() != null ? p.getScaleWeightLbs() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalChargeableLbs = dto.getPieces().stream()
-                .map(p -> p.getChargeableLbs() != null ? p.getChargeableLbs() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        dto.setPieceCount(pieceCount);
-        dto.setActualWeightLbs(totalScaleLbs);
-        dto.setActualWeightKg(totalScaleLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
-        dto.setChargeableWeightLbs(totalChargeableLbs);
-        dto.setChargeableWeightKg(totalChargeableLbs.multiply(BigDecimal.valueOf(0.45359237)).setScale(3, BigDecimal.ROUND_HALF_UP));
+        ChargeableCalculator.CalcTotals totals = ChargeableCalculator.totals(dto.getPieces(), params);
+        dto.setPieceCount(totals.pieceCount());
+        dto.setActualWeightLbs(totals.actualWeightLbs());
+        dto.setActualWeightKg(totals.actualWeightKg());
+        dto.setChargeableWeightLbs(totals.chargeableWeightLbs());
+        dto.setChargeableWeightKg(totals.chargeableWeightKg());
     }
 
     @Async
@@ -614,34 +616,49 @@ public class WarehouseServiceImpl implements WarehouseService {
         }
     }
 
-    private void syncMawbAndBooking(WarehouseReceipt receipt) {
-        try {
-            if (receipt.getMawbId() != null) {
-                var booking = bookingClient.getBookingByMawbId(receipt.getMawbId());
-                if (booking != null && (booking.getAwbNumber() == null || booking.getAwbNumber().isBlank())
-                        && receipt.getMawbNumber() != null && !receipt.getMawbNumber().isBlank()) {
-                    bookingClient.updateBookingAwb(booking.getId(), Map.of("awbNumber", receipt.getMawbNumber()));
-                }
-            }
-        } catch (Exception e) {
-            // Log but don't fail
-        }
-    }
-
-    private void updateMawbStatusToReceived(UUID mawbId) {
-        if (mawbId == null) return;
-        try {
-            var mawb = mawbClient.getMawbById(mawbId);
-            if (mawb != null && "BOOKED".equals(mawb.getStatus())) {
-                mawbClient.updateMawbStatus(mawbId, "RECEIVED");
-                log.info("Auto-set MAWB {} status to RECEIVED", mawbId);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to auto-set MAWB {} status to RECEIVED: {}", mawbId, e.getMessage());
-        }
-    }
-
+    /**
+     * Publica receipt.created en el exchange compartido. Best-effort: si el broker
+     * está caído se loguea y no se rompe la transacción. Consumidores:
+     * notification-service (notificaciones), booking-service (AWB sync),
+     * mawb-service (auto-set status RECEIVED).
+     */
     private void publishReceiptCreatedEvent(WarehouseReceipt receipt) {
-        log.warn("RabbitMQ not available - event not published: receipt.created");
+        try {
+            boolean completed = isReceiptComplete(receipt);
+            rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, RabbitConfig.RECEIPT_CREATED_KEY,
+                    new ReceiptCreatedEvent(receipt.getId(), receipt.getMawbId(), receipt.getMawbNumber(), completed));
+        } catch (Exception e) {
+            log.warn("Failed to publish receipt.created for receipt {}: {}", receipt.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Verifica si el recibo está completo según los mismos criterios que el frontend:
+     * 1. HEADER: shipperName, consigneeName, origin, destination
+     * 2. PIECES: al menos una pieza con dimensiones (lengthIn, widthIn, heightIn)
+     * 3. REMARKS: opcional
+     * 4. EVIDENCE: opcional
+     * 5. SIGNATURES: printName o dockSignature
+     */
+    private boolean isReceiptComplete(WarehouseReceipt receipt) {
+        // Step 1: HEADER
+        if (receipt.getShipperName() == null || receipt.getShipperName().isBlank()) return false;
+        if (receipt.getConsigneeName() == null || receipt.getConsigneeName().isBlank()) return false;
+        if (receipt.getOrigin() == null || receipt.getOrigin().isBlank()) return false;
+        if (receipt.getDestination() == null || receipt.getDestination().isBlank()) return false;
+
+        // Step 2: PIECES - need at least one piece with dimensions
+        // Note: pieces are stored in separate table, so we'd need to query them
+        // For now, check if pieceCount > 0 and actualWeightLbs > 0 as a proxy
+        if (receipt.getPieceCount() == null || receipt.getPieceCount() <= 0) return false;
+        if (receipt.getActualWeightLbs() == null || receipt.getActualWeightLbs().signum() <= 0) return false;
+
+        // Step 5: SIGNATURES
+        if ((receipt.getPrintName() == null || receipt.getPrintName().isBlank())
+                && (receipt.getDockSignature() == null || receipt.getDockSignature().isBlank())) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -125,9 +125,11 @@ public class ReceiptExportService {
             fillRemarks(sheet, receipt);
             fillSignatures(sheet, receipt);
 
-            // A17 template has IF formula returning string "366" — overwrite with numeric
-            // so F column formulas (=/A17) divide correctly
-            setNumericValue(sheet, ROW_DIM_FORMULA, COL_A, 366.0);
+            // A17 template has IF formula returning string "366" — overwrite with the
+            // per-receipt international divisor so F column formulas (=/A17) divide correctly
+            int dimFactorIntl = receipt.getDimFactorIntl() != null && receipt.getDimFactorIntl() > 0
+                    ? receipt.getDimFactorIntl() : 366;
+            setNumericValue(sheet, ROW_DIM_FORMULA, COL_A, dimFactorIntl);
 
             // Recalculate all formulas so cached values reflect the new data
             FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();

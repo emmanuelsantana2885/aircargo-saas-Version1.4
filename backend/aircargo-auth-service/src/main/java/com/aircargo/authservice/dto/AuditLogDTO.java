@@ -22,6 +22,8 @@ public class AuditLogDTO {
     private String entityType;
     private String entityId;
     private String details;
+    private String beforeValue;
+    private String afterValue;
     private String ipAddress;
     private OffsetDateTime createdAt;
 
@@ -36,6 +38,8 @@ public class AuditLogDTO {
                 .entityType(entity.getEntityType())
                 .entityId(entity.getEntityId())
                 .details(entity.getDetails())
+                .beforeValue(entity.getBeforeValue())
+                .afterValue(entity.getAfterValue())
                 .ipAddress(entity.getIpAddress())
                 .createdAt(entity.getCreatedAt())
                 .build();
