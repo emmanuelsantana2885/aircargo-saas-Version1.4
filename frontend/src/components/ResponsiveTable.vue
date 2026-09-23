@@ -1,99 +1,203 @@
-<script setup>
-// ResponsiveTable.vue — rendereza una tabla normal en escritorio y tarjetas
-// apiladas en móvil (<=640px) sin duplicar la lógica de datos.
-// Ambas representaciones se montan y CSS elige cuál mostrar por breakpoint,
-// así no depende de listeners de resize.
-const props = defineProps({
-  columns: { type: Array, required: true }, // [{ key, label, slot?|value(via row), width?, hideSm?, align? }]
-  rows: { type: Array, default: () => [] },
-  rowKey: { type: String, default: 'id' },
-  emptyText: { type: String, default: '' },
-  // Si se pasa, columna índice sticky a la izquierda en la tabla
-  indexColumn: { type: Boolean, default: false },
-})
-
-function cellValue(row, col) {
-  if (col.value != null) return col.value(row)
-  const v = row[col.key]
-  return v == null ? '' : v
-}
-</script>
-
 <template>
-  <div>
-    <!-- Desktop / tablet: tabla normal -->
-    <div class="responsive-table-desktop">
-      <div class="table-scroll-wrapper overflow-x-auto">
-        <table class="min-w-full w-full border-collapse">
-          <thead>
-            <tr class="bg-slate-100 text-[11px] uppercase tracking-wide text-slate-500">
-              <th v-if="props.indexColumn" class="sticky left-0 z-10 bg-slate-100 px-2 py-2 border-b border-slate-200">#</th>
-              <th
-                v-for="(col, i) in props.columns"
-                :key="col.key || i"
-                :data-col="col.hideSm ? 'hide-sm' : undefined"
-                :class="[col.align === 'right' ? 'text-right' : 'text-left', col.width ? col.width : '']"
-                class="px-2 py-2 border-b border-slate-200 font-semibold whitespace-nowrap"
-              >{{ col.label }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(row, ri) in props.rows"
-              :key="row[props.rowKey] ?? ri"
-              class="border-b border-slate-100 hover:bg-slate-50"
-            >
-              <td v-if="props.indexColumn" class="sticky left-0 z-10 bg-white px-2 py-2 text-[11px] text-slate-400">{{ ri + 1 }}</td>
-              <td
-                v-for="(col, i) in props.columns"
-                :key="col.key || i"
-                :data-col="col.hideSm ? 'hide-sm' : undefined"
-                :class="[col.align === 'right' ? 'text-right' : 'text-left']"
-                class="px-2 py-2 text-[11px] text-slate-700 whitespace-nowrap"
-              >
-                <slot :name="`cell-${col.key}`" :row="row" :value="cellValue(row, col)">
-                  {{ cellValue(row, col) }}
-                </slot>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <div class="responsive-table" :class="{ 'mobile-cards': isMobile }">
+    <div v-if="!isMobile" class="table-scroll-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th v-for="col in visibleColumns" :key="col.key" :class="col.class">
+              {{ col.label }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in rows"
+            :key="getRowKey(row)"
+            :class="rowClass ? rowClass(row) : ''"
+            @click="rowClick && $emit('row-click', row)"
+          >
+            <td v-for="col in visibleColumns" :key="col.key" :class="col.class">
+              <slot :name="`cell-${col.key}`" :row="row" :value="getCellValue(row, col.key)">
+                {{ getCellValue(row, col.key) }}
+              </slot>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Móvil: tarjetas -->
-    <div class="responsive-table-cards space-y-2">
+    <div v-else class="cards-list">
       <div
-        v-for="(row, ri) in props.rows"
-        :key="row[props.rowKey] ?? ri"
-        class="border border-slate-200 rounded-lg p-3 bg-white shadow-sm"
+        v-for="row in rows"
+        :key="getRowKey(row)"
+        class="data-card"
+        :class="rowClass ? rowClass(row) : ''"
+        @click="rowClick && $emit('row-click', row)"
       >
-        <div v-if="props.indexColumn" class="text-[10px] text-slate-400 mb-1">#{{ ri + 1 }}</div>
-        <div
-          v-for="(col, i) in props.columns"
-          :key="col.key || i"
-          class="flex justify-between items-baseline gap-3 py-1 border-b border-slate-50 last:border-0"
-        >
-          <span class="text-[11px] text-slate-500 shrink-0">{{ col.label }}</span>
-          <span class="text-[12px] font-medium text-slate-800 text-right break-words min-w-0">
-            <slot :name="`cell-${col.key}`" :row="row" :value="cellValue(row, col)">
-              {{ cellValue(row, col) }}
-            </slot>
-          </span>
-        </div>
-      </div>
-      <div v-if="props.rows.length === 0 && props.emptyText" class="text-center text-[12px] text-slate-400 py-4">
-        {{ props.emptyText }}
+        <template v-for="col in visibleColumns" :key="col.key">
+          <div class="card-field" v-if="getCellValue(row, col.key) !== null && getCellValue(row, col.key) !== ''">
+            <span class="card-label">{{ col.label }}</span>
+            <span class="card-value">
+              <slot :name="`cell-${col.key}`" :row="row" :value="getCellValue(row, col.key)">
+                {{ getCellValue(row, col.key) }}
+              </slot>
+            </span>
+          </div>
+        </template>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-@media (max-width: 640px) {
-  .responsive-table-desktop { display: none !important; }
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
+const props = defineProps({
+  columns: {
+    type: Array,
+    required: true,
+  },
+  rows: {
+    type: Array,
+    required: true,
+  },
+  rowKey: {
+    type: [String, Function],
+    default: 'id',
+  },
+  rowClass: { type: Function, default: () => null },
+  rowClick: Boolean,
+  mobileBreakpoint: {
+    type: Number,
+    default: 768,
+  },
+  hiddenOnMobile: {
+    type: Array,
+    default: () => [],
+  },
+})
+
+const emit = defineEmits(['row-click'])
+// eslint-disable-next-line no-unused-vars
+const _emit = emit
+
+const isMobile = ref(false)
+
+function updateMobile() {
+  isMobile.value = window.innerWidth < props.mobileBreakpoint
 }
-@media (min-width: 641px) {
-  .responsive-table-cards { display: none !important; }
+
+const visibleColumns = computed(() => {
+  if (!isMobile.value) return props.columns
+  return props.columns.filter(c => !props.hiddenOnMobile.includes(c.key))
+})
+
+function getRowKey(row) {
+  return typeof props.rowKey === 'function' ? props.rowKey(row) : row[props.rowKey]
+}
+
+function getCellValue(row, key) {
+  const col = props.columns.find(c => c.key === key)
+  if (col?.value) return col.value(row)
+  return row[key]
+}
+
+onMounted(() => {
+  updateMobile()
+  window.addEventListener('resize', updateMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateMobile)
+})
+</script>
+
+<style scoped>
+.responsive-table {
+  width: 100%;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+  font-family: var(--font-family-mono);
+}
+
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.data-table tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.data-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.15s ease;
+}
+
+.data-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+}
+
+.card-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-family: var(--font-family-mono);
+}
+
+.card-value {
+  font-size: 13px;
+  color: var(--text);
+  font-family: var(--font-family);
+}
+
+@media (max-width: 767px) {
+  .table-scroll-wrapper {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .cards-list {
+    display: none;
+  }
 }
 </style>

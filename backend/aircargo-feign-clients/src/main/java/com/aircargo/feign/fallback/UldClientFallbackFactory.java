@@ -45,6 +45,12 @@ public class UldClientFallbackFactory implements FallbackFactory<UldClient> {
             }
 
             @Override
+            public UldDTO releaseFromFlight(UUID id) {
+                log.error("UldClient fallback: releaseFromFlight({}) — writes cannot degrade", id, cause);
+                throw new RuntimeException("ULD service unavailable: " + cause.getMessage(), cause);
+            }
+
+            @Override
             public List<UldAwbDTO> getUldAwbs(UUID uldId, UUID mawbId) {
                 log.warn("UldClient fallback: getUldAwbs(uld={},mawb={}) — {}", uldId, mawbId, cause.getMessage());
                 return Collections.emptyList();

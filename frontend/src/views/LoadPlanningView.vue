@@ -1,72 +1,76 @@
 <template>
   <div class="ds-page">
 
-    <header class="ds-section-header flex-row px-3 py-3">
-      <div class="flex items-center gap-4 min-w-0 flex-wrap">
-        <div class="hidden md:block shrink-0">
-          <h1 class="ds-title">{{ t('loadPlanning.title') }}</h1>
-          <p class="ds-subtitle">{{ t('loadPlanning.subtitle') }}</p>
-        </div>
-        <div class="h-8 w-[1px] bg-slate-200 hidden md:block"></div>
-        <div class="flex items-center gap-4 flex-wrap">
-        <div class="flex flex-col gap-0.5">
-           <span class="ds-label">{{ t('common.date') }}</span>
-          <LocaleDatePicker v-model="selectedDate" class="w-[140px] cursor-pointer" @change="onDateChange" />
-        </div>
-        <div class="h-8 w-[1px] bg-slate-200 hidden sm:block"></div>
-        <div class="flex flex-col gap-0.5">
-           <span class="ds-label">{{ t('loadPlanning.colFlightNumber') }}</span>
-          <select v-model="selectedFlightId" @change="syncFlightMetadata" class="ds-input cursor-pointer min-w-[180px]">
-            <option value="" disabled>{{ t('common.selectFlight') }}</option>
-            <option v-for="flight in flightDatabase" :key="flight.id" :value="flight.id">
-              {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }})
-            </option>
-          </select>
-        </div>
-        <div class="h-8 w-[1px] bg-slate-200 hidden lg:block"></div>
-        <div class="hidden lg:flex flex-col justify-center">
-           <span class="ds-label">{{ t('loadPlanning.airline') }}</span>
-          <span class="text-[14px] font-bold text-slate-900 uppercase tracking-widest">{{ activeAirlineLabel }}</span>
-        </div>
-        <div class="hidden lg:flex flex-col justify-center">
-           <span class="ds-label">{{ t('loadPlanning.colAircraftTail') }}</span>
-          <span class="text-[14px] font-bold text-slate-900 uppercase tracking-wider">{{ activeFlightMeta.aircraftReg || '-' }}</span>
-        </div>
-        <div class="hidden md:flex flex-col justify-center">
-           <span class="ds-label">{{ t('loadPlanning.colRoute') }}</span>
-          <span class="text-[14px] font-bold text-slate-900 uppercase tracking-widest">{{ (activeFlightMeta.origin || '') + '→' + (activeFlightMeta.destination || '-') }}</span>
-        </div>
-        </div>
-      </div>
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <button v-if="activeFlightMeta.id && activeFlightMeta.status !== 'DEPARTED' && activeFlightMeta.status !== 'ARRIVED' && activeFlightMeta.status !== 'CANCELLED'"
-          @click="dispatchFlight" :title="t('loadPlanning.dispatchFlight')"
-          class="ds-btn-primary px-2.5 py-1.5">
-          <component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.5" />
-          <span class="hidden xl:inline">{{ t('loadPlanning.dispatchFlight') }}</span>
-        </button>
-        <button @click="triggerImport" :title="t('loadPlanning.uploadManifest')"
-          class="ds-btn-secondary px-2.5 py-1.5">
-          <component :is="icons.FileUpload" :size="16" :stroke-width="2" />
-          <span class="hidden xl:inline">{{ t('loadPlanning.uploadManifest') }}</span>
-        </button>
-        <button @click="exportPalletSheets" :title="t('loadPlanning.palletSheets')"
-          class="ds-btn-secondary px-2.5 py-1.5">
-          <component :is="icons.FileDescription" :size="16" :stroke-width="2" />
-          <span class="hidden xl:inline">{{ t('loadPlanning.palletSheets') }}</span>
-        </button>
-        <button @click="exportToXLSX" :title="t('loadPlanning.exportManifest')"
-          class="ds-btn-primary px-2.5 py-1.5">
-          <component :is="icons.FileExport" :size="16" :stroke-width="2" />
-          <span class="hidden xl:inline">{{ t('loadPlanning.exportManifest') }}</span>
-        </button>
-        <button @click="exportToCSV" :title="t('loadPlanning.exportCsv')"
-          class="ds-btn-secondary px-2.5 py-1.5">
-          <span class="text-[14px] font-semibold leading-none">↓</span>
-          <span class="hidden xl:inline">{{ t('loadPlanning.exportCsv') }}</span>
-        </button>
-      </div>
+    <header class="view-head">
+      <h2>{{ t('loadPlanning.title') }}</h2>
+      <span class="crumb">{{ t('loadPlanning.subtitle') }}</span>
+      <div class="spacer"></div>
+      <span class="badge gy"><component :is="icons.Refresh" :size="12" :stroke-width="2.5" /> {{ t('loadPlanning.autoRefreshBadge') }}</span>
     </header>
+
+    <div class="card toolbar hdr flex flex-wrap items-center gap-3">
+      <span class="fin-label">{{ t('common.date') }}</span>
+      <LocaleDatePicker v-model="selectedDate" class="w-[140px] cursor-pointer" @change="onDateChange" />
+      <span class="vdiv"></span>
+      <span class="fin-label">{{ t('loadPlanning.colFlightNumber') }}</span>
+      <select v-model="selectedFlightId" @change="syncFlightMetadata" class="sel cursor-pointer min-w-[180px]">
+        <option value="" disabled>{{ t('common.selectFlight') }}</option>
+        <option v-for="flight in flightDatabase" :key="flight.id" :value="flight.id">
+          {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }})
+        </option>
+      </select>
+      <span class="vdiv"></span>
+      <div class="airline-block">
+        <span class="meta">{{ t('loadPlanning.airline') }}</span>
+        <span class="code">{{ activeAirlineLabel }}</span>
+      </div>
+      <div class="airline-block small hidden md:flex">
+        <span class="meta">{{ t('loadPlanning.colAircraftTail') }}</span>
+        <span class="code">{{ activeFlightMeta.aircraftReg || '-' }}</span>
+      </div>
+      <div class="airline-block small hidden lg:flex">
+        <span class="meta">{{ t('loadPlanning.colRoute') }}</span>
+        <span class="code">{{ (activeFlightMeta.origin || '') + '→' + (activeFlightMeta.destination || '-') }}</span>
+      </div>
+      <div class="spacer"></div>
+      <button v-if="activeFlightMeta.id && activeFlightMeta.status !== 'DEPARTED' && activeFlightMeta.status !== 'ARRIVED' && activeFlightMeta.status !== 'CANCELLED'"
+        @click="dispatchFlight" :title="t('loadPlanning.dispatchFlight')"
+        class="button teal">
+        <component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.5" />
+        <span class="hidden xl:inline">{{ t('loadPlanning.dispatchFlight') }}</span>
+      </button>
+      <button @click="triggerImport" :title="t('loadPlanning.uploadManifest')"
+        class="button ghost">
+        <component :is="icons.FileUpload" :size="16" :stroke-width="2" />
+        <span class="hidden xl:inline">{{ t('loadPlanning.uploadManifest') }}</span>
+      </button>
+      <button @click="exportPalletSheets" :title="t('loadPlanning.palletSheets')"
+        class="button ghost">
+        <component :is="icons.FileDescription" :size="16" :stroke-width="2" />
+        <span class="hidden xl:inline">{{ t('loadPlanning.palletSheets') }}</span>
+      </button>
+      <button @click="exportToXLSX" :title="t('loadPlanning.exportManifest')"
+        class="button ghost">
+        <component :is="icons.FileExport" :size="16" :stroke-width="2" />
+        <span class="hidden xl:inline">{{ t('loadPlanning.exportManifest') }}</span>
+      </button>
+      <button @click="exportToCSV" :title="t('loadPlanning.exportCsv')"
+        class="button ghost">
+        <span class="text-[13px] font-bold leading-none">↓</span>
+        <span class="hidden xl:inline">{{ t('loadPlanning.exportCsv') }}</span>
+      </button>
+    </div>
+
+    <div v-if="activeFlightMeta.id" class="grid4">
+      <div class="tile"><div class="num">{{ lpSummary.assigned }}/{{ lpSummary.total }}</div><div class="meta">{{ t('loadPlanning.tileAssigned') }}</div><div class="bar2"><i :style="{ width: lpSummary.pct + '%' }"></i></div></div>
+      <div class="tile"><div class="num">{{ lpSummary.pcs }}</div><div class="meta">{{ t('loadPlanning.tilePieces') }}</div><div class="bar2"><i :style="{ width: Math.min(lpSummary.pcs / 100 * 100, 100) + '%' }"></i></div></div>
+      <div class="tile"><div class="num">{{ lpSummary.gross.toLocaleString() }} lb</div><div class="meta">{{ t('loadPlanning.tileGrossWeight') }}</div></div>
+      <div class="tile"><div class="num">{{ lpSummary.avail }}</div><div class="meta">{{ t('loadPlanning.tileAvail') }}</div></div>
+    </div>
+
+    <div class="preview-note">
+      <span class="text-[13px] text-teal-800 font-semibold">{{ t('loadPlanning.gridHint') }}</span>
+    </div>
 
     <!-- ULD Position Summary -->
     <section v-if="activeManifest.length > 0"
@@ -696,6 +700,22 @@ const calculatedTotals = computed(() => {
     payloadLbs: Math.round(payloadLbs),
     availableLbs: Math.round(availableLbs),
     payloadPct: uldsCount ? Math.round(((gross - tare) / Math.max(gross, 1)) * 100) : 0
+  }
+})
+
+const lpSummary = computed(() => {
+  const usedPositions = positionSummary.value
+  const usedBelly = usedPositions.filter(p => p.isBelly).length
+  const bellyFree = Math.max(bellyPositions.value.length - usedBelly, 0)
+  const assigned = activeManifest.value.length
+  const total = Math.max(usedPositions.length + bellyFree, assigned)
+  return {
+    assigned,
+    total,
+    pct: total ? Math.round((assigned / total) * 100) : 0,
+    pcs: calculatedTotals.value.pcs,
+    gross: calculatedTotals.value.gross,
+    avail: bellyFree
   }
 })
 

@@ -255,24 +255,24 @@ watch(open, async (v) => {
   color: #94a3b8;
 }
 
-:root[data-theme='tokyo'] .uld-type-dropdown__panel {
+[data-theme='dark'] .uld-type-dropdown__panel {
   background: #0f172a;
   border-color: #475569;
 }
-:root[data-theme='tokyo'] .uld-type-dropdown__header {
+[data-theme='dark'] .uld-type-dropdown__header {
   background: #1e293b;
   color: #e2e8f0;
   border-bottom-color: #334155;
 }
-:root[data-theme='tokyo'] .uld-type-dropdown__close { color: #94a3b8; }
-:root[data-theme='tokyo'] .uld-type-dropdown__close:hover { background: #334155; color: #e2e8f0; }
-:root[data-theme='tokyo'] .uld-type-dropdown__option:hover { background: #1e293b; }
-:root[data-theme='tokyo'] .uld-type-dropdown__option--active {
+[data-theme='dark'] .uld-type-dropdown__close { color: #94a3b8; }
+[data-theme='dark'] .uld-type-dropdown__close:hover { background: #334155; color: #e2e8f0; }
+[data-theme='dark'] .uld-type-dropdown__option:hover { background: #1e293b; }
+[data-theme='dark'] .uld-type-dropdown__option--active {
   background: #164e63;
   box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.6);
 }
-:root[data-theme='tokyo'] .uld-type-dropdown__code { color: #e2e8f0; }
-:root[data-theme='tokyo'] .uld-type-dropdown__desc { color: #94a3b8; }
-:root[data-theme='tokyo'] .uld-type-dropdown__check { color: #38bdf8; }
-:root[data-theme='tokyo'] .uld-type-dropdown__empty { color: #64748b; }
+[data-theme='dark'] .uld-type-dropdown__code { color: #e2e8f0; }
+[data-theme='dark'] .uld-type-dropdown__desc { color: #94a3b8; }
+[data-theme='dark'] .uld-type-dropdown__check { color: #38bdf8; }
+[data-theme='dark'] .uld-type-dropdown__empty { color: #64748b; }
 </style>

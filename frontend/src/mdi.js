@@ -1,4 +1,4 @@
-import { mdiRadar, mdiAlertCircle, mdiAlert, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiChevronRight, mdiClipboardList, mdiCrown, mdiDownload, mdiEye, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiMenu, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPencil, mdiAirplaneTakeoff, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiStore } from '@mdi/js'
+import { mdiRadar, mdiAlertCircle, mdiAlert, mdiBell, mdiCheckAll, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiChevronRight, mdiClipboardList, mdiCrown, mdiDownload, mdiEye, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiMenu, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPencil, mdiAirplaneTakeoff, mdiAirplaneLanding, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiStore } from '@mdi/js'
 import { mdiIcon } from './utils/mdiIcon'
 
 const md = (path) => mdiIcon(path)
@@ -9,6 +9,8 @@ export const mdiIcons = {
   AlertTriangle: md(mdiAlert),
   Api: md(mdiApi),
   ArrowsExchange: md(mdiSwapHorizontal),
+  Bell: md(mdiBell),
+  CheckCheck: md(mdiCheckAll),
   CalendarEvent: md(mdiCalendarMonth),
   Camera: md(mdiCamera),
   Check: md(mdiCheck),
@@ -34,6 +36,7 @@ export const mdiIcons = {
   Paperclip: md(mdiPaperclip),
   Pencil: md(mdiPencil),
   PlaneDeparture: md(mdiAirplaneTakeoff),
+  PlaneLanding: md(mdiAirplaneLanding),
   Plus: md(mdiPlus),
   Refresh: md(mdiRefresh),
   Route: md(mdiRoutes),

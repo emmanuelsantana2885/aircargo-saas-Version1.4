@@ -3,21 +3,25 @@ import { useRouter } from 'vue-router'
 import { captureForms, saveDraft, setReturnTo } from '@/utils/formDraft'
 
 /**
- * Cierre de sesión automático por inactividad (10 minutos).
+ * Cierre de sesión automático por inactividad (50 minutos).
  *
- * · A los 8 min muestra un aviso con cuenta regresiva y opción de continuar.
- * · A los 10 min: snapshot de formularios en edición → logout limpio
+ * · A los 40 min muestra un aviso con cuenta regresiva y opción de continuar.
+ * · A los 50 min: snapshot de formularios en edición → logout limpio
  *   (revoca cookies en el servidor) → /login con aviso y retorno a la vista.
- * · Cualquier interacción del usuario (click, tecla, scroll, movimiento, foco, navegación)
- *   reinicia el contador de inactividad.
- * · Detección robusta: throttle en pointermove, eventos táctiles, input, focus.
+ * · Cualquier interacción del usuario (click, tecla, scroll, movimiento, arrastre,
+ *   input, cambio de pestaña, foco, navegación) reinicia el contador de inactividad.
+ * · Detección robusta: listeners en fase de captura sobre `document` (sobreviven al
+ *   `stopPropagation` de hijos), throttle en pointermove/touchmove, eventos de drag.
+ * · Guard de suspensión: un salto de reloj entre ticks (laptop dormida) no cuenta
+ *   como inactividad.
  */
-const IDLE_MS = 10 * 60 * 1000
-const WARN_MS = 8 * 60 * 1000
+const IDLE_MS = 50 * 60 * 1000
+const WARN_MS = 40 * 60 * 1000
 const TICK_MS = 1000
 
 const warningSeconds = ref(null) // null = sin aviso activo
 let lastActivity = Date.now()
+let lastTick = Date.now() // marca del tick anterior para detectar suspensiones del timer
 let timer = null
 let bound = false
 let running = false
@@ -36,47 +40,47 @@ function throttleTouch() {
   }, 500) // throttle a 500ms para pointermove
 }
 
+// Handler NOMBRADO para visibilitychange — permite el unbind exacto (antes se
+// des-ligaba un listener anónimo distinto y el real quedaba fugado de por vida).
+function onVisibilityChange() {
+  if (!document.hidden) touch()
+}
+
+// Eventos escuchados en FASE DE CAPTURA sobre document: se disparan antes que
+// cualquier handler del componente, así un `stopPropagation` en un hijo jamás
+// suprime la detección de actividad (click en modales, selects, drag & drop).
+const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart', 'touchmove', 'scroll', 'input', 'change']
+const DRAG_EVENTS = ['dragstart', 'drag', 'dragover', 'drop', 'dragend'] // arrastrar ULDs/columnas
+
+function eventHandler(ev) {
+  if (ev === 'pointermove' || ev === 'touchmove') throttleTouch()
+  else touch()
+}
+
 function bindListeners() {
   if (bound) return
   bound = true
-  const opts = { passive: true }
-  // Eventos de interacción del usuario - click, teclas, rueda, touch
-  window.addEventListener('pointerdown', touch, opts)
-  window.addEventListener('pointermove', throttleTouch, opts)
-  window.addEventListener('keydown', touch, opts)
-  window.addEventListener('wheel', touch, opts)
-  window.addEventListener('touchstart', touch, opts)
-  window.addEventListener('touchmove', throttleTouch, opts)
-  window.addEventListener('scroll', touch, opts)
-  window.addEventListener('input', touch, opts) // inputs, textareas, selects
-  window.addEventListener('change', touch, opts) // selects, checkboxes
+  const captureOpts = { passive: true, capture: true }
+  for (const ev of ACTIVITY_EVENTS) document.addEventListener(ev, eventHandler, captureOpts)
+  for (const ev of DRAG_EVENTS) document.addEventListener(ev, touch, captureOpts)
   // Cambios de foco/visibilidad (cambio de pestaña, ventana)
-  window.addEventListener('focus', touch, opts)
-  window.addEventListener('visibilitychange', () => {
-    if (!document.hidden) touch()
-  }, opts)
+  window.addEventListener('focus', touch, { passive: true })
+  document.addEventListener('visibilitychange', onVisibilityChange)
   // Navegación SPA (vue-router)
-  window.addEventListener('popstate', touch, opts)
-  window.addEventListener('hashchange', touch, opts)
+  window.addEventListener('popstate', touch, { passive: true })
+  window.addEventListener('hashchange', touch, { passive: true })
 }
 
 function unbindListeners() {
   if (!bound) return
   bound = false
-  const opts = { passive: true }
-  window.removeEventListener('pointerdown', touch, opts)
-  window.removeEventListener('pointermove', throttleTouch, opts)
-  window.removeEventListener('keydown', touch, opts)
-  window.removeEventListener('wheel', touch, opts)
-  window.removeEventListener('touchstart', touch, opts)
-  window.removeEventListener('touchmove', throttleTouch, opts)
-  window.removeEventListener('scroll', touch, opts)
-  window.removeEventListener('input', touch, opts)
-  window.removeEventListener('change', touch, opts)
-  window.removeEventListener('focus', touch, opts)
-  window.removeEventListener('visibilitychange', () => {}, opts)
-  window.removeEventListener('popstate', touch, opts)
-  window.removeEventListener('hashchange', touch, opts)
+  const captureOpts = { passive: true, capture: true }
+  for (const ev of ACTIVITY_EVENTS) document.removeEventListener(ev, eventHandler, captureOpts)
+  for (const ev of DRAG_EVENTS) document.removeEventListener(ev, touch, captureOpts)
+  window.removeEventListener('focus', touch, { passive: true })
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  window.removeEventListener('popstate', touch, { passive: true })
+  window.removeEventListener('hashchange', touch, { passive: true })
   if (pointerMoveThrottle) {
     clearTimeout(pointerMoveThrottle)
     pointerMoveThrottle = null
@@ -91,7 +95,19 @@ export function useIdleLogout(onExpire) {
   )
 
   function tick() {
-    const idle = Date.now() - lastActivity
+    const now = Date.now()
+    // Guard de suspensión/salto de reloj: si un solo tick tardó más que IDLE_MS
+    // (laptop dormida, tabs en background throttled, cambio de hora), ese lapso
+    // NO cuenta como inactividad real → se re-ancla lastActivity y sigue. La
+    // inactividad real (timers en curso, ticks ~1s) sigue expirando con normalidad.
+    if (now - lastTick > IDLE_MS) {
+      lastTick = now
+      touch()
+      return
+    }
+    lastTick = now
+
+    const idle = now - lastActivity
     if (idle >= IDLE_MS) {
       expire()
     } else if (idle >= WARN_MS) {
@@ -115,8 +131,9 @@ export function useIdleLogout(onExpire) {
   }
 
   function start() {
-    if (running) return
+    if (running) stop() // arranque idempotente: reinicia el ciclo en vez de ignorarlo
     running = true
+    lastTick = Date.now() // re-ancla el guard de suspensión por sesión
     touch() // inicializa lastActivity al inicio
     bindListeners()
     timer = setInterval(tick, TICK_MS)

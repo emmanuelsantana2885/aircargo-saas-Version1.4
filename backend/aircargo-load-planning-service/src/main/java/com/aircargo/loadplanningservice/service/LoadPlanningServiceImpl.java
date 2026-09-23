@@ -184,8 +184,58 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
             }
         }
 
+        for (UldDTO uld : ulds) {
+            uldClient.releaseFromFlight(uld.getId());
+        }
+
         return getByFlightId(flightId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load plan not found after close"));
+    }
+
+    @Override
+    @CacheEvict(value = "load-plans", key = "#flightId")
+    public LoadPlanningDTO holdLoadPlan(UUID flightId, String status, String reason) {
+        FlightDTO flight = flightClient.getFlightById(flightId);
+        if (flight == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Flight not found: " + flightId);
+        }
+
+        String targetStatus = (status == null || status.isBlank()) ? "DELAYED" : status.trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"SCHEDULED".equals(targetStatus) && !"DELAYED".equals(targetStatus) && !"CANCELLED".equals(targetStatus)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hold status must be SCHEDULED, DELAYED or CANCELLED");
+        }
+
+        String current = flight.getStatus();
+        if (!"DEPARTED".equals(current)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only DEPARTED flights can be held (current status: " + current + ")");
+        }
+
+        log.info("Holding flight {} {} -> {} (reason: {})", flight.getFlightNumber(), flight.getId(),
+                targetStatus, reason != null && !reason.isBlank() ? reason : "-");
+
+        flightClient.updateFlightStatus(flightId, targetStatus);
+
+        int reverted = 0;
+        try {
+            List<MawbDTO> mawbs = mawbClient.getMawbsByFlight(flightId);
+            for (MawbDTO mawb : mawbs) {
+                if (mawb.getId() == null) continue;
+                if (!"DEPARTED".equals(mawb.getStatus())) continue;
+                try {
+                    mawbClient.updateMawbStatus(mawb.getId(), "MANIFESTED");
+                    reverted++;
+                } catch (Exception e) {
+                    log.warn("Failed to revert MAWB {} to MANIFESTED: {}", mawb.getId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not revert MAWBs for flight {}: {}", flightId, e.getMessage());
+        }
+        log.info("Hold: reverted {} MAWB(s) to MANIFESTED for flight {}", reverted, flightId);
+
+        return getByFlightId(flightId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load plan not found after hold"));
     }
 
     private void publishFlightDeparted(FlightDTO flight) {

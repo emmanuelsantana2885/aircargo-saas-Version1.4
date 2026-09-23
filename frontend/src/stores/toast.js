@@ -1,15 +1,24 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+// Duraciones por severidad (ms)
+const TOAST_DURATIONS = {
+  success: 4000,
+  warning: 5000,
+  error: 6000,
+  info: 4000,
+}
+
 export const useToastStore = defineStore('toast', () => {
   const toasts = ref([])
   let nextId = 0
 
-  function add(type, message, duration = 4000, html = false) {
+  function add(type, message, duration, html = false) {
     const id = ++nextId
+    const d = duration ?? TOAST_DURATIONS[type] ?? 4000
     toasts.value.push({ id, type, message, html })
-    if (duration > 0) {
-      setTimeout(() => remove(id), duration)
+    if (d > 0) {
+      setTimeout(() => remove(id), d)
     }
   }
 
@@ -24,5 +33,5 @@ export const useToastStore = defineStore('toast', () => {
   function info(msg, duration) { add('info', msg, duration) }
   function rich(type, htmlMsg, duration = 6000) { add(type, htmlMsg, duration, true) }
 
-  return { toasts, add, remove, success, error, warning, info, rich }
+  return { toasts, add, remove, success, error, warning, info, rich, durations: TOAST_DURATIONS }
 })

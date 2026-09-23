@@ -111,10 +111,16 @@ public class MawbController {
         }
     }
 
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<MawbDTO> updateStatus(@PathVariable UUID id, @RequestBody MawbStatus status,
+    @RequestMapping(value = "/{id}/status", method = {RequestMethod.PUT, RequestMethod.PATCH})
+    public ResponseEntity<MawbDTO> updateStatus(@PathVariable UUID id, @RequestBody String rawStatus,
                                                  @AuthenticationPrincipal UserPrincipal principal,
                                                  HttpServletRequest request) {
+        MawbStatus status;
+        try {
+            status = MawbStatus.valueOf(rawStatus.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
         try {
             return mawbService.updateStatus(id, status)
                     .map(updated -> {

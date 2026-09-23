@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -81,6 +82,9 @@ public class Mawb {
     @Column(name = "notes", columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "created_at", insertable = false, updatable = false, nullable = false)
+    private OffsetDateTime createdAt;
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
     public UUID getAirlineId() { return airlineId; }
@@ -123,4 +127,6 @@ public class Mawb {
     public void setSupportingDocs(String supportingDocs) { this.supportingDocs = supportingDocs; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

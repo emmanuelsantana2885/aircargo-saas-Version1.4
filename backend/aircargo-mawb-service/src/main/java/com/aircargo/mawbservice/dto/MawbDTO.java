@@ -5,6 +5,7 @@ import com.aircargo.mawbservice.entity.MawbStatus;
 import com.aircargo.common.entity.CommodityType;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public class MawbDTO {
@@ -30,6 +31,7 @@ public class MawbDTO {
     private Boolean looseTender;
     private String supportingDocs;
     private String notes;
+    private OffsetDateTime createdAt;
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -73,6 +75,8 @@ public class MawbDTO {
     public void setSupportingDocs(String supportingDocs) { this.supportingDocs = supportingDocs; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 
     public static MawbDTO fromEntity(Mawb mawb) {
         if (mawb == null) return null;
@@ -98,6 +102,7 @@ public class MawbDTO {
         dto.setLooseTender(mawb.getLooseTender());
         dto.setSupportingDocs(mawb.getSupportingDocs());
         dto.setNotes(mawb.getNotes());
+        dto.setCreatedAt(mawb.getCreatedAt());
         return dto;
     }
 

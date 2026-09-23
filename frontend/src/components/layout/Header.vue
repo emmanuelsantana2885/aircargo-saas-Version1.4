@@ -1,72 +1,150 @@
 <template>
-  <header class="flex items-center justify-between px-4 md:px-6 border-b flex-shrink-0 flex-wrap gap-y-1 relative overflow-hidden"
-    style="min-height: 44px; border-color: #0f172a; background: linear-gradient(135deg, #0b1226 0%, #182c57 26%, #1b3f8f 52%, #1a5680 78%, #0b1226 100%); background-size: 200% 200%; animation: ds-gradient-pan 18s ease-in-out infinite;">
-    <div class="absolute inset-0 opacity-[0.06]" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(148,163,184,0.3) 2px, rgba(148,163,184,0.3) 3px), repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(100,116,139,0.2) 3px, rgba(100,116,139,0.2) 4px);"></div>
-    <div class="absolute inset-0 opacity-[0.05]" style="background-image: radial-gradient(circle at 30% 50%, rgba(148,163,184,0.4) 0%, transparent 60%), radial-gradient(circle at 70% 30%, rgba(100,116,139,0.3) 0%, transparent 50%);"></div>
-    <div class="absolute inset-x-0 bottom-0 h-px" style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);"></div>
-
-    <div class="flex items-center gap-2 relative z-10">
-      <!-- Mobile hamburger -->
-      <button v-if="isMobile" @click="$emit('toggleSidebar')"
-        class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10">
-        <component :is="icons.Menu" :size="20" :stroke-width="2" style="color: white" />
-      </button>
-      <component :is="icons.ChevronRight" :size="12" style="color: rgba(255,255,255,0.4)" :stroke-width="2" class="hidden sm:block" />
-      <span class="text-[13px] md:text-xs font-bold uppercase text-white tracking-wide" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3)">{{ title }}</span>
+  <header class="shell-header">
+    <button v-if="!isMobile" @click="emit('toggleSidebar')"
+      class="sidebar-toggle" :class="{ 'rotated': collapsed }"
+      :title="collapsed ? t('header.expand') : t('header.collapse')">
+      <component :is="icons.ChevronRight" :size="16" :stroke-width="2" />
+    </button>
+    <button v-else @click="emit('toggleSidebar')" class="sidebar-toggle" :title="t('header.menu')">
+      <component :is="icons.Menu" :size="16" :stroke-width="2" />
+    </button>
+    <div class="brand">
+      <i class="pi pi-box"></i>
+      <span>AirCargo<small>{{ auth.selectedSite?.code || 'SDQ' }} · Ums</small></span>
     </div>
-
-    <div class="flex items-center gap-2 md:gap-3 relative z-10 header-actions">
-      <div class="hidden sm:flex items-center rounded-lg border border-white/10 bg-white/5 px-2 py-1" style="backdrop-filter: blur(6px);">
-        <LanguageSwitcher />
-      </div>
-      <span class="text-[12px] md:text-xs text-slate-300 hidden md:block">{{ date }}</span>
-      <button @click="toggleIconLib"
-        :title="iconLib === 'tabler' ? 'Switch to Lucide icons' : iconLib === 'lucide' ? 'Switch to Material Design icons' : 'Switch to Tabler icons'"
-        class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10 text-[10px] font-bold"
-        style="color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);">
-        {{ iconLib === 'tabler' ? 'TB' : iconLib === 'lucide' ? 'LC' : 'MD' }}
+    <div class="spacer"></div>
+    <div class="header-actions">
+      <span class="h-chip hide-sm"><i class="pi pi-globe"></i> {{ t('common.lang') }} · {{ auth.selectedSite?.code || 'SDQ' }}</span>
+      <span class="h-chip hide-sm"><i class="pi pi-user"></i> {{ auth.fullName || auth.email }} — {{ roleLabel }}</span>
+      <button @click="toggleIconLib" class="ctrl-chip" :title="t('header.appearanceIconLib')">{{ iconCode }}</button>
+      <button @click="cycleFont" class="ctrl-chip" :title="t('header.fontHint')">{{ fontLabel }}</button>
+      <button @click="cycleDensity" class="ctrl-chip" :title="t('header.densityHint')">{{ densityLabel }}</button>
+      <button @click="toggleMode" class="h-chip" :title="mode === 'light' ? t('header.themeLight') : t('header.themeDark')">
+        <component :is="icons.Moon" v-if="mode === 'light'" :size="14" :stroke-width="2" />
+        <component :is="icons.Sun" v-else :size="14" :stroke-width="2" style="color: #ffd700" />
       </button>
-      <button @click="cycleFont" :title="t('header.fontHint')"
-        class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10 text-[9px] font-bold tracking-tight"
-        style="color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);">
-        {{ fontLabel }}
+      <button ref="appearanceBtnRef" @click="toggleAppearance" class="h-chip h-chip-swatch" :title="t('header.appearanceHint')">
+        <span class="appearance-swatch"></span>
       </button>
-      <button @click="cycleDensity" :title="t('header.densityHint')"
-        class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10 text-[9px] font-bold tracking-tight"
-        style="color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);">
-        {{ densityLabel }}
+      <button ref="notifBtnRef" @click="toggleNotif" class="h-chip h-chip-bell" :title="t('notifications.title')">
+        <component :is="icons.Bell" :size="14" :stroke-width="2" />
+        <span v-if="notif.unread > 0" class="notif-badge">{{ notif.unread > 99 ? '99+' : notif.unread }}</span>
       </button>
-      <div class="w-px h-6" style="background: rgba(255,255,255,0.15);"></div>
-      <button @click="toggleTheme" :title="theme === 'tokyo' ? t('header.themeLight') : t('header.themeDark')"
-        class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10"
-        style="border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);">
-        <component :is="icons.Moon" v-if="theme === 'light'" :size="17" style="color: white" :stroke-width="1.8" />
-        <component :is="icons.Sun" v-else :size="17" style="color: #ff9e64" :stroke-width="1.8" />
-      </button>
-      <div class="relative" ref="accentBtnRef" @click.stop>
-        <button @click="openAccentPop" :title="t('header.accentHint')"
-          class="flex items-center justify-center w-8 h-8 rounded-lg transition hover:bg-white/10"
-          style="border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04);">
-          <span class="w-[18px] h-[18px] rounded-md ring-2 ring-white/30" :style="{ background: accent ? ACCENTS[accent].accent : 'var(--accent)' }"></span>
-        </button>
-      </div>
     </div>
   </header>
   <Teleport to="body">
-    <div v-if="accentOpen" @click.stop class="fixed z-[100]"
-      :style="{ top: accentPopStyle.top, right: accentPopStyle.right }">
-      <div class="p-2 rounded-xl shadow-xl w-[220px]"
+    <div v-if="notificationsOpen" @click.stop class="fixed z-[100]"
+      :style="{ top: notifPopStyle.top, right: notifPopStyle.right }">
+      <div class="rounded-xl w-[340px] max-w-[92vw] overflow-hidden"
         style="background: #0f172a; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 56px -16px rgba(0,0,0,0.6);">
-        <div class="px-1 pb-1.5 flex items-center justify-between">
-          <span class="text-[11px] font-bold uppercase tracking-wide" style="color: rgba(255,255,255,0.7)">{{ t('header.accentTitle') }}</span>
-          <button @click="resetAccent" class="text-[10px] font-bold underline" :class="accent ? 'text-slate-300 hover:text-white' : 'opacity-40 pointer-events-none text-slate-400'">{{ t('header.accentAuto') }}</button>
-        </div>
-        <div class="grid grid-cols-4 gap-1.5">
-          <button v-for="(a, key) in ACCENTS" :key="key" @click="pickAccent(key)"
-            class="w-9 h-9 rounded-lg transition-transform hover:scale-110 flex items-center justify-center"
-            :style="{ background: a.accent }" :title="a.label">
-            <span v-if="accent === key" class="text-[13px] font-bold text-white" style="text-shadow: 0 1px 2px rgba(0,0,0,0.45)">✓</span>
+        <div class="flex items-center justify-between px-3 py-2" style="border-bottom: 1px solid rgba(255,255,255,0.1)">
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold uppercase tracking-wide" style="color: rgba(255,255,255,0.7)">{{ t('notifications.title') }}</span>
+            <span class="w-1.5 h-1.5 rounded-full" :style="{ background: notif.connected ? '#34d399' : '#64748b' }"
+              :title="notif.connected ? t('notifications.live') : t('notifications.offline')"></span>
+          </div>
+          <button v-if="notif.unread > 0" @click="notif.markAllRead()"
+            class="flex items-center gap-1 text-[10px] font-bold underline text-slate-300 hover:text-white">
+            <component :is="icons.CheckCheck" :size="12" :stroke-width="2" />
+            {{ t('notifications.markAll') }}
           </button>
+        </div>
+        <div class="max-h-[360px] overflow-y-auto">
+          <button v-for="n in notif.items" :key="n.id" @click="openNotification(n)"
+            class="w-full text-left px-3 py-2 flex items-start gap-2 transition hover:bg-white/5"
+            :style="!n.isRead ? 'background: rgba(122,162,247,0.10)' : ''">
+            <span class="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" :style="{ background: n.isRead ? 'transparent' : '#7aa2f7' }"></span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[12px] font-bold text-white truncate">{{ n.title }}</span>
+              <span class="block text-[11px] text-slate-400 truncate">{{ n.body }}</span>
+              <span class="block text-[9px] text-slate-500 mt-0.5">{{ timeAgo(n.createdAt) }}</span>
+            </span>
+            <span @click.stop="notif.remove(n.id)" title="×"
+              class="text-slate-500 hover:text-white text-[13px] leading-none px-1">×</span>
+          </button>
+          <div v-if="!notif.items.length" class="px-3 py-8 text-center text-[11px] italic text-slate-500">
+            {{ t('notifications.empty') }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
+  <Teleport to="body">
+    <div v-if="appearanceOpen" @click.stop class="fixed z-[100]"
+      :style="{ top: appearancePopStyle.top, right: appearancePopStyle.right }">
+      <div class="rounded-xl w-[300px] max-w-[92vw] overflow-hidden"
+        style="background: #0f172a; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 56px -16px rgba(0,0,0,0.6);">
+        <div class="flex items-center justify-between px-3 py-2" style="border-bottom: 1px solid rgba(255,255,255,0.1)">
+          <span class="text-[12px] font-bold tracking-wide" style="color: rgba(255,255,255,0.85)">{{ t('header.appearanceTitle') }}</span>
+          <button @click="resetAppearance" class="text-[10px] font-bold uppercase tracking-wider underline text-slate-300 hover:text-white">
+            {{ t('header.appearanceReset') }}
+          </button>
+        </div>
+        <div class="max-h-[70vh] overflow-y-auto px-3 py-3 flex flex-col gap-3"
+          style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent;">
+          <div class="grid grid-cols-5 gap-1.5">
+            <button v-for="(th, key) in THEMES" :key="key" type="button"
+              class="h-9 rounded-lg transition-all"
+              :class="themeKey === key ? 'ring-2 ring-white scale-105' : 'opacity-80 hover:opacity-100 hover:ring-1 hover:ring-white/50'"
+              :style="{ background: accentFor(key, tone).acc }"
+              :title="th.name + ' · ' + th.mode"
+              @click="pickTheme(key)">
+              <span v-if="themeKey === key" class="flex items-center justify-center h-full text-white drop-shadow" style="font-size: 12px">✓</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceTone') }}</span>
+            <button v-for="(tn, i) in TONE_NAMES" :key="`t${i}`" type="button"
+              class="h-5 w-5 rounded-full transition-all"
+              :class="tone === i ? 'ring-2 ring-white scale-110' : 'opacity-75 hover:opacity-100'"
+              :style="{ background: accentFor(themeKey, i).acc }"
+              :title="tn"
+              @click="pickTone(i)">
+              <span v-if="tone === i" class="flex items-center justify-center h-full text-white drop-shadow" style="font-size: 10px">✓</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-1 flex-wrap">
+            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceFont') }}</span>
+            <button v-for="f in FONT_ORDER" :key="f" type="button"
+              class="px-1.5 py-1 rounded-md text-[10px] font-extrabold tracking-wide border transition"
+              :class="font === f
+                ? 'border-white text-white bg-white/15'
+                : 'border-white/20 text-slate-300 hover:border-white/50 hover:text-white'"
+              :title="f"
+              @click="pickFont(f)">{{ FONT_LABEL[f] }}</button>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceDensity') }}</span>
+            <button type="button" @click="pickDensity('comfortable')"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition capitalize"
+              :class="density === 'comfortable' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t('header.appearanceDensityComfort') }}
+            </button>
+            <button type="button" @click="pickDensity('compact')"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition capitalize"
+              :class="density === 'compact' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t('header.appearanceDensityCompact') }}
+            </button>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceIconLib') }}</span>
+            <button type="button" @click="pickIconLib('tabler')"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
+              :class="iconLib === 'tabler' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t('header.appearanceIconTabler') }}
+            </button>
+            <button type="button" @click="pickIconLib('lucide')"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
+              :class="iconLib === 'lucide' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t('header.appearanceIconLucide') }}
+            </button>
+            <button type="button" @click="pickIconLib('mdi')"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
+              :class="iconLib === 'mdi' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t('header.appearanceIconMdi') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -75,81 +153,172 @@
 
 <script setup>
 import { computed, ref, reactive, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getTheme, setTheme } from '../../utils/theme'
+import { getMode, setMode, setTheme, setTone, resetTheme, THEMES, TONE_NAMES, accentFor, getTheme, getTone } from '../../utils/theme'
 import { getFont, setFont } from '../../utils/font'
 import { getDensity, setDensity } from '../../utils/density'
-import { ACCENTS, getAccent, setAccent } from '../../utils/accent'
 import { iconLib, toggleIconLib } from '../../utils/iconLib'
 import { useIcons } from '../../composables/useIcons'
-import LanguageSwitcher from '../LanguageSwitcher.vue'
+import { useNotificationsStore } from '../../stores/notifications'
+import { useAuthStore } from '../../stores/auth'
 
-defineEmits(['toggleSidebar'])
+const emit = defineEmits(['toggleSidebar'])
+defineProps({
+  collapsed: { type: Boolean, default: false },
+})
 
 const { t } = useI18n()
 const route = useRoute()
+const router = useRouter()
 const isMobile = ref(false)
-const theme = ref(getTheme())
+const mode = ref(getMode())
+const appearanceOpen = ref(false)
+const notificationsOpen = ref(false)
+const notifPopStyle = reactive({ top: '0px', right: '0px' })
+const notifBtnRef = ref(null)
+const appearanceBtnRef = ref(null)
+const appearancePopStyle = reactive({ top: '0px', right: '0px' })
+const themeKey = ref(getTheme())
+const tone = ref(getTone())
 const font = ref(getFont())
 const density = ref(getDensity())
-const accent = ref(getAccent())
-const accentOpen = ref(false)
-const accentPopStyle = reactive({ top: '0px', right: '0px' })
-const accentBtnRef = ref(null)
 const icons = useIcons()
+const notif = useNotificationsStore()
+const auth = useAuthStore()
+
+const roleConfig = {
+  SUPER_USER:        { iconKey: 'CrownFilled', labelKey: 'users.roles.SUPER_USER' },
+  ADMIN:             { iconKey: 'ShieldLock', labelKey: 'users.roles.ADMIN' },
+  OPERATIONS:        { iconKey: 'AirTrafficControl', labelKey: 'users.roles.OPERATIONS' },
+  TRAFFIC:           { iconKey: 'ArrowsExchange', labelKey: 'users.roles.TRAFFIC' },
+  LOAD_PLANNER:      { iconKey: 'Scale', labelKey: 'users.roles.LOAD_PLANNER' },
+  WAREHOUSE_ASSISTANT:{ iconKey: 'Forklift', labelKey: 'users.roles.WAREHOUSE_ASSISTANT' },
+  READ_ONLY:         { iconKey: 'Eye', labelKey: 'users.roles.READ_ONLY' },
+}
+const roleIcon = computed(() => roleConfig[auth.role] || { iconKey: 'User', labelKey: 'users.roles.READ_ONLY' })
+const roleLabel = computed(() => t(roleIcon.value.labelKey) || auth.role?.replace('_', ' ') || '')
+
 const FONT_ORDER = ['combo', 'cascadia', 'bodoni', 'consolas', 'nerd', 'sans']
 const FONT_LABEL = { combo: 'CMB', cascadia: 'CSC', bodoni: 'BDN', consolas: 'CON', nerd: 'NRD', sans: 'SNS' }
+const iconCode = computed(() => iconLib.value === 'tabler' ? 'TB' : iconLib.value === 'mdi' ? 'MD' : 'LC')
 const fontLabel = computed(() => FONT_LABEL[font.value] || 'FNT')
 const densityLabel = computed(() => density.value === 'compact' ? 'CMP' : 'COM')
 
-function cycleFont() {
-  const idx = FONT_ORDER.indexOf(font.value)
-  font.value = setFont(FONT_ORDER[(idx + 1) % FONT_ORDER.length])
+function toggleMode() {
+  setMode(mode.value === 'dark' ? 'light' : 'dark')
+  mode.value = getMode()
 }
 
-function cycleDensity() {
-  density.value = setDensity(density.value === 'compact' ? 'comfortable' : 'compact')
+const NOTIF_ROUTES = {
+  RECEIPT: '/receipts',
+  MAWB: '/mawbs',
+  HAWB: '/mawbs',
+  DUA: '/mawbs',
+  FLIGHT: '/flights',
+  ULD: '/ulds',
+  BOOKING: '/bookings',
 }
 
-function toggleTheme() {
-  theme.value = setTheme(theme.value === 'tokyo' ? 'light' : 'tokyo')
-}
-
-function openAccentPop() {
-  accentOpen.value = !accentOpen.value
-  if (accentOpen.value && accentBtnRef.value) {
-    const r = accentBtnRef.value.getBoundingClientRect()
-    accentPopStyle.top = `${Math.round(r.bottom + 8)}px`
-    accentPopStyle.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`
+function positionNotifPop() {
+  if (notifBtnRef.value) {
+    const r = notifBtnRef.value.getBoundingClientRect()
+    notifPopStyle.top = `${Math.round(r.bottom + 8)}px`
+    notifPopStyle.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`
   }
 }
 
-function pickAccent(key) {
-  accent.value = setAccent(key)
-  accentOpen.value = false
+function toggleNotif() {
+  notificationsOpen.value = !notificationsOpen.value
+  if (notificationsOpen.value) positionNotifPop()
 }
 
-function resetAccent() {
-  accent.value = setAccent(null)
-  accentOpen.value = false
+function toggleAppearance() {
+  appearanceOpen.value = !appearanceOpen.value
+  if (appearanceOpen.value) positionAppearancePop()
+}
+
+function positionAppearancePop() {
+  if (appearanceBtnRef.value) {
+    const r = appearanceBtnRef.value.getBoundingClientRect()
+    appearancePopStyle.top = `${Math.round(r.bottom + 8)}px`
+    appearancePopStyle.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`
+  }
+}
+
+function cycleFont() {
+  const next = FONT_ORDER[(FONT_ORDER.indexOf(font.value) + 1) % FONT_ORDER.length]
+  font.value = setFont(next)
+}
+
+function cycleDensity() {
+  const next = density.value === 'compact' ? 'comfortable' : 'compact'
+  density.value = setDensity(next)
+}
+
+function pickTheme(key) {
+  themeKey.value = setTheme(key)
+  mode.value = getMode()
+}
+
+function pickTone(i) {
+  tone.value = setTone(i)
+  mode.value = getMode()
+}
+
+function pickFont(f) {
+  font.value = setFont(f)
+}
+
+function pickDensity(d) {
+  density.value = setDensity(d)
+}
+
+function pickIconLib(lib) {
+  iconLib.value = lib
+}
+
+function resetAppearance() {
+  themeKey.value = resetTheme()
+  tone.value = getTone()
+  mode.value = getMode()
+  font.value = setFont('combo')
+  density.value = setDensity('comfortable')
+  iconLib.value = 'tabler'
+}
+
+function openNotification(n) {
+  notif.markRead(n.id)
+  notificationsOpen.value = false
+  const dest = NOTIF_ROUTES[(n.entityType || '').toUpperCase()]
+  if (dest && route.path !== dest) router.push(dest)
+}
+
+function timeAgo(iso) {
+  if (!iso) return ''
+  const s = Math.floor(Math.max(0, Date.now() - new Date(iso).getTime()) / 1000)
+  if (s < 45) return t('security.justNow')
+  if (s < 60) return t('security.secondsAgo', { n: s })
+  const m = Math.floor(s / 60)
+  if (m < 60) return t('security.minutesAgo', { n: m })
+  return t('security.hoursAgo', { n: Math.floor(m / 60) })
 }
 
 function onDocClick() {
-  if (accentOpen.value) accentOpen.value = false
+  if (appearanceOpen.value) appearanceOpen.value = false
+  if (notificationsOpen.value) notificationsOpen.value = false
 }
 
 function onKeydown(e) {
-  if (e.key === 'Escape' && accentOpen.value) accentOpen.value = false
+  if (e.key !== 'Escape') return
+  if (appearanceOpen.value) appearanceOpen.value = false
+  if (notificationsOpen.value) notificationsOpen.value = false
 }
 
 function checkViewport() {
   isMobile.value = window.innerWidth < 768
-  if (accentOpen.value && accentBtnRef.value) {
-    const r = accentBtnRef.value.getBoundingClientRect()
-    accentPopStyle.top = `${Math.round(r.bottom + 8)}px`
-    accentPopStyle.right = `${Math.max(8, Math.round(window.innerWidth - r.right))}px`
-  }
+  if (notificationsOpen.value) positionNotifPop()
+  if (appearanceOpen.value) positionAppearancePop()
 }
 
 onMounted(() => {
@@ -165,38 +334,148 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
 })
 
-const titles = computed(() => ({
-  '/': t('header.titles.dashboard'),
-  '/bookings': t('header.titles.bookings'),
-  '/receipts': t('header.titles.receipts'),
-  '/flights': t('header.titles.flights'),
-  '/mawbs': t('header.titles.mawbs'),
-  '/load-planning': t('header.titles.loadPlanning'),
-  '/ulds': t('header.titles.ulds'),
-  '/exports': 'Reviews / Audit',
-  '/users': t('header.titles.users'),
-  '/settings': t('header.titles.settings'),
-  '/security': t('header.titles.security'),
-}))
-const title = computed(() => titles.value[route.path] || 'AirCargo')
-const date = computed(() => {
-  const localeCode = t('common.monthsShort[0]') === 'Jan' ? 'en-US' : 'es-DO'
-  return new Intl.DateTimeFormat(localeCode, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())
-})
 </script>
+
 <style scoped>
-@media (max-width: 767px) {
-  header {
-    padding-top: max(0px, env(safe-area-inset-top));
+.shell-header {
+  height: 56px;
+  background: #0d9488;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  color: #fff;
+  box-shadow: 0 1px 6px rgba(2,44,34,.2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.sidebar-toggle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.28);
+  color: #fff;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.15s, border-color 0.15s;
+}
+.sidebar-toggle:hover {
+  background: rgba(255,255,255,.3);
+  border-color: rgba(255,255,255,.45);
+}
+.sidebar-toggle.rotated {
+  transform: rotate(180deg);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: .3px;
+  font-size: 16px;
+}
+.brand .pi {
+  font-size: 20px;
+}
+.brand small {
+  display: block;
+  font-weight: 500;
+  font-size: 10.5px;
+  opacity: .85;
+  letter-spacing: .5px;
+}
+.spacer {
+  flex: 1;
+}
+.h-chip {
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.2);
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.h-chip:hover {
+  background: rgba(255,255,255,.22);
+}
+.ctrl-chip {
+  height: 26px;
+  min-width: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(2,44,34,.18);
+  color: #0d9488;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(2,44,34,.3);
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.ctrl-chip:hover {
+  background: #f0fdfa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(2,44,34,.35);
+}
+.h-chip-swatch {
+  padding: 5px 9px;
+}
+.appearance-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent, #0d9488);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.25);
+  display: block;
+}
+.h-chip-bell {
+  position: relative;
+  padding: 5px 9px;
+}
+.notif-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  border: 1px solid rgba(0,0,0,.25);
+}
+@media (max-width: 900px) {
+  .hide-sm {
+    display: none !important;
   }
 }
 @media (max-width: 480px) {
   .header-actions {
-    flex-wrap: nowrap;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
-  .header-actions::-webkit-scrollbar { display: none; }
+  .header-actions::-webkit-scrollbar {
+    display: none;
+  }
 }
 </style>

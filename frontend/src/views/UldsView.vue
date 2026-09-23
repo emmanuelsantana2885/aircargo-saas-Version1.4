@@ -898,9 +898,23 @@ function normalizeAwb(raw) {
 }
 
 function rebuildLocalList() {
-  const backend = (appStore.ulds || []).map(u => {
-    const flight = appStore.flights.find(f => f.id === u.flightId)
-    return {
+  // Los ULDs de vuelos despachados (DEPARTED/ARRIVED) no pertenecen al listado
+  // de ULDs "creados": se ocultan. Si el vuelo ya fue liberado tras el cierre
+  // (flightId nulo), el ULD conserva status LOADED → también se oculta.
+  const dispatchedFlightIds = new Set(
+    (appStore.flights || [])
+      .filter(f => f.status === 'DEPARTED' || f.status === 'ARRIVED')
+      .map(f => f.id)
+  )
+  const backend = (appStore.ulds || [])
+    .filter(u => {
+      const onDispatchedFlight = u.flightId && dispatchedFlightIds.has(u.flightId)
+      const loadedAfterDispatch = (u.status || '') === 'LOADED'
+      return !onDispatchedFlight && !loadedAfterDispatch
+    })
+    .map(u => {
+      const flight = appStore.flights.find(f => f.id === u.flightId)
+      return {
       uid: u.id,
       backendId: u.id,
       uldNumber: u.uldNumber,

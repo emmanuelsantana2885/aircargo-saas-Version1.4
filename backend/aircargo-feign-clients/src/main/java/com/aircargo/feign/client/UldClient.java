@@ -31,6 +31,9 @@ public interface UldClient {
     @PutMapping("/api/ulds/{id}")
     UldDTO updateUld(@PathVariable UUID id, @RequestBody UldDTO dto);
 
+    @PostMapping("/api/ulds/{id}/release")
+    UldDTO releaseFromFlight(@PathVariable UUID id);
+
     @GetMapping("/api/uld-awbs")
     List<UldAwbDTO> getUldAwbs(@RequestParam(required = false) UUID uldId,
                                 @RequestParam(required = false) UUID mawbId);

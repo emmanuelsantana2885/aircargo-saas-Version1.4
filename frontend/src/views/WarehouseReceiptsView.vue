@@ -6,17 +6,7 @@
           <h1 class="ds-title">{{ t('warehouse.title') }}</h1>
           <p class="ds-subtitle hidden sm:block">{{ t('warehouse.subtitle') }}</p>
         </div>
-        <div class="h-8 w-[1px] bg-slate-200 hidden sm:block"></div>
-        <div class="flex flex-col gap-0.5 min-w-[140px]">
-          <span class="ds-label hidden sm:block">{{ t('common.flight') }}</span>
-          <select v-model="localFlightId" @change="onReceiptFlightChange"
-            class="ds-input font-bold uppercase tracking-wider cursor-pointer min-w-[160px]">
-            <option value="">{{ t('common.all') }}</option>
-            <option v-for="f in store.flights" :key="f.id" :value="f.id">
-              {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}→{{ f.destination }}){{ f.flightDate ? ' · ' + fmtFlightDate(f.flightDate) : '' }}
-            </option>
-          </select>
-        </div>
+        <div class="h-8 w-[1px] bg-[var(--border-2)] hidden sm:block"></div>
         <div class="flex flex-col gap-0.5 flex-1 min-w-[140px] max-w-[280px]">
           <span class="ds-label hidden sm:block">{{ t('common.search') }} (* < > =)</span>
           <div class="ds-search max-w-none">
@@ -29,83 +19,78 @@
           <span class="ds-label hidden sm:block">{{ t('common.date') }}</span>
           <LocaleDatePicker v-model="filterDate" class="w-[150px]" />
         </div>
-        <!-- Status chips with live counts (redesign per Prop1) -->
-        <div class="flex flex-col gap-0.5 ml-auto shrink-0">
-          <span class="ds-label hidden sm:block">{{ t('common.status') }}</span>
-          <div class="chips">
-            <button v-for="c in statusChips" :key="c.key" type="button"
-              class="chip"
-              :class="[c.cls, { on: statusFilter === c.value }]"
-              @click="setStatusFilter(c.value)">
-              <span class="d"></span>
-              <span>{{ t(c.i18n) }}</span>
-              <span class="n">{{ statusCounts[c.key] }}</span>
-            </button>
-          </div>
+        <div class="shrink-0 flex items-center gap-2 ml-2 wrap-actions">
+          <span class="vm-chip" :title="t('warehouse.updatedAt')">&#10227; {{ t('warehouse.updatedAgo', { sec: pipelineAgo }) }}</span>
+          <button type="button" class="ds-btn-primary !py-1.5 !px-3 text-[12px] whitespace-nowrap" @click="newReceipt">
+            &#43; {{ t('warehouse.newReceipt') }}
+          </button>
         </div>
       </div>
     </header>
 
-    <div v-if="overdueMawbs.length > 0 && !overdueMawbsDismissed"
-      class="mx-3 mb-2 px-4 py-2.5 bg-amber-50 border border-amber-300 rounded-lg flex items-start gap-3 text-[13px]">
-      <span class="text-amber-500 text-[20px] leading-none mt-0.5 shrink-0">&#9888;</span>
-      <div class="flex-1 min-w-0">
-        <span class="font-bold text-amber-800">{{ overdueMawbs.length }} {{ t('warehouse.overdue.title') }}</span>
-        <span class="text-amber-700 ml-1">— {{ t('warehouse.overdue.desc') }}</span>
-        <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-          <span v-for="o in overdueMawbs" :key="o.mawb.id"
-            class="font-mono font-bold text-amber-900 cursor-pointer hover:underline"
-            @click="toggleExpand(o.mawb)">
-            {{ o.mawb.awbNumber || o.mawb.id?.slice(0, 8) }}
-            <span class="font-normal text-amber-600 text-[12px]">({{ o.flight.flightNumber || t('warehouse.overdue.noFlight') }})</span>
-          </span>
+    <!-- Pipeline de recepción (s1 zona A) — estado operativo segmentado -->
+    <section class="pipe mx-3 mb-2 rounded-lg overflow-hidden">
+      <div class="pipe-hd flex items-center gap-2 px-4 py-2">
+        <span class="text-[13px] font-bold">{{ t('warehouse.pipeline.title') }}</span>
+        <span class="pipe-total">{{ pipeTotal }}</span>
+        <span class="ml-auto text-[11px]" style="color: var(--muted)">{{ t('warehouse.pipeline.sub') }}</span>
+      </div>
+      <div class="pipe-segs flex px-3 pb-3">
+        <button v-for="seg in pipeSegments" :key="seg.key" type="button"
+          class="seg" :class="{ on: statusFilter === seg.key, empty: seg.n === 0 }"
+          :style="{ flex: seg.n ? String(seg.n) : '1', minWidth: '86px' }"
+          :title="t('warehouse.pipeline.hint', { s: t('warehouse.derivedStatus.' + seg.key) })"
+          @click="setStatusFilter(seg.key)">
+          <span class="seg-n" :style="{ color: seg.color }">{{ seg.n }}</span>
+          <span class="seg-l">{{ t('warehouse.derivedStatus.' + seg.key) }}</span>
+          <span class="seg-bar" :style="{ background: seg.color }"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Cola “Por atender” (s1) -->
+    <section v-if="attentionQueue.length" class="exq mx-3 mb-2 rounded-lg overflow-hidden">
+      <button type="button" class="exq-hd w-full flex items-center gap-2 px-4 py-2 text-left cursor-pointer"
+        @click="queueExpanded = !queueExpanded">
+        <span class="text-[var(--warn)] text-[14px] leading-none">&#9888;</span>
+        <span class="text-[13px] font-bold text-[var(--warn)]">{{ t('warehouse.attention.title') }} · {{ attentionQueue.length }}</span>
+        <span class="ml-auto text-[11px] text-[var(--warn)]">{{ queueExpanded ? t('warehouse.attention.hide') : t('warehouse.attention.expand') }}</span>
+        <span class="text-[var(--warn)] text-[11px] leading-none">{{ queueExpanded ? '&#9650;' : '&#9660;' }}</span>
+      </button>
+      <div v-if="queueExpanded" class="exq-rows">
+        <div v-for="q in attentionQueue" :key="q.mawb.id" class="exq-row flex items-center gap-3 px-4 py-1.5">
+          <span class="font-mono font-bold text-[12px] text-[var(--warn)] cursor-pointer hover:underline" @click="toggleExpand(q.mawb)">{{ q.mawb.awbNumber || q.mawb.id?.slice(0, 8) }}</span>
+          <span class="text-[11px] text-[var(--warn)]">{{ t(q.whyKey) }}</span>
+          <span v-if="q.flight" class="text-[11px] font-mono" style="color: var(--muted)">{{ q.flight.flightNumber }} · {{ fmtFlightDate(q.flight.flightDate) }}</span>
+          <button type="button" class="exq-go ml-auto rounded-md px-3 py-1 text-[12px] font-bold cursor-pointer" @click="toggleExpand(q.mawb)">{{ t('warehouse.attention.go') }}</button>
         </div>
       </div>
-      <button @click="overdueMawbsDismissed = true" class="text-amber-400 hover:text-amber-600 text-[18px] leading-none shrink-0 mt-0.5" title="Cerrar">&times;</button>
-    </div>
-
-    <!-- Summary bar with counters -->
-    <div class="mx-3 mb-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-lg flex flex-wrap items-center gap-4">
-      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.summary.total') }}</span>
-        <span class="font-bold text-slate-800 text-lg">{{ store.mawbs.length }}</span>
-      </div>
-      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.pending') }}</span>
-        <span class="font-bold text-slate-600 text-lg">{{ pendingCount }}</span>
-      </div>
-      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.received') }}</span>
-        <span class="font-bold text-amber-700 text-lg">{{ receivedCount }}</span>
-      </div>
-      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.loaded') }}</span>
-        <span class="font-bold text-emerald-700 text-lg">{{ loadedCount }}</span>
-      </div>
-      <div class="flex flex-col items-center px-4 border-r border-slate-200 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.status.dispatched') }}</span>
-        <span class="font-bold text-blue-700 text-lg">{{ dispatchedCount }}</span>
-      </div>
-      <div class="flex flex-col items-center px-4 min-w-[80px]">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">{{ t('warehouse.summary.visible') }}</span>
-        <span class="font-bold text-slate-600 text-lg">{{ filteredMawbs.length }}</span>
-      </div>
-    </div>
+    </section>
 
     <section class="ds-table-section mb-1.5">
+      <div class="vm-bar flex flex-wrap items-center gap-2 px-4 py-2 border-b shrink-0" style="border-color: var(--border)">
+        <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background: color-mix(in srgb, var(--accent) 10%, transparent)">
+          <button type="button" class="vm-pill" :class="{ on: tableMode === 'master' }" @click="openMaster()">&#9776; {{ t('warehouse.viewMode.master') }}</button>
+          <button type="button" class="vm-pill" :class="{ on: tableMode === 'byFlight' }" @click="toggleMode('byFlight')">&#9992; {{ t('warehouse.viewMode.byFlight') }}</button>
+        </div>
+        <span class="text-[11px] font-bold uppercase tracking-wider" style="color: var(--muted)">{{ filteredMawbs.length }} MAWB{{ filteredMawbs.length === 1 ? '' : 's' }}</span>
+        <div class="flex items-center gap-1 p-0.5 rounded-lg" style="background: color-mix(in srgb, var(--accent) 10%, transparent)">
+          <button type="button" class="vm-pill" :class="{ on: flightFilter === '' }" @click="flightFilter = ''">&#9992; {{ t('warehouse.allFlights') }}</button>
+          <button v-for="fo in flightOptions" :key="fo.key" type="button" class="vm-pill" :class="{ on: flightFilter === fo.key }" @click="flightFilter = fo.key">{{ fo.label }}</button>
+        </div>
+        <span v-if="tableMode === 'byFlight'" class="text-[11px] italic" style="color: var(--muted)">{{ t('warehouse.pipeHint') }}</span>
+      </div>
       <div class="overflow-x-auto shrink-0">
-        <div class="bg-slate-800 border-b border-slate-700 receipt-list-header sticky top-0 z-10" style="min-width: 1000px">
+        <div class="bg-[#0d3b37] border-b border-[#12332f] receipt-list-header sticky top-0 z-10" style="min-width: 1000px">
           <div class="grid grid-cols-12 gap-0">
-            <div class="col-span-1 text-center flex items-center justify-center px-2">
-              <input type="checkbox" :checked="selectedMawbIds.size === filteredMawbs.length && filteredMawbs.length > 0"
-                @change="toggleSelectAll"
-                class="accent-slate-700 rounded w-4 h-4 cursor-pointer" />
-            </div>
             <div class="col-span-2 text-left px-5">
               <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">MAWB</span>
             </div>
             <div class="col-span-2 text-left px-5 receipt-list-cell" data-col="shipper">
               <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Shipper</span>
+            </div>
+            <div class="col-span-2 text-left px-5 receipt-list-cell" data-col="flight">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.flight') }}</span>
             </div>
             <div class="col-span-1 text-center px-2">
               <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.pieces') }}</span>
@@ -113,153 +98,142 @@
             <div class="col-span-1 text-right font-mono font-bold pr-2">
               <span class="text-[11px] uppercase tracking-wider text-white/70">{{ t('common.weightKg') }}</span>
             </div>
-            <div class="col-span-1 text-center px-2 receipt-list-cell" data-col="dest">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Dest</span>
+            <div class="col-span-2 text-center">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.status') }}</span>
             </div>
             <div class="col-span-2 text-center">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Docs</span>
-            </div>
-            <div class="col-span-2 text-center">
-              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.status') }} <span style="opacity:.35;font-size:9px">· control por fila</span></span>
+              <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">{{ t('common.actions') }}</span>
             </div>
           </div>
         </div>
       </div>
-      <div v-if="selectedMawbIds.size > 0" class="flex items-center gap-2 px-5 py-1.5 bg-slate-50 border-b border-slate-200 text-[13px] flex-wrap">
-        <span class="font-mono font-bold text-slate-950">{{ selectedMawbIds.size }} seleccionados</span>
-        <select v-model="bulkStatusTarget" class="bg-white border border-slate-400 rounded px-2 py-0.5 text-[14px] font-bold font-mono">
-          <option value="">Cambiar estado...</option>
-          <option v-for="s in statusSteps" :key="s.key" :value="s.key">{{ s.label }}</option>
-        </select>
-        <button @click="applyBulkStatus" class="ds-btn-primary text-[11px] px-2 py-0.5">
-          Aplicar
-        </button>
-        <button @click="selectedMawbIds.clear()" class="text-slate-950 hover:text-slate-950 text-[14px] font-mono underline ml-auto">{{ t('warehouse.signatures.clear') }}</button>
-      </div>
-
       <EmptyState v-if="store.mawbs.length === 0" :title="t('warehouse.empty')" :hint="t('warehouse.emptyHint')" :icon="icons.FileInvoice" />
       <EmptyState v-else-if="filteredMawbs.length === 0" :title="t('warehouse.emptyFilter')" :hint="t('warehouse.emptyHint')" :icon="icons.Search" />
-      <div v-else class="divide-y divide-slate-200 text-[13px] text-slate-950 overflow-y-auto flex-1 min-h-0 thin-scrollbar">
-          <div v-for="m in filteredMawbs" :key="m.id" class="flex flex-col">
+      <div v-else class="divide-y divide-[var(--border-2)] text-[12.5px] text-[var(--text)] overflow-y-auto flex-1 min-h-0 thin-scrollbar">
+        <template v-for="m in filteredMawbs" :key="m.id">
+          <div v-if="tableMode === 'byFlight' && flightGroupStarts().has(m.id)" class="fl-group-hd"
+            :class="{ closed: isCollapsedGroup(flightKeyOf(m)) }" @click="toggleGroup(flightKeyOf(m))">
+            <span class="fl-chip">{{ fmtFlight(m) }}</span>
+            <span class="fl-sub">{{ flightSub(flightKeyOf(m)) }}</span>
+            <span class="fl-count">{{ groupByKey(flightKeyOf(m))?.mawbs.length || 0 }}</span>
+            <span class="fl-caret">{{ isCollapsedGroup(flightKeyOf(m)) ? '&#9656;' : '&#9662;' }}</span>
+          </div>
+          <div v-if="tableMode === 'master' || !isCollapsedGroup(flightKeyOf(m))" class="flex flex-col">
           <div class="overflow-x-auto">
-          <div class="grid grid-cols-12 items-center py-2 px-5 transition-all duration-150 cursor-pointer border-t hover:bg-slate-50/80"
-            :class="[expandedId === m.id ? 'row-selected' : '', selectedMawbIds.has(m.id) ? 'bg-slate-50/50' : '', overdueSet.has(m.id) ? 'bg-amber-50/60 border-l-2 !border-l-amber-400' : '']" style="border-color: var(--border); min-width: 1000px;"
+          <div class="grid grid-cols-12 items-center py-1 px-4 transition-all duration-150 cursor-pointer border-t hover:bg-[var(--surface-2)]"
+            :class="[
+              expandedId === m.id ? 'row-selected' : '',
+              rowFlash.has(m.id) ? 'row-flash' : '',
+            ]"
+            style="border-color: var(--border); min-width: 1000px;"
+            :data-awb="m.awbNumber || ''" :data-status="deriveMawbOperationalStatus(m)"
             @click="toggleExpand(m)">
-            <div class="col-span-1 flex items-center justify-center relative z-10">
-              <input type="checkbox" :checked="selectedMawbIds.has(m.id)"
-                @click.stop @change="toggleSelect(m.id)"
-                class="accent-slate-700 rounded w-4 h-4 cursor-pointer" />
-            </div>
-            <div class="col-span-2 font-mono font-bold text-slate-950 relative z-10 flex items-center gap-1.5">
-              <span class="text-[12px] text-slate-950 transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
+            <div class="col-span-2 font-mono font-bold text-[var(--text)] relative z-10 flex items-center gap-1.5">
+              <span class="text-[12px] text-[var(--text)] transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
               {{ m.awbNumber || m.id?.slice(0, 8) || '—' }}
               <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 1"
-                class="text-[13px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded leading-none"
+                class="text-[13px] font-bold text-[var(--text-2)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded leading-none"
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
               <span v-else-if="receiptHawbs[m.id] && receiptHawbs[m.id].length === 1"
-                class="text-[13px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
+                class="text-[13px] font-bold text-[var(--text)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
             </div>
-            <div class="col-span-2 text-slate-950 font-semibold relative z-10 truncate pr-3 receipt-list-cell" data-col="shipper">{{ m.shipperName || '—' }}</div>
+            <div class="col-span-2 text-[var(--text)] font-semibold relative z-10 truncate pr-3 receipt-list-cell" data-col="shipper">{{ m.shipperName || '—' }}</div>
+            <div class="col-span-2 text-left font-mono font-bold text-[var(--text)] relative z-10 text-[12px] receipt-list-cell" data-col="flight">{{ fmtFlight(m) }}</div>
             <div class="col-span-1 text-center font-mono font-bold relative z-10"
-              :class="receiptTotals[m.id]?.pieces > 0 ? 'text-slate-700' : 'text-slate-950'">
+              :class="receiptTotals[m.id]?.pieces > 0 ? 'text-[var(--text-2)]' : 'text-[var(--text)]'">
               {{ receiptTotals[m.id]?.pieces || m.pieces || '—' }}
-              <span v-if="receiptTotals[m.id]?.pieces > 0 && receiptTotals[m.id]?.pieces !== m.pieces" class="text-[13px] text-slate-500 block leading-tight">rec: {{ receiptTotals[m.id].pieces }}</span>
+              <span v-if="receiptTotals[m.id]?.pieces > 0 && receiptTotals[m.id]?.pieces !== m.pieces" class="text-[13px] text-[var(--muted)] block leading-tight">rec: {{ receiptTotals[m.id].pieces }}</span>
             </div>
             <div class="col-span-1 text-right font-mono font-bold relative z-10 pr-2"
-              :class="receiptTotals[m.id]?.weightKg > 0 ? 'text-slate-700' : 'text-slate-950'">
+              :class="receiptTotals[m.id]?.weightKg > 0 ? 'text-[var(--text-2)]' : 'text-[var(--text)]'">
               {{ receiptTotals[m.id]?.weightKg ? Number(receiptTotals[m.id].weightKg).toLocaleString() : (m.reportedWeightKg ? Number(m.reportedWeightKg).toLocaleString() : '—') }}
-              <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[13px] text-slate-500 block leading-tight">recibo</span>
+              <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[13px] text-[var(--muted)] block leading-tight">recibo</span>
             </div>
-            <div class="col-span-1 text-center font-mono font-bold text-slate-950 relative z-10 receipt-list-cell" data-col="dest">{{ m.destination || '—' }}</div>
-            <div class="col-span-2 flex items-center justify-center gap-1.5 flex-wrap relative z-10 receipt-list-cell" data-col="docs">
-              <button @click.stop="editOrExpandReceipt(m)" :title="t('warehouse.editReceipt')"
-                class="ds-icon-btn !min-h-9 !min-w-9 !px-0 !text-[16px]"
-                :class="receiptById[m.id] ? '!bg-amber-500 !text-white !border-amber-500 hover:!bg-amber-600' : ''">&#9998;</button>
-              <button @click.stop="toggleMawbEvidenceManager(m)"
-                class="ds-icon-btn !min-h-9 !min-w-9 !px-0 !text-[16px]"
-                :title="t('warehouse.evidence.title')">&#128193;</button>
+            <div class="col-span-2 flex items-center justify-center gap-1 relative z-10">
+              <button type="button" @click.stop="editOrExpandReceipt(m)" :title="t('warehouse.editReceipt')"
+                class="mini-act" :class="{ 'act-edit-has': receiptById[m.id] }">&#9998;</button>
+              <button type="button" @click.stop="toggleMawbEvidenceManager(m)" :title="t('warehouse.evidence.title')"
+                class="mini-act">&#128193;</button>
               <template v-if="receiptById[m.id]">
-                <button @click.stop="downloadReceiptById(m)" :title="t('warehouse.downloadExcel')"
-                  class="ds-icon-btn !min-h-9 !min-w-9 !px-0 !text-[16px]">&#11015;</button>
-                <button @click.stop="downloadHtmlById(m)" :title="t('warehouse.downloadHtml')"
-                  class="ds-icon-btn !min-h-9 !min-w-9 !px-0 !text-[16px]">&#128196;</button>
-                <button @click.stop="downloadPdfById(m)" :title="t('warehouse.downloadPdf')"
-                  class="ds-icon-btn !min-h-9 !min-w-9 !px-0 !text-[16px]">&#128213;</button>
+                <button type="button" @click.stop="downloadReceiptById(m)" :title="t('warehouse.downloadExcel')"
+                  class="mini-act">&#11015;</button>
+                <button type="button" @click.stop="downloadHtmlById(m)" :title="t('warehouse.downloadHtml')"
+                  class="mini-act">&#128196;</button>
+                <button type="button" @click.stop="downloadPdfById(m)" :title="t('warehouse.downloadPdf')"
+                  class="mini-act">&#128213;</button>
               </template>
             </div>
             <div class="col-span-2 flex items-center gap-2 relative z-10">
-              <div class="status-cell min-w-[168px]">
+              <div class="status-cell min-w-[196px]">
                 <div class="row flex items-center gap-2">
-                  <span class="badge flex items-center gap-2 px-3 py-1.5 rounded-lg border text-[11px] font-bold uppercase tracking-wider"
-                    :class="[
-                      (() => { const d = deriveMawbOperationalStatus(m); return d === 'DESPACHADA' ? 'st-despachada' : d === 'MANIFESTADA' ? 'st-manifestada' : d === 'EN_PROCESO' ? 'st-en-proceso' : d === 'RECIBIDA' ? 'st-recibida' : 'st-pendiente'; })()
-                    ]">
-                    <span class="cir w-2 h-2 rounded-full" :class="[
-                      (() => { const d = deriveMawbOperationalStatus(m); return d === 'DESPACHADA' ? 'bg-blue-500' : d === 'MANIFESTADA' ? 'bg-emerald-500' : d === 'EN_PROCESO' ? 'bg-amber-500' : d === 'RECIBIDA' ? 'bg-amber-500' : 'bg-slate-400'; })()
-                    ]"></span>
+                  <span class="badge flex items-center gap-2 px-2 py-1 rounded-lg border text-[10.5px] font-bold uppercase tracking-wider"
+                    :class="statusChipClass(m)">
+                    <span class="cir w-2 h-2 rounded-full" :class="statusDotClass(m)"></span>
                     {{ t(`warehouse.derivedStatus.${deriveMawbOperationalStatus(m)}`) }}
+                    <span v-if="deriveMawbOperationalStatus(m) === 'CARGADA'"
+                      class="flex items-center text-red-600" :title="t('warehouse.status.mountedNoReceipt')">&#9888;</span>
                   </span>
                 </div>
-                <div class="row flex items-center gap-2">
-                  <select v-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) !== 'DESPACHADA'"
-                    @change="changeMawbStatus(m, $event.target.value)"
-                    class="change-select flex-1 min-w-0 border border-slate-300 bg-white rounded-lg px-2 py-1.5 font-mono text-[10px] font-bold">
-                    <option value="">— {{ t('warehouse.status.changeTo') }}…</option>
-                    <option v-if="deriveMawbOperationalStatus(m) === 'PENDIENTE'" value="RECIBIDA">→ {{ t('warehouse.status.received') }}</option>
-                    <option v-if="deriveMawbOperationalStatus(m) === 'RECIBIDA'" value="MANIFESTADA">→ {{ t('warehouse.status.loaded') }}</option>
-                    <option v-if="deriveMawbOperationalStatus(m) === 'MANIFESTADA'" value="DESPACHADA">→ {{ t('warehouse.status.dispatched') }}</option>
-                    <option v-if="deriveMawbOperationalStatus(m) === 'EN_PROCESO'" value="DESPACHADA">→ {{ t('warehouse.status.dispatched') }}</option>
-                  </select>
-                  <span v-else-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) === 'DESPACHADA'"
-                    class="now-tag text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-800 text-white"
-                    :title="t('warehouse.status.finalTooltip')">{{ t('warehouse.status.final') }}</span>
-                  <span v-else-if="deriveMawbOperationalStatus(m) !== 'PENDIENTE'"
-                    class="pending-state text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 text-amber-700">
-                    <span class="spinner w-2 h-2 rounded-full border-2 border-amber-500 border-t-transparent animate-spin"></span>
-                    {{ t('warehouse.status.processing') }}
+                <div class="row flex items-center gap-2 flex-wrap mt-0.5">
+                  <button v-if="deriveMawbOperationalStatus(m) === 'PENDIENTE'"
+                    @click.stop="toggleExpand(m)"
+                    class="btn-rec">
+                    {{ t('warehouse.status.receive') }}
+                  </button>
+                  <span v-else-if="deriveMawbOperationalStatus(m) === 'CARGADA'" class="flex items-center gap-1.5 flex-wrap">
+                    <span class="tag-warn" :title="t('warehouse.status.mountedNoReceipt')">&#9888; {{ t('warehouse.status.mountedNoReceipt') }}</span>
+                    <button @click.stop="toggleExpand(m)"
+                      class="btn-rec">
+                      {{ t('warehouse.status.receive') }}
+                    </button>
                   </span>
+                  <span v-else-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) === 'DESPACHADA'" class="flex items-center gap-1.5">
+                    <span class="tag-final" :title="t('warehouse.status.finalTooltip')">{{ t('warehouse.status.final') }}</span>
+                    <span v-if="isPartialLoading(m)"
+                      class="tag-warn" :title="t('warehouse.status.partialLoad')">&#9888; {{ t('warehouse.status.partialLoad') }}</span>
+                  </span>
+                  <span v-else-if="deriveMawbOperationalStatus(m) === 'RECIBIDA'"
+                    class="tag-neutral" :title="t('warehouse.status.awaitingMount')">{{ t('warehouse.status.awaitingMount') }}</span>
+                  <span v-else-if="deriveMawbOperationalStatus(m) === 'EN_PROCESO'" class="flex items-center gap-1.5">
+                    <span class="spinner w-2 h-2 rounded-full border-2 border-[var(--warn)] border-t-transparent animate-spin"></span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-[var(--warn)]">{{ t('warehouse.status.loadingInProgress') }}</span>
+                  </span>
+                  <span v-else-if="deriveMawbOperationalStatus(m) === 'MANIFESTADA'"
+                    class="tag-final" :title="t('warehouse.status.readyDispatch')">{{ t('warehouse.status.readyDispatch') }}</span>
                 </div>
               </div>
-              <span v-if="overdueSet.has(m.id)"
-                class="text-amber-500 text-[16px] leading-none animate-pulse" title="Recibido pero vuelo ya pasó — pendiente de despacho">&#9888;</span>
           </div>
           </div>
 
-          <div v-if="expandedId === m.id && receiptForms[m.id]" class="bg-slate-100 border-b border-slate-400">
-            <div class="p-1.5 md:p-2.5 flex flex-col receipt-form"
-              style="min-height: 240px; height: var(--receipt-form-h, 58dvh); max-height: calc(100dvh - 150px);">
-              <!-- Step progress bar -->
-              <div class="mb-1.5 shrink-0">
-                <div class="flex items-center justify-between">
-                  <div v-for="(step, si) in steps" :key="si" class="flex items-center flex-1">
-                    <div @click="localStep = si + 1"
-                      class="flex flex-col items-center cursor-pointer group flex-1 min-w-0">
-                      <div class="flex items-center w-full">
-                        <div class="flex items-center justify-center w-7 h-7 rounded-full text-[14px] font-bold font-mono transition-all duration-200 border-2 shrink-0"
-                          :class="stepClass(si)">
-                          <span v-if="stepDone(si)">&#10003;</span>
-                          <span v-else-if="stepError(si)">&#33;</span>
-                          <span v-else>{{ si + 1 }}</span>
-                        </div>
-                        <div v-if="si < steps.length - 1" class="flex-1 h-1 mx-1 rounded transition-all duration-200"
-                          :class="stepBarClass(si)"></div>
-                      </div>
-                      <span class="text-[14px] font-mono font-bold mt-0.5 transition-all duration-200 truncate max-w-full px-1"
-                        :class="localStep === si + 1 ? 'text-slate-950' : 'text-slate-500'">
-                        {{ step }}
-                      </span>
-                    </div>
-                  </div>
+          <Teleport to="body">
+          <div v-if="expandedId === m.id && receiptForms[m.id]" class="ops-overlay" @click.self="cancelForm">
+            <div class="ops-modal" role="dialog" aria-modal="true">
+              <div class="ops-hdr">
+                <div class="ops-fl">
+                  <span class="ops-tt">{{ t('warehouse.title') }}</span>
+                  <span class="ops-sub">{{ m.awbNumber || '—' }} · {{ m.shipperName || '—' }}</span>
                 </div>
-                <div class="flex items-center justify-between mt-1">
-                  <span v-if="lastDraftSave" class="text-[14px] font-mono text-slate-700 italic">
-                    &#9998; Borrador guardado {{ lastDraftSave }}
-                  </span>
+                <div class="ops-fr">
+                  <button class="btn-ghost" @click="printPreview(m)" title="Vista previa para impresión">&#128424; PDF / Imprimir</button>
+                  <button class="xbtn" @click="cancelForm" title="Cerrar">&#10005;</button>
+                </div>
+              </div>
+
+              <div class="ops-steps">
+                <div v-for="(step, si) in steps" :key="si" class="ops-step">
+                  <div class="ops-sdot" :class="{ on: localStep === si + 1, dn: stepDone(si) }"
+                    @click="localStep = si + 1">
+                    <span v-if="stepDone(si)">&#10003;</span>
+                    <span v-else-if="stepError(si)">&#33;</span>
+                    <span v-else>{{ si + 1 }}</span>
+                  </div>
+                  <span class="ops-slbl" @click="localStep = si + 1">{{ step }}</span>
+                  <div v-if="si < steps.length - 1" class="ops-sln" :class="{ dn: stepDone(si) || localStep > si + 1 }"></div>
                 </div>
               </div>
 
               <!-- ═══ Scrollable step content ═══ -->
-              <div class="flex-1 min-h-0 overflow-y-auto pr-1 overscroll-contain">
+              <div class="ops-body thin-scrollbar overscroll-contain">
               <div v-if="localStep === 1" class="space-y-1.5">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-1.5">
                   <!-- Left column -->
@@ -766,41 +740,28 @@
 
               </div> <!-- end scrollable step content -->
 
-              <div class="flex justify-between items-center mt-2 pt-2 border-t border-slate-400 shrink-0">
-                <div class="flex items-center gap-2">
-                  <button @click="prevStep" :disabled="localStep === 1"
-                    class="ds-btn-secondary text-[11px] px-2 py-1 disabled:opacity-30">
-                    &#9664; Anterior
-                  </button>
-                  <button @click="cancelForm"
-                    class="ds-btn-secondary text-[11px] px-2 py-1 text-slate-600">
-                    &#10005; Cancelar
-                  </button>
-                  <span v-if="successMsg" class="text-slate-700 text-[14px] font-mono font-bold ">{{ successMsg }}</span>
+              <div class="ops-foot">
+                <div class="ops-fl">
+                  <button class="btn-ghost" @click="prevStep" :disabled="localStep === 1">&#9664; Atras</button>
+                  <button class="btn-ghost danger" @click="cancelForm">&#10005; Cancelar</button>
+                  <span v-if="successMsg" class="ops-ok">{{ successMsg }}</span>
                 </div>
-                <div v-if="localStep < 5">
-                  <button @click="nextStep"
-                    class="ds-btn-primary text-[11px] px-2 py-1">
-                    Siguiente &#9654;
-                  </button>
+                <div v-if="localStep < 5" class="ops-fr">
+                  <button class="btn-ok" @click="nextStep">Siguiente &#9654;</button>
                 </div>
-                <div v-else class="flex items-center gap-2">
-                  <button @click="printPreview(m)"
-                    class="ds-btn-secondary text-[11px] px-2 py-1 shrink-0"
-                    title="Vista previa para impresión">
-                    &#128424; Vista Previa
-                  </button>
-                  <button @click="openConfirmModal(m)" :disabled="submitting"
-                    class="ds-btn-primary text-[11px] px-2.5 py-1 shrink-0">
-                    <span>{{ submitting ? 'Guardando...' : '&#10003; Confirmar Recibo' }}</span>
+                <div v-else class="ops-fr">
+                  <button class="btn-ok" @click="openConfirmModal(m)" :disabled="submitting">
+                    <span>{{ submitting ? 'Guardando...' : '&#10003; Confirmar y Guardar' }}</span>
                   </button>
                 </div>
               </div>
-            </div> <!-- end flex-col container -->
+              </div> <!-- end ops-modal -->
+            </div> <!-- end ops-overlay -->
+</Teleport>
           </div>
-        </div>
+          </div>
+        </template>
       </div>
-    </div>
     </section>
 
     <!-- MAWB Evidence Manager Modal -->
@@ -980,12 +941,12 @@
         </div>
       </div>
     </Teleport>
+    <EditReceiptModal ref="editModalRef" @saved="onEditReceiptSaved" />
   </div>
-  <EditReceiptModal ref="editModalRef" @saved="onEditReceiptSaved" />
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, reactive } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
@@ -1033,21 +994,17 @@ function normAwbCode(s) {
   return (s || '').toUpperCase().replace(/[\s\-_/]/g, '')
 }
 
-// Deriva el estado operativo de la MAWB según lógica de negocio:
-// 1. PENDIENTE: recibo no completado (5 pasos) o sin recibo
+// Deriva el estado operativo de la MAWB según lógica de negocio (pipeline:
+// PENDIENTE → RECIBIDA → EN_PROCESO → CARGADA → MANIFESTADA → DESPACHADA):
+// 1. PENDIENTE: recibo no completado y piezas NO en ULDs
 // 2. RECIBIDA: recibo completado (5 pasos OK) pero piezas NO en ULDs
-// 3. EN_PROCESO: piezas en ULDs pero suma < piezas recibidas
-// 4. MANIFESTADA (completed): todas las piezas recibidas están en ULDs, vuelos NO despachados
-// 5. DESPACHADA: todas las piezas en vuelos DEPARTED
+// 3. CARGADA: piezas YA montadas en ULDs pero recibo sin completar (alert rojo)
+// 4. DESPACHADA: recibo completo y ≥1 ULD en vuelo DEPARTED (parcial o completa)
+// 5. EN_PROCESO: recibo completo, piezas en ULDs pero suma < piezas recibidas
+// 6. MANIFESTADA: recibo completo y todas las piezas en ULDs, vuelos NO despachados
 function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
   const mawbId = m.id
   const targetCode = normAwbCode(m.awbNumber)
-
-  // 1. Verificar si el recibo está completo (5 pasos del wizard)
-  const receiptComplete = isReceiptCompletePure(m, receipts)
-  if (!receiptComplete) {
-    return 'PENDIENTE'
-  }
 
   // Obtener links de ULD-AWB para esta MAWB
   const links = (uldAwbs || []).filter(ua => {
@@ -1055,42 +1012,14 @@ function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
     return ua.mawbLabel && normAwbCode(ua.mawbLabel) === targetCode
   })
 
-  // 2. RECIBIDA: recibo completo pero SIN piezas en ULDs
+  // 1-2. Sin links: recibo completo = RECIBIDA; sin recibo = PENDIENTE
   if (!links.length) {
-    return 'RECIBIDA'
+    return isReceiptCompletePure(m, receipts) ? 'RECIBIDA' : 'PENDIENTE'
   }
 
-  // Sumar piezas en ULDs
-  let totalUldPieces = 0
-  let dispatchedPieces = 0
-  let allOnDepartedFlights = true
-
-  const uldToFlightId = {}
-  for (const u of store.ulds || []) {
-    if (u.flightId) uldToFlightId[u.id] = u.flightId
-  }
-  const flightStatusMap = {}
-  for (const f of store.flights || []) {
-    flightStatusMap[f.id] = f.status
-  }
-
-  for (const link of links) {
-    const pieces = link.pieces || 0
-    totalUldPieces += pieces
-
-    const uldId = link.uldId
-    if (!uldId) continue
-    const flightId = uldToFlightId[uldId]
-    if (!flightId) {
-      allOnDepartedFlights = false
-      continue
-    }
-    const fstatus = flightStatusMap[flightId]
-    if (fstatus === 'DEPARTED') {
-      dispatchedPieces += pieces
-    } else {
-      allOnDepartedFlights = false
-    }
+  // 3. Montada en ULDs pero sin recibo completado → CARGADA (alert operativo)
+  if (!isReceiptCompletePure(m, receipts)) {
+    return 'CARGADA'
   }
 
   // Obtener total de piezas recibidas del recibo
@@ -1106,17 +1035,43 @@ function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
     return totals[mawbId]?.pieces || 0
   })()
 
-  // 3. EN_PROCESO: piezas en ULDs pero suma < piezas recibidas
+  // Sumar piezas en ULDs
+  let totalUldPieces = 0
+  let anyOnDepartedFlights = false
+
+  const uldToFlightId = {}
+  for (const u of store.ulds || []) {
+    if (u.flightId) uldToFlightId[u.id] = u.flightId
+  }
+  const flightStatusMap = {}
+  for (const f of flights || []) {
+    flightStatusMap[f.id] = f.status
+  }
+
+  for (const link of links) {
+    const pieces = link.pieces || 0
+    totalUldPieces += pieces
+
+    const uldId = link.uldId
+    if (!uldId) continue
+    const flightId = uldToFlightId[uldId]
+    if (!flightId) continue
+    if (flightStatusMap[flightId] === 'DEPARTED') {
+      anyOnDepartedFlights = true
+    }
+  }
+
+  // 4. Recibo completo y ≥1 ULD en vuelo DEPARTED → DESPACHADA (parcial o completa)
+  if (anyOnDepartedFlights) {
+    return 'DESPACHADA'
+  }
+
+  // 5. Carga en progreso: piezas montadas < piezas recibidas
   if (totalUldPieces < receivedPieces) {
     return 'EN_PROCESO'
   }
 
-  // 4-5. Todas las piezas recibidas están en ULDs
-  // DESPACHADA: todas en vuelos DEPARTED
-  if (allOnDepartedFlights && dispatchedPieces >= receivedPieces) {
-    return 'DESPACHADA'
-  }
-  // MANIFESTADA (completed): todas en ULDs pero vuelos NO despachados
+  // 6. Recibo completo y todas las recibidas montadas, vuelos NO despachados
   return 'MANIFESTADA'
 }
 
@@ -1136,6 +1091,36 @@ function isReceiptComplete(m) {
   return !!rid.pieceCount && rid.pieceCount > 0
 }
 
+// True cuando el MAWB está en ULDs pero el total montado < piezas recibidas
+// (carga parcial en curso — nota junto a DESPACHADA parcial y EN_PROCESO).
+function isPartialLoadingPure(m, uldAwbs, receipts) {
+  const mawbId = m.id
+  const targetCode = normAwbCode(m.awbNumber)
+  const links = (uldAwbs || []).filter(ua => {
+    if (ua.mawbId && ua.mawbId === mawbId) return true
+    return ua.mawbLabel && normAwbCode(ua.mawbLabel) === targetCode
+  })
+  if (!links.length) return false
+  let onUld = 0
+  for (const link of links) onUld += link.pieces || 0
+  const receivedPieces = (() => {
+    const totals = {}
+    for (const r of receipts || []) {
+      if (r.superseded) continue
+      const mid = r.mawb?.id || r.mawbId
+      if (!mid) continue
+      if (!totals[mid]) totals[mid] = { pieces: 0 }
+      totals[mid].pieces += (r.pieceCount || 0)
+    }
+    return totals[mawbId]?.pieces || 0
+  })()
+  return onUld < receivedPieces
+}
+
+function isPartialLoading(m) {
+  return isPartialLoadingPure(m, store.uldAwbs, store.receipts)
+}
+
 const mawbOperationalStatusMap = computed(() => {
   const map = {}
   for (const m of store.mawbs) {
@@ -1144,19 +1129,24 @@ const mawbOperationalStatusMap = computed(() => {
   return map
 })
 
-const localFlightId = ref(store.selectedFlightId || '')
-watch(() => store.selectedFlightId, (id) => { localFlightId.value = id || '' })
-async function onReceiptFlightChange() {
-  if (localFlightId.value) {
-    await store.selectFlight(localFlightId.value)
-  } else {
-    store.selectedFlightId = null
-    await store.loadAllMawbs()
-  }
+// MAWBs registradas hace más de EXPIRED_PENDING_DAYS días sin recibo completado
+// (aún PENDIENTE) se eliminan del registro de recibos pendientes: no aparecen en
+// la tabla, el pipeline, los contadores ni los filtros. Se cuenta desde la fecha de
+// registro (createdAt). El conteo es estrictamente > 7 días.
+const EXPIRED_PENDING_DAYS = 7
+function mawbExpiredDays(m) {
+  if (!m.createdAt) return 0
+  const t = new Date(m.createdAt).getTime()
+  if (Number.isNaN(t)) return 0
+  return (Date.now() - t) / 86400000
 }
+function isExpiredPending(m) {
+  return mawbOperationalStatusMap.value[m.id] === 'PENDIENTE' && mawbExpiredDays(m) > EXPIRED_PENDING_DAYS
+}
+const expiredPendingIds = computed(() => new Set(store.mawbs.filter(isExpiredPending).map(m => m.id)))
 
 const expandedId = ref(localStorage.getItem('WAREHOUSE_EXPANDED_MAWB') || null)
-const overdueMawbsDismissed = ref(false)
+const queueExpanded = ref(true)
 const localStep = ref(1)
 const submitting = ref(false)
 const successMsg = ref('')
@@ -1334,70 +1324,18 @@ watch(activeFormJson, (json) => {
 const filterTextRaw = ref('')
 const filterText = ref('')
 const filterDate = ref('')
-const statusFilter = ref('')
 
-// Status chips (redesign per Prop1) — Todos + 5 estados, with a separate "all" key
-const STATUS_KEYS = ['PENDIENTE', 'EN_PROCESO', 'RECIBIDA', 'MANIFESTADA', 'DESPACHADA']
-const statusChips = [
-  { key: 'ALL', value: '', cls: 'chi-all', i18n: 'common.all' },
-  { key: 'PENDIENTE', value: 'PENDIENTE', cls: 'chi-pend', i18n: 'warehouse.derivedStatus.PENDIENTE' },
-  { key: 'EN_PROCESO', value: 'EN_PROCESO', cls: 'chi-pro',  i18n: 'warehouse.derivedStatus.EN_PROCESO' },
-  { key: 'RECIBIDA', value: 'RECIBIDA', cls: 'chi-rec',  i18n: 'warehouse.derivedStatus.RECIBIDA' },
-  { key: 'MANIFESTADA', value: 'MANIFESTADA', cls: 'chi-man',  i18n: 'warehouse.derivedStatus.MANIFESTADA' },
-  { key: 'DESPACHADA', value: 'DESPACHADA', cls: 'chi-desp', i18n: 'warehouse.derivedStatus.DESPACHADA' },
-]
-const statusCounts = computed(() => {
-  const counts = { ALL: store.mawbs.length }
-  for (const key of STATUS_KEYS) {
-    counts[key] = store.mawbs.filter(m => mawbOperationalStatusMap.value[m.id] === key).length
-  }
-  return counts
+// Sello de frescura — se actualiza cada vez que useLiveRefresh completa (< 5 s)
+const lastRefreshMs = ref(Date.now())
+const refreshNow = ref(Date.now())
+const pipelineAgo = computed(() => Math.max(0, Math.floor((refreshNow.value - lastRefreshMs.value) / 1000)))
+let pipelineClock = null
+onMounted(() => {
+  pipelineClock = setInterval(() => { refreshNow.value = Date.now() }, 5000)
 })
-function setStatusFilter(value) {
-  statusFilter.value = value
-}
-
-// Summary counters (delegated to the per-status count map)
-const pendingCount = computed(() => statusCounts.value.PENDIENTE)
-const receivedCount = computed(() => statusCounts.value.RECIBIDA)
-const loadedCount = computed(() => statusCounts.value.MANIFESTADA)
-const dispatchedCount = computed(() => statusCounts.value.DESPACHADA)
-
-// Bulk selection
-const selectedMawbIds = reactive(new Set())
-const bulkStatusTarget = ref('')
-
-function toggleSelectAll(e) {
-  if (e.target.checked) {
-    filteredMawbs.value.forEach(m => selectedMawbIds.add(m.id))
-  } else {
-    selectedMawbIds.clear()
-  }
-}
-
-function toggleSelect(id) {
-  if (selectedMawbIds.has(id)) selectedMawbIds.delete(id)
-  else selectedMawbIds.add(id)
-}
-
-async function applyBulkStatus() {
-  const target = bulkStatusTarget.value
-  if (!target || selectedMawbIds.size === 0) return
-  const ids = [...selectedMawbIds]
-  if (!(await confirm({ message: `¿Cambiar estado de ${ids.length} MAWB(s) a "${statusSteps.find(s => s.key === target)?.label}"?` }))) return
-  let ok = 0, fail = 0
-  const backendTarget = mapStatusToBackend(target)
-  for (const id of ids) {
-    try {
-      await mawbsApi.updateStatus(id, backendTarget)
-      ok++
-    } catch { fail++ }
-  }
-  selectedMawbIds.clear()
-  bulkStatusTarget.value = ''
-  if (store.selectedFlightId) await store.loadMawbs(store.selectedFlightId); else await store.loadAllMawbs()
-  toast.success(`${ok} actualizado(s)` + (fail ? `, ${fail} error(es)` : ''))
-}
+onUnmounted(() => {
+  if (pipelineClock) clearInterval(pipelineClock)
+})
 
 let filterDebounce = null
 watch(filterTextRaw, (val) => {
@@ -1405,13 +1343,144 @@ watch(filterTextRaw, (val) => {
   filterDebounce = setTimeout(() => { filterText.value = val }, 200)
 })
 
-const statusPriority = { PENDIENTE: 0, RECIBIDA: 1, EN_PROCESO: 2, MANIFESTADA: 3, DESPACHADA: 4 }
+const statusPriority = { PENDIENTE: 0, RECIBIDA: 1, EN_PROCESO: 2, CARGADA: 3, MANIFESTADA: 4, DESPACHADA: 5 }
+
+const tableMode = ref('master')
+const collapsedFlights = ref(new Set())
+
+function openMaster() {
+  tableMode.value = 'master'
+}
+function toggleMode(mode) {
+  tableMode.value = tableMode.value === mode ? 'master' : mode
+}
+function toggleGroup(key) {
+  const set = new Set(collapsedFlights.value)
+  if (set.has(key)) set.delete(key)
+  else set.add(key)
+  collapsedFlights.value = set
+}
+function isCollapsedGroup(key) {
+  return collapsedFlights.value.has(key)
+}
+
+function flightOf(m) {
+  if (!m) return null
+  if (m.flightId && store.flights?.length) {
+    const f = store.flights.find(x => x.id === m.flightId)
+    if (f) return f
+  }
+  const link = (store.uldAwbs || []).find(x => (x.mawbId && x.mawbId === m.id) || normAwbCode(x.mawbLabel || '') === normAwbCode(m.awbNumber || ''))
+  if (link && link.flightId && store.flights?.length) {
+    let f = store.flights.find(x => x.id === link.flightId)
+    if (f) return f
+    if (link.flightId && store.ulds?.length) {
+      const u = store.ulds.find(u => u.id === link.uldId || u.uid === link.uldId)
+      if (u && u.flightId) f = store.flights.find(x => x.id === u.flightId)
+    }
+  }
+  return null
+}
+function flightKeyOf(m) {
+  const f = flightOf(m)
+  return f?.id || m.flightId || 'none'
+}
+function fmtFlight(m) {
+  const f = flightOf(m)
+  if (!f) return t('warehouse.noFlight')
+  const parts = f.flightNumber ? String(f.flightNumber).split(' ') : []
+  const code = airlineCodeById(f.airlineId) || (parts.length > 1 ? parts[0] : '')
+  const num = parts.length > 1 ? parts.slice(1).join(' ') : f.flightNumber
+  return [code, num].filter(Boolean).join('-') || f.id?.slice(0, 8)
+}
+function flightSub(key) {
+  const g = groupByKey(key)
+  const f = g?.flight
+  if (!f) return t('warehouse.noFlight')
+  const date = fmtFlightDate(f.flightDate)
+  const route = [f.origin, f.destination].filter(Boolean).join(' → ')
+  return [date, route].filter(Boolean).join(' · ')
+}
+function byFlightGroups() {
+  const map = new Map()
+  for (const m of filteredMawbs.value) {
+    const key = flightKeyOf(m)
+    if (!map.has(key)) map.set(key, { key, flight: flightOf(m) || null, mawbs: [] })
+    map.get(key).mawbs.push(m)
+  }
+  const arr = [...map.values()]
+  arr.sort((a, b) => {
+    const d = (b.flight?.flightDate || '') < (a.flight?.flightDate || '') ? 1 : ((b.flight?.flightDate || '') > (a.flight?.flightDate || '') ? -1 : 0)
+    if (d) return d
+    if (a.key === 'none') return 1
+    if (b.key === 'none') return -1
+    return String(a.flight?.flightNumber || '').localeCompare(String(b.flight?.flightNumber || ''))
+  })
+  return arr
+}
+function groupByKey(key) {
+  return byFlightGroups().find(g => g.key === key)
+}
+function flightGroupStarts() {
+  const starts = new Set()
+  for (const g of byFlightGroups()) if (g.mawbs.length) starts.add(g.mawbs[0].id)
+  return starts
+}
+const STATUS_CHIP_CLS = {
+  PENDIENTE: 'st-pendiente', RECIBIDA: 'st-recibida', EN_PROCESO: 'st-en-proceso',
+  CARGADA: 'st-cargada', MANIFESTADA: 'st-manifestada', DESPACHADA: 'st-despachada',
+}
+const STATUS_DOT_CLS = {
+  PENDIENTE: 'bg-slate-400', RECIBIDA: 'bg-amber-500', EN_PROCESO: 'bg-amber-500',
+  CARGADA: 'bg-red-500', MANIFESTADA: 'bg-emerald-500', DESPACHADA: 'bg-blue-500',
+}
+function statusChipClass(m) {
+  return STATUS_CHIP_CLS[deriveMawbOperationalStatus(m)] || 'st-pendiente'
+}
+function statusDotClass(m) {
+  return STATUS_DOT_CLS[deriveMawbOperationalStatus(m)] || 'bg-slate-400'
+}
+
+// Pipeline de recepción (s1 zona A) — segmentos por estado operativo
+const PIPELINE_COLORS = {
+  PENDIENTE: '#475569', RECIBIDA: '#0d9488', EN_PROCESO: '#0284c7',
+  CARGADA: '#7c3aed', MANIFESTADA: '#b45309', DESPACHADA: '#15803d',
+}
+const statusFilter = ref('')
+const flightFilter = ref('')
+const statusCounts = computed(() => {
+  const c = { PENDIENTE: 0, RECIBIDA: 0, EN_PROCESO: 0, CARGADA: 0, MANIFESTADA: 0, DESPACHADA: 0 }
+  for (const m of store.mawbs) {
+    if (expiredPendingIds.value.has(m.id)) continue
+    const s = mawbOperationalStatusMap.value[m.id]
+    if (s && s in c) c[s]++
+  }
+  return c
+})
+const pipeTotal = computed(() => store.mawbs.length - expiredPendingIds.value.size)
+const pipeSegments = computed(() =>
+  ['PENDIENTE', 'RECIBIDA', 'EN_PROCESO', 'CARGADA', 'MANIFESTADA', 'DESPACHADA'].map(key => ({
+    key,
+    n: statusCounts.value[key],
+    color: PIPELINE_COLORS[key],
+  }))
+)
+function setStatusFilter(key) {
+  statusFilter.value = statusFilter.value === key ? '' : key
+}
+const flightOptions = computed(() => {
+  const seen = new Map()
+  for (const m of store.mawbs) {
+    if (expiredPendingIds.value.has(m.id)) continue
+    const k = flightKeyOf(m)
+    if (!k || k === 'none') continue
+    if (!seen.has(k)) seen.set(k, { key: k, label: fmtFlight(m) })
+  }
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label))
+})
 
 const filteredMawbs = computed(() => {
-  let list = store.mawbs
-  if (statusFilter.value) {
-    list = list.filter(m => mawbOperationalStatusMap.value[m.id] === statusFilter.value)
-  }
+  let list = store.mawbs.filter(m => !expiredPendingIds.value.has(m.id))
   if (filterDate.value) {
     const target = filterDate.value
     const mawbsWithReceipt = (store.receipts || [])
@@ -1425,6 +1494,8 @@ const filteredMawbs = computed(() => {
   }
   const ft = filterText.value.trim()
   if (ft) list = list.filter(m => applyFilter(m, ft))
+  if (statusFilter.value) list = list.filter(m => mawbOperationalStatusMap.value[m.id] === statusFilter.value)
+  if (flightFilter.value) list = list.filter(m => flightKeyOf(m) === flightFilter.value)
 
   return [...list].sort((a, b) => {
     const pa = statusPriority[mawbOperationalStatusMap.value[a.id]] ?? 0
@@ -1475,23 +1546,6 @@ function matchAnyField(m, fn) {
 }
 
 const steps = ['HEADER', 'PIECES', 'REMARKS', 'EVIDENCE', 'SIGNATURES']
-const statusSteps = [
-  { key: 'PENDIENTE',    label: 'Pendiente',   tone: 'slate',  badge: 'bg-slate-100 text-slate-700 border-slate-200' },
-  { key: 'RECIBIDA',     label: 'Recibida',    tone: 'amber',  badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { key: 'EN_PROCESO',   label: 'En proceso',  tone: 'amber',  badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { key: 'MANIFESTADA',  label: 'Manifestada', tone: 'emerald', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  { key: 'DESPACHADA',   label: 'Despachada',  tone: 'blue',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-]
-
-const statusLabels = {
-  PENDIENTE:   'Pendiente',
-  RECIBIDA:    'Recibida',
-  MANIFESTADA: 'Manifestada',
-  EN_PROCESO:  'En proceso',
-  DESPACHADA:  'Despachada',
-  ARRIVED:     'Llegado',
-  CANCELLED:   'Cancelado',
-}
 
 function editOrExpandReceipt(m) {
   const rid = receiptById.value[m.id]
@@ -1500,6 +1554,16 @@ function editOrExpandReceipt(m) {
   } else {
     toggleExpand(m)
   }
+}
+
+async function newReceipt() {
+  const target = filteredMawbs.value.find(m => mawbOperationalStatusMap.value[m.id] !== 'RECIBIDA') || filteredMawbs.value[0]
+  if (!target) {
+    toast.info(t('warehouse.empty'))
+    return
+  }
+  await toggleExpand(target)
+  toast.info(`${t('warehouse.newReceipt')} · ${target.awbNumber || String(target.id).slice(0, 8)}`)
 }
 
 async function onEditReceiptSaved() {
@@ -1886,43 +1950,6 @@ async function syncMawbName(m, field) {
   }
 }
 
-// Mapea estados de UI a estados de backend
-function mapStatusToBackend(uiStatus) {
-  switch (uiStatus) {
-    case 'MANIFESTADA': return 'MANIFESTED'
-    case 'EN_PROCESO': return 'MANIFESTED'
-    case 'DESPACHADA': return 'DEPARTED'
-    case 'RECIBIDA': return 'RECEIVED'
-    case 'PENDIENTE': return 'BOOKED'
-    default: return uiStatus
-  }
-}
-
-async function changeMawbStatus(m, newStatus) {
-  const cur = deriveMawbOperationalStatus(m)
-  if (cur === newStatus) return
-
-  // Gate: solo permite cambio si el recibo está completo
-  if (!isReceiptComplete(m)) {
-    toast.warning('No se puede cambiar el estado: el recibo está incompleto (Procesando recibo)')
-    return
-  }
-
-  if (!(await confirm({ message: `¿Cambiar estado de ${m.awbNumber || m.id.slice(0, 8)} de "${statusLabels[cur] ?? cur}" a "${statusLabels[newStatus] ?? newStatus}"?` }))) return
-  try {
-    const backendStatus = mapStatusToBackend(newStatus)
-    await mawbsApi.updateStatus(m.id, backendStatus)
-    if (store.selectedFlightId) {
-      await store.loadMawbs(store.selectedFlightId)
-    } else {
-      await store.loadAllMawbs()
-    }
-    toast.success('Estado actualizado')
-  } catch (e) {
-    toast.error('Error al actualizar estado: ' + (e.response?.data?.error || e.message))
-  }
-}
-
 function addPiece(mawbId, hawbId) {
   const f = receiptForms[mawbId]
   const newPiece = { pieces: 1, hawbId: hawbId || null, lengthIn: null, widthIn: null, heightIn: null, scaleWeightLbs: null, dimWeight: 0, dimWeightLbs: 0, scaleWeightKg: 0, dimWeightKg: 0, chargeableKg: 0, chargeableLbs: 0 }
@@ -1968,18 +1995,6 @@ function stepDone(si) {
 
 function stepError(_si) {
   return false // could add backend validation errors here
-}
-
-function stepClass(si) {
-  if (localStep.value === si + 1) return 'bg-slate-950 text-white border-slate-950 scale-110 shadow-lg'
-  if (stepDone(si)) return 'bg-slate-500 text-white border-slate-500'
-  return 'bg-white text-slate-500 border-slate-300 group-hover:border-slate-500'
-}
-
-function stepBarClass(si) {
-  if (stepDone(si) || localStep.value > si + 1) return 'bg-slate-500'
-  if (localStep.value === si + 1) return 'bg-slate-300'
-  return 'bg-slate-200'
 }
 
 async function toggleExpand(m) {
@@ -2478,7 +2493,7 @@ async function executeEmit(m, hawbs, payload) {
   if (successTimer) clearTimeout(successTimer)
   successTimer = setTimeout(() => { successMsg.value = '' }, 6000)
 
-  const downloadId = generatedReceiptId.value
+  let downloadId = receiptById.value[m.id] || generatedReceiptId.value
   if (downloadId) {
     setTimeout(() => downloadReceiptByIdAuto(downloadId, m.awbNumber), 1500)
     setTimeout(() => downloadReceiptPdfAuto(downloadId, m.awbNumber), 3000)
@@ -2502,25 +2517,21 @@ const receiptTotals = computed(() => {
   return totals
 })
 
-const overdueMawbs = computed(() => {
-  // MAWB pendiente de recibo con vuelo programado hace más de 2 días
-  const cutoff = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)
+const attentionQueue = computed(() => {
   const flightMap = {}
   for (const f of store.flights) flightMap[f.id] = f
-  const result = []
+  const seen = new Set()
+  const items = []
   for (const m of store.mawbs) {
-    const derived = mawbOperationalStatusMap.value[m.id]
-    if (derived === 'PENDIENTE') {
-      const flight = flightMap[m.flightId]
-      if (flight && flight.flightDate && flight.flightDate < cutoff) {
-        result.push({ mawb: m, flight })
-      }
+    if (seen.has(m.id)) continue
+    const st = mawbOperationalStatusMap.value[m.id]
+    if ((st === 'CARGADA' || st === 'EN_PROCESO') && !isReceiptComplete(m)) {
+      seen.add(m.id)
+      items.push({ mawb: m, flight: flightMap[m.flightId] || null, whyKey: st === 'EN_PROCESO' ? 'warehouse.attention.whyPartial' : 'warehouse.attention.whyLoaded' })
     }
   }
-  return result
+  return items
 })
-
-const overdueSet = computed(() => new Set(overdueMawbs.value.map(o => o.mawb.id)))
 
 const receiptById = computed(() => {
   const map = {}
@@ -2683,7 +2694,7 @@ async function downloadMawbEvidencePdf() {
 async function printPreview(m) {
   const f = receiptForms[m.id]
   if (!f) return
-  const receiptId = generatedReceiptId.value
+  const receiptId = receiptById.value[m.id] || generatedReceiptId.value
   if (!receiptId) {
     toast.error('Primero confirma el recibo antes de imprimir')
     return
@@ -2861,12 +2872,59 @@ watch(expandedId, async (id) => {
   }
 })
 
-useLiveRefresh(() =>
-  Promise.all([
+const statusSnapshot = ref({})
+const rowFlash = reactive(new Set())
+const flashing = new Set()
+
+function takeStatusSnapshot() {
+  const snap = {}
+  for (const m of store.mawbs) {
+    const a = m.awbNumber || m.id
+    if (!a) continue
+    snap[a] = {
+      st: deriveMawbOperationalStatus(m),
+      pcs: receiptTotals.value[m.id]?.pieces || 0,
+      kg: Number(receiptTotals.value[m.id]?.weightKg || 0),
+    }
+  }
+  return snap
+}
+function flashRow(id) {
+  if (!id || flashing.has(id)) return
+  flashing.add(id)
+  rowFlash.add(id)
+  setTimeout(() => {
+    flashing.delete(id)
+    rowFlash.delete(id)
+  }, 900)
+}
+function flashChangedRows(prev) {
+  for (const m of store.mawbs) {
+    const a = m.awbNumber || m.id
+    if (!a) continue
+    const old = prev[a]
+    if (!old) { flashRow(m.id); continue }
+    const cur = {
+      st: deriveMawbOperationalStatus(m),
+      pcs: receiptTotals.value[m.id]?.pieces || 0,
+      kg: Number(receiptTotals.value[m.id]?.weightKg || 0),
+    }
+    if (old.st !== cur.st || old.pcs !== cur.pcs || old.kg !== cur.kg) flashRow(m.id)
+  }
+}
+async function refreshData() {
+  const prev = statusSnapshot.value
+  lastRefreshMs.value = Date.now()
+  await Promise.all([
     store.loadReceipts({ silent: true }),
     store.loadUldAwbs({ silent: true }),
     store.selectedFlightId ? store.loadMawbs(store.selectedFlightId, { silent: true }) : store.loadAllMawbs({ silent: true }),
-  ]),
+  ])
+  statusSnapshot.value = takeStatusSnapshot()
+  flashChangedRows(prev)
+}
+
+useLiveRefresh(refreshData,
 { interval: 45000, pauses: [submitting, showConfirmModal, showBookingCorrectionModal, showCamera] })
 </script>
 
@@ -2878,33 +2936,93 @@ useLiveRefresh(() =>
 .thin-scrollbar { scrollbar-width: thin; scrollbar-color: #94a3b8 transparent; }
 .overscroll-contain { overscroll-behavior: contain; }
 
-/* Status badge colors matching PropuestaVisual.html */
-.st-pendiente { background: #f1f5f9; border-color: #cbd5e1; color: #475569; }
-.st-pendiente .cir { background: #94a3b8; }
-.st-recibida { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
-.st-recibida .cir { background: #f59e0b; }
-.st-manifestada { background: #d1fae5; border-color: #10b981; color: #065f46; }
-.st-manifestada .cir { background: #10b981; }
-.st-en-proceso { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
-.st-en-proceso .cir { background: #f59e0b; }
-.st-despachada { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
-.st-despachada .cir { background: #3b82f6; }
+/* Status badge colors — soft tokens (theme + accent aware) */
+.st-pendiente { background: var(--surface-3, #f1f5f9); border-color: var(--border-2, #cbd5e1); color: var(--text-2, #475569); }
+.st-pendiente .cir { background: var(--text-3, #94a3b8); }
+.st-recibida { background: var(--warn-soft, #fef3c7); border-color: var(--warn, #f59e0b); color: var(--warn, #92400e); }
+.st-recibida .cir { background: var(--warn, #f59e0b); }
+.st-manifestada { background: var(--ok-soft, #d1fae5); border-color: var(--ok, #10b981); color: var(--ok, #065f46); }
+.st-manifestada .cir { background: var(--ok, #10b981); }
+.st-en-proceso { background: var(--warn-soft, #fef3c7); border-color: var(--warn, #f59e0b); color: var(--warn, #92400e); }
+.st-en-proceso .cir { background: var(--warn, #f59e0b); }
+.st-despachada { background: var(--info-soft, #dbeafe); border-color: var(--info, #3b82f6); color: var(--info, #1e40af); }
+.st-despachada .cir { background: var(--info, #3b82f6); }
+.st-cargada { background: var(--danger-soft, #fee2e2); border-color: var(--danger, #ef4444); color: var(--danger, #991b1b); }
+.st-cargada .cir { background: var(--danger, #ef4444); }
 
-/* ── Status chips con conteo en vivo (redesign per Prop1) ── */
-.chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.chip { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px;
-  cursor: pointer; user-select: none; border: 1.5px solid transparent; font-size: 12px; font-weight: 800;
-  transition: transform .12s, box-shadow .12s, border-color .12s; }
-.chip:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(15,23,42,.12); }
-.chip .n { background: rgba(0,0,0,.10); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 800; }
-.chip.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor; }
-.chip .d { width: 9px; height: 9px; border-radius: 50%; }
-.chi-all  { background: #e2e8f0; color: #334155; } .chi-all  .d { background: #334155; }
-.chi-pend { background: #f1f5f9; color: #475569; } .chi-pend .d { background: #94a3b8; }
-.chi-rec  { background: #fef3c7; color: #b45309; } .chi-rec  .d { background: #f59e0b; }
-.chi-pro  { background: #fde68a; color: #b45309; } .chi-pro  .d { background: #f59e0b; }
-.chi-man  { background: #d1fae5; color: #047857; } .chi-man  .d { background: #10b981; }
-.chi-desp { background: #dbeafe; color: #1d4ed8; } .chi-desp .d { background: #3b82f6; }
+/* ── Selector de vista (maestro / por vuelo) ── */
+.vm-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border: 1px solid transparent;
+  border-radius: 999px; background: transparent; color: var(--muted, #64748b); font-size: 11px; font-weight: 700;
+  letter-spacing: .02em; cursor: pointer; transition: all .12s; }
+.vm-pill:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+.vm-pill.on { background: var(--accent); border-color: transparent; color: #fff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* ── Chip de frescura + botón nuevo recibo (page-head) ── */
+.vm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border: 1px solid var(--border-2, #e2e8f0);
+  border-radius: 999px; background: var(--surface-3, #f1f5f9); color: var(--text-2, #475569); font-size: 11px; font-weight: 700;
+  letter-spacing: .02em; white-space: nowrap; }
+.wrap-actions { flex-wrap: wrap; }
+
+/* ── Cabecera de grupo por vuelo (fila 0 del bloque) ── */
+.fl-group-hd { display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-top: 1px solid var(--border-2, #e2e8f0); border-bottom: 1px solid var(--border-2, #e2e8f0);
+  min-width: 1000px; user-select: none; transition: background .12s; }
+.fl-group-hd:hover { background: color-mix(in srgb, var(--accent) 11%, transparent); }
+.fl-group-hd.closed { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+.fl-group-hd.closed .fl-caret { color: #64748b; }
+.fl-chip { display: inline-flex; align-items: center; gap: 6px; width: 148px; font-family: var(--font-family-mono, monospace);
+  font-size: 11px; font-weight: 700; color: var(--text, #0f172a); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-sub { flex: 0 0 auto; font-size: 10px; font-weight: 600; color: var(--muted, #64748b); white-space: nowrap; }
+.fl-count { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; padding: 0 8px;
+  border-radius: 999px; background: var(--accent-soft, rgba(37, 99, 235, .14)); color: var(--accent, #2563eb);
+  font-size: 11px; font-weight: 800; font-family: var(--font-family-mono, monospace); }
+.fl-caret { display: inline-flex; align-items: center; justify-content: center; width: 18px; font-size: 10px; color: var(--accent); }
+
+/* ── Acciones en fila ── */
+.mini-act { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border: 1px solid var(--border-2, #e2e8f0); border-radius: 7px; background: var(--surface, #fff); color: var(--muted, #64748b);
+  font-size: 12px; cursor: pointer; transition: all .12s; }
+.mini-act:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft, rgba(37, 99, 235, .06)); }
+.mini-act.act-edit-has { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); background: var(--warn-soft, #fffbeb); }
+.mini-act.act-edit-has:hover { border-color: var(--warn); color: #fff; background: var(--warn); }
+.btn-rec { display: inline-flex; align-items: center; gap: 5px; padding: 3px 12px; border: 1px solid var(--accent);
+  border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; cursor: pointer; transition: all .12s; }
+.btn-rec:hover { filter: brightness(1.08); box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* ── Etiquetas de estado de acción ── */
+.tag-final { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  background: var(--ok-soft, #d1fae5); border: 1px solid var(--ok, #34d399); color: var(--ok, #065f46); font-size: 9px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; }
+.tag-neutral { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  background: var(--surface-3, #f1f5f9); border: 1px solid var(--border-2, #cbd5e1); color: var(--text-2, #475569); font-size: 9px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; }
+.tag-warn { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  background: var(--warn-soft, #fffbeb); border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn, #92400e); font-size: 9px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+
+/* ── Destello de fila al refrescar ── */
+.row-flash { animation: row-flash 900ms ease-out; }
+@keyframes row-flash {
+  0% { background-color: var(--warn-soft, #fef3c7); }
+  60% { background-color: var(--warn-soft, #fef3c7); }
+  100% { background-color: transparent; }
+}
+
+/* ── Cola "Por atender" (s1) ── */
+.exq { border-left: 3px solid var(--warn); border-right: 1px solid var(--border-2, #e2e8f0);
+  border-top: 1px solid var(--border-2, #e2e8f0); border-bottom: 1px solid var(--border-2, #e2e8f0);
+  background: var(--surface, #fff); box-shadow: var(--shadow-xs, 0 1px 2px rgba(15, 23, 42, .05)); }
+.exq-hd { background: var(--warn-soft, #fffbeb); }
+.exq-hd:hover { background: color-mix(in srgb, var(--warn) 8%, var(--surface, #fff)); }
+.exq-n { margin: 0 2px; padding: 0 8px; border-radius: 999px; background: var(--warn); color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 1.55; }
+.exq-go { border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); background: var(--warn-soft, #fffbeb); color: var(--warn); transition: all .12s; }
+.exq-go:hover { background: var(--warn); border-color: var(--warn); color: #fff; }
+.exq-row { border-top: 1px solid var(--border-2, #e2e8f0); background: var(--surface-2, #fffdf8); }
+.exq-row:hover { background: color-mix(in srgb, var(--warn) 6%, var(--surface, #fff)); }
 
 /* ── Formulario de recibo: distribución vertical compacta y responsiva.
    La altura se adapta al viewport (dvh, funciona en móvil con barras de
@@ -2920,7 +3038,109 @@ useLiveRefresh(() =>
   .receipt-list-header { min-width: 0 !important; }
   .receipt-list-cell[data-col="shipper"],
   .receipt-list-cell[data-col="dest"],
-  .receipt-list-cell[data-col="docs"] { display: none !important; }
+  .receipt-list-cell[data-col="docs"],
+  .receipt-list-cell[data-col="flight"] { display: none !important; }
   .receipt-list-cell { font-size: 11px; }
+}
+
+/* ── OPS modal wizard (OPS-RCA-v6) ─────────────────────────────── */
+.ops-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(24,25,42,.55);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center; padding: 18px; }
+.ops-modal { width: min(940px,100%); height: auto; max-width: calc(100vw - 36px); max-height: calc(100dvh - 36px);
+  min-width: 560px; min-height: 380px; display: flex; flex-direction: column;
+  background: #F2F4F8; border: 1px solid #DDE1EC; border-top: 3px solid #2B5CE6;
+  border-radius: 10px; box-shadow: 0 24px 60px rgba(15,23,42,.35);
+  position: relative; overflow: hidden; resize: both; }
+.ops-modal::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 14px; height: 14px;
+  background: linear-gradient(135deg, transparent 0, transparent 5px, #C3C9DA 5px, #C3C9DA 7px, transparent 7px, transparent 12px, #C3C9DA 12px, #C3C9DA 14px);
+  opacity: .6; pointer-events: none; }
+
+.ops-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
+  background: #fff; border-bottom: 1px solid #ECEEF5; }
+.ops-tt { font-size: 15px; font-weight: 800; color: #0B1220; line-height: 1.2; }
+.ops-sub { font-size: 11px; font-family: var(--font-family-mono, monospace); color: #9298AF; }
+.xbtn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+  border-radius: 7px; border: 1px solid #ECEEF5; background: #F8F9FC; color: #5B6275;
+  font-size: 15px; cursor: pointer; transition: background .12s, color .12s; }
+.xbtn:hover { background: #FDE8E8; color: #C2372F; }
+
+.ops-steps { display: flex; align-items: center; gap: 0; flex-wrap: wrap; padding: 10px 16px;
+  background: #fff; border-bottom: 1px solid #ECEEF5; }
+.ops-step { display: flex; align-items: center; gap: 8px; }
+.ops-sdot { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+  border-radius: 50%; background: #E8EAF2; border: 1.5px solid #DDE1EC; color: #9298AF;
+  font-size: 12px; font-weight: 700; cursor: pointer; user-select: none; transition: all .12s; }
+.ops-sdot.on { background: #2B5CE6; border-color: #2B5CE6; color: #fff; box-shadow: 0 0 0 3px rgba(43,92,230,.15); }
+.ops-sdot.dn { background: #1F9E5A; border-color: #1F9E5A; color: #fff; }
+.ops-slbl { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+  color: #9298AF; cursor: pointer; transition: color .12s; }
+.ops-sdot.on + .ops-slbl { color: #2B5CE6; }
+.ops-sln { width: 26px; height: 2px; background: #DDE1EC; margin: 0 4px; border-radius: 2px; }
+.ops-sln.dn { background: #1F9E5A; }
+
+.ops-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 16px; }
+
+.ops-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 16px; background: #fff; border-top: 1px solid #ECEEF5; }
+.ops-fl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ops-fr { display: flex; align-items: center; gap: 8px; }
+.ops-ok { font-size: 12px; font-family: var(--font-family-mono, monospace); color: #1F9E5A; }
+
+.btn-ok { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none;
+  border-radius: 7px; background: #2B5CE6; color: #fff; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: background .12s, box-shadow .12s; }
+.btn-ok:hover { background: #4A74F0; box-shadow: 0 6px 16px rgba(43,92,230,.35); }
+.btn-ok:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #DDE1EC;
+  border-radius: 7px; background: #fff; color: #5B6275; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .12s; }
+.btn-ghost:hover { background: #F4F6FB; color: #2B5CE6; }
+.btn-ghost.danger:hover { background: #FDE8E8; color: #C2372F; border-color: #F3C7C3; }
+.btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Restyling of the shared form pieces inside the wizard body */
+.ops-body .ds-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #9298AF; }
+.ops-body .ds-input { background: transparent; border: none; border-bottom: 1.5px solid #DDE1EC;
+  border-radius: 0; padding: 4px 2px; font-size: 13px; }
+.ops-body .ds-input:focus { border-bottom-color: #2B5CE6; box-shadow: none; }
+.ops-body thead tr { background: #2B5CE6; }
+.ops-body thead th { color: #fff; }
+.ops-body tfoot tr { background: #EAF0FF; }
+
+/* ——— Mockup App3 pasada: pipeline (s1) + teal ——— */
+.pipe { background: var(--surface-0, #fff); border: 1px solid var(--border); }
+.pipe-hd { border-bottom: 1px solid var(--border-2); }
+.pipe-total { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px;
+  padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 800;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.pipe-segs { gap: 6px; }
+.seg { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+  padding: 8px 10px 6px; border: 1.5px solid transparent; border-radius: 10px;
+  background: var(--surface-2, #f8f9fb); cursor: pointer; overflow: hidden; transition: all .15s; }
+.seg:hover { background: var(--surface-3, #eef2f7); }
+.seg.on { outline: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.seg.empty { opacity: .45; }
+.seg-n { font-size: 18px; font-weight: 800; line-height: 1; text-align: center; }
+.seg-l { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); text-align: center; white-space: nowrap; }
+.seg-bar { height: 3px; border-radius: 2px; margin-top: 2px; }
+/* Wizard teal pass (reemplaza el azul #2B5CE6 del boceto) */
+.ops-sdot.on { background: #0d9488; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.15); }
+.ops-sdot.on + .ops-slbl { color: #0d9488; }
+.ops-body thead tr { background: #0d3b37; }
+.btn-ok { background: #0d9488; }
+.btn-ok:hover { background: #0f766e; box-shadow: 0 6px 16px rgba(13,148,136,.35); }
+.btn-ghost:hover { color: #0d9488; }
+
+@media (max-width: 640px) {
+  .ops-overlay { padding: 8px; }
+  .ops-modal { border-radius: 8px; max-height: 94dvh; max-width: 100%; min-width: 0; min-height: 0; resize: none; }
+  .ops-modal::after { display: none; }
+  .ops-slbl { display: none; }
+  .ops-sdot { width: 24px; height: 24px; font-size: 11px; }
+  .ops-body { padding: 10px 12px; }
+  .ops-hdr { padding: 10px 12px; }
+  .ops-foot { padding: 10px 12px; }
 }
 </style>

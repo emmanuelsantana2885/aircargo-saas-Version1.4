@@ -1,5 +1,6 @@
 package com.aircargo.notificationservice.service;
 
+import com.aircargo.notificationservice.config.NotificationStreamRegistry;
 import com.aircargo.notificationservice.dto.NotificationDTO;
 import com.aircargo.notificationservice.entity.Notification;
 import com.aircargo.notificationservice.entity.NotificationType;
@@ -16,9 +17,11 @@ import java.util.UUID;
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository repository;
+    private final NotificationStreamRegistry streamRegistry;
 
-    public NotificationServiceImpl(NotificationRepository repository) {
+    public NotificationServiceImpl(NotificationRepository repository, NotificationStreamRegistry streamRegistry) {
         this.repository = repository;
+        this.streamRegistry = streamRegistry;
     }
 
     @Override
@@ -60,7 +63,13 @@ public class NotificationServiceImpl implements NotificationService {
             notificationType = NotificationType.EMAIL;
         }
         Notification notification = new Notification(userId, notificationType, title, body, entityType, entityId);
-        repository.save(notification);
+        Notification saved = repository.save(notification);
+        // Push en vivo (best-effort): un fallo de SSE nunca debe romper el guardado.
+        try {
+            streamRegistry.send(userId, NotificationDTO.fromEntity(saved));
+        } catch (Exception e) {
+            // silent — la notificación ya quedó persistida
+        }
     }
 
     @Override

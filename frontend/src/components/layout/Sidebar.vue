@@ -1,91 +1,77 @@
 <template>
-  <div v-if="isMobile && mobileOpen" @click="mobileOpen = false"
-    class="fixed inset-0 bg-black/40 z-40 transition-opacity lg:hidden"></div>
-
-  <aside :style="sidebarStyle"
-    class="flex flex-col flex-shrink-0 h-full border-r transition-all duration-300 ease-out relative"
-    :class="isMobile ? (mobileOpen ? 'translate-x-0' : '-translate-x-full') : ''"
-    style="background: #ffffff; border-color: #e2e8f0; box-shadow: 4px 0 32px rgba(15,23,42,0.08)">
-
-    <button v-if="!isMobile" @click="collapsed = !collapsed"
-      class="absolute -right-3.5 top-5 z-20 w-7 h-7 flex items-center justify-center transition-opacity hover:opacity-70 active:opacity-50"
-      style="background: var(--accent); color: white">
-      <component :is="icons.LayoutSidebarFilled" :size="16" :stroke-width="2" />
-    </button>
+  <aside class="sidebar" :class="{ 'sidebar-collapsed': collapsed, 'sidebar-mobile': isMobile && mobileOpen }">
+    <div class="rail"></div>
 
     <!-- Logo -->
-    <div class="px-4 py-4 border-b relative overflow-hidden" style="border-color: #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #eef2fb 30%, #e6edfd 60%, #e0e8f8 80%, #ffffff 100%);">
-      <div class="absolute inset-0 opacity-[0.05]" style="background-image: repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(62,123,250,0.25) 2px, rgba(62,123,250,0.25) 3px), repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(62,123,250,0.15) 3px, rgba(62,123,250,0.15) 4px);"></div>
-      <div class="absolute inset-0 opacity-[0.05]" style="background-image: radial-gradient(circle at 30% 50%, rgba(62,123,250,0.3) 0%, transparent 60%), radial-gradient(circle at 70% 30%, rgba(139,92,246,0.2) 0%, transparent 50%);"></div>
-      <div class="flex items-center" :class="showCollapsed ? 'justify-center' : 'gap-2.5'">
-        <div v-if="!showCollapsed" class="overflow-hidden whitespace-nowrap relative z-10">
-          <div class="font-extrabold title text-gradient" style="font-size: 18px; letter-spacing: 0.08em;">AirCargo</div>
-          <div class="text-[13px] font-medium tracking-wide" style="color: #64748b">{{ auth.selectedSite?.code || 'SDQ' }} Operations</div>
-        </div>
-        <div v-else class="w-8 h-8 flex items-center justify-center shrink-0 rounded-lg glow-accent" style="background: linear-gradient(135deg,#1e3fae,#3e7bfa); box-shadow: 0 4px 14px -4px rgba(62,123,250,0.5);">
-          <component :is="icons.PlaneDeparture" :size="20" color="white" :stroke-width="1.8" />
-        </div>
+    <div class="sidebar-logo">
+      <i class="pi pi-box"></i>
+      <div v-if="!collapsed">
+        <div class="font-bold text-[14px] tracking-wide">AirCargo</div>
+        <div class="text-[10px] font-medium tracking-wider text-slate-500">{{ auth.selectedSite?.code || 'SDQ' }} Operations</div>
+      </div>
+      <div v-else class="text-center">
+        <i class="pi pi-box" style="font-size: 20px;"></i>
       </div>
     </div>
 
     <!-- Nav -->
-    <nav class="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden" style="background: #ffffff;">
-      <div v-if="!showCollapsed" class="text-xs font-bold mb-2 px-2" style="color: #64748b; letter-spacing: .1em; text-transform: uppercase">{{ t('sidebar.siteLabel') }}</div>
-
+    <nav class="sidebar-nav" v-if="!collapsed">
+      <div class="nav-section">{{ t('sidebar.operations') }}</div>
       <RouterLink v-for="item in mainMenu" :key="item.path" :to="item.path"
-        class="nav-link group flex items-center whitespace-nowrap rounded-lg transition-all duration-200 ease-out"
-        :class="[showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5', isActive(item.path) ? 'nav-active' : 'nav-default']"
-        :style="!isActive(item.path) ? { color: item.color } : {}"
-        :title="showCollapsed ? item.label : ''"
-        @click="isMobile && (mobileOpen = false)">
-        <div class="ico-frame shrink-0" :class="isActive(item.path) && 'ico-frame-active'" :style="{ '--ic': item.color }">
-          <component :is="icons[item.iconKey]" :size="showCollapsed ? 21 : 19" :stroke-width="1.5" :color="item.color" />
-        </div>
-        <template v-if="!showCollapsed">
-          <span class="nav-label font-bold" :style="isActive(item.path) ? { borderBottom: `2px solid ${item.color}`, paddingBottom: '1px' } : {}">{{ item.label }}</span>
-        </template>
+        class="nav-item" :class="{ on: isActive(item.path) }"
+        @click="closeMobileSidebar">
+        <component :is="icons[item.iconKey]" class="pi" />
+        <span>{{ t(item.labelKey) }}</span>
       </RouterLink>
 
-      <div v-if="!showCollapsed" class="text-xs font-bold mt-4 mb-2 px-2" style="color: #64748b; letter-spacing: .1em; text-transform: uppercase">{{ t('settings.title') }}</div>
-
+      <div class="nav-section" v-if="settingsMenu.length">{{ t('sidebar.settings') }}</div>
       <RouterLink v-for="item in settingsMenu" :key="item.path" :to="item.path"
-        class="nav-link group flex items-center whitespace-nowrap rounded-lg transition-all duration-200 ease-out"
-        :class="[showCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3 py-2.5', isActive(item.path) ? 'nav-active' : 'nav-default']"
-        :style="!isActive(item.path) ? { color: item.color } : {}"
-        :title="showCollapsed ? item.label : ''"
-        @click="isMobile && (mobileOpen = false)">
-        <div class="ico-frame shrink-0" :class="isActive(item.path) && 'ico-frame-active'" :style="{ '--ic': item.color }">
-          <component :is="icons[item.iconKey]" :size="showCollapsed ? 21 : 19" :stroke-width="1.5" :color="item.color" />
-        </div>
-        <span v-if="!showCollapsed" class="nav-label font-bold" :style="isActive(item.path) ? { borderBottom: `2px solid ${item.color}`, paddingBottom: '1px' } : {}">{{ item.label }}</span>
+        class="nav-item" :class="{ on: isActive(item.path) }"
+        @click="closeMobileSidebar">
+        <component :is="icons[item.iconKey]" class="pi" />
+        <span>{{ t(item.labelKey) }}</span>
+      </RouterLink>
+    </nav>
+
+    <!-- Collapsed nav (icons only) -->
+    <nav class="sidebar-nav-collapsed" v-else>
+      <RouterLink v-for="item in mainMenu" :key="item.path" :to="item.path"
+        class="nav-item-collapsed" :class="{ on: isActive(item.path) }"
+        :title="t(item.labelKey)"
+        @click="closeMobileSidebar">
+        <component :is="icons[item.iconKey]" class="pi" />
+      </RouterLink>
+      <div class="nav-divider" v-if="settingsMenu.length"></div>
+      <RouterLink v-for="item in settingsMenu" :key="item.path" :to="item.path"
+        class="nav-item-collapsed" :class="{ on: isActive(item.path) }"
+        :title="t(item.labelKey)"
+        @click="closeMobileSidebar">
+        <component :is="icons[item.iconKey]" class="pi" />
       </RouterLink>
     </nav>
 
     <!-- User -->
-    <div class="px-2 py-3 border-t relative overflow-hidden" style="border-color: #e2e8f0; background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);">
-      <div class="absolute inset-0 opacity-[0.03]" style="background-image: radial-gradient(circle at 20% 0%, rgba(37,99,235,0.6) 0%, transparent 60%);"></div>
-      <div class="flex items-center px-2 py-2 relative" style="background: rgba(255,255,255,0.75); border-radius: 10px; border: 1px solid #e6ecf5; box-shadow: 0 1px 3px rgba(15,23,42,0.06);"
-        :class="showCollapsed ? 'justify-center' : 'gap-2.5'">
-        <div class="w-8 h-8 flex items-center justify-center shrink-0 rounded-full ring-2 ring-white"
-          :style="{ background: roleIcon.bg, color: roleIcon.fg, boxShadow: `0 2px 8px ${roleIcon.bg}` }">
-          <component :is="roleIcon.icon" :size="16" :stroke-width="1.8" />
-        </div>
-        <template v-if="!showCollapsed">
-          <div class="flex-1 min-w-0">
-            <div class="text-xs font-bold truncate" style="color: #1e293b">{{ auth.fullName || auth.email }}</div>
-            <div class="text-[11px] truncate" :style="{ color: roleIcon.fg }">{{ roleLabel }}</div>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <button @click="showPasswordChange = true" :title="t('sidebar.changePassword')" class="hover:opacity-70 transition-opacity">
-              <component :is="icons.Key" :size="16" style="color: #64748b" :stroke-width="1.5" />
-            </button>
-            <button @click="handleLogout" :title="t('sidebar.logout')" class="hover:opacity-70 transition-opacity">
-              <component :is="icons.Logout" :size="16" style="color: #64748b" :stroke-width="1.5" />
-            </button>
-          </div>
-        </template>
+    <div class="sidebar-user" v-if="!collapsed">
+      <div class="user-avatar" :style="{ background: roleIcon.bg }">
+        <component :is="roleIcon.icon" :size="16" :stroke-width="1.8" style="color: white" />
+      </div>
+      <div class="user-info">
+        <div class="font-bold text-[12px] truncate">{{ auth.fullName || auth.email }}</div>
+        <div class="text-[10px] truncate" :style="{ color: roleIcon.fg }">{{ roleLabel }}</div>
+      </div>
+      <div class="user-actions">
+        <button @click="showPasswordChange = true" :title="t('sidebar.changePassword')" class="hover:opacity-70 transition-opacity">
+          <component :is="icons.Key" :size="14" :stroke-width="1.5" />
+        </button>
+        <button @click="handleLogout" :title="t('sidebar.logout')" class="hover:opacity-70 transition-opacity">
+          <component :is="icons.Logout" :size="14" :stroke-width="1.5" />
+        </button>
       </div>
     </div>
+
+    <!-- Mobile overlay -->
+    <div v-if="isMobile && mobileOpen" @click="mobileOpen = false"
+      class="fixed inset-0 bg-black/40 z-40 transition-opacity lg:hidden"></div>
   </aside>
 
   <PasswordChangeModal :show="showPasswordChange" @close="showPasswordChange = false" />
@@ -105,112 +91,246 @@ const router = useRouter()
 const auth = useAuthStore()
 const { t } = useI18n()
 const icons = useIcons()
+
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const isMobile = ref(false)
-const isTablet = ref(false)
 const showPasswordChange = ref(false)
 
 const roleConfig = {
-  SUPER_USER:        { iconKey: 'CrownFilled',       bg: 'rgba(234,179,8,.15)',  fg: '#b45309' },
-  ADMIN:             { iconKey: 'ShieldLock',         bg: 'rgba(37,99,235,.12)',  fg: '#2563eb' },
-  OPERATIONS:        { iconKey: 'AirTrafficControl',  bg: 'rgba(22,163,74,.12)',  fg: '#16a34a' },
-  TRAFFIC:           { iconKey: 'ArrowsExchange',     bg: 'rgba(124,58,237,.12)', fg: '#7c3aed' },
-  LOAD_PLANNER:      { iconKey: 'Scale',              bg: 'rgba(7,148,148,.12)',  fg: '#0891b2' },
-  WAREHOUSE_ASSISTANT:{ iconKey: 'Forklift',          bg: 'rgba(217,119,6,.12)',  fg: '#d97706' },
-  READ_ONLY:         { iconKey: 'Eye',                bg: 'rgba(100,116,139,.12)',fg: '#64748b' },
+  SUPER_USER:        { iconKey: 'CrownFilled',       labelKey: 'users.roles.SUPER_USER', bg: 'rgba(234,179,8,.15)',  fg: '#b45309' },
+  ADMIN:             { iconKey: 'ShieldLock',         labelKey: 'users.roles.ADMIN', bg: 'rgba(37,99,235,.12)',  fg: '#2563eb' },
+  OPERATIONS:        { iconKey: 'AirTrafficControl',  labelKey: 'users.roles.OPERATIONS', bg: 'rgba(22,163,74,.12)',  fg: '#16a34a' },
+  TRAFFIC:           { iconKey: 'ArrowsExchange',     labelKey: 'users.roles.TRAFFIC', bg: 'rgba(124,58,237,.12)', fg: '#7c3aed' },
+  LOAD_PLANNER:      { iconKey: 'Scale',              labelKey: 'users.roles.LOAD_PLANNER', bg: 'rgba(7,148,148,.12)',  fg: '#0891b2' },
+  WAREHOUSE_ASSISTANT:{ iconKey: 'Forklift',          labelKey: 'users.roles.WAREHOUSE_ASSISTANT', bg: 'rgba(217,119,6,.12)',  fg: '#d97706' },
+  READ_ONLY:         { iconKey: 'Eye',                labelKey: 'users.roles.READ_ONLY', bg: 'rgba(100,116,139,.12)',fg: '#64748b' },
 }
-const roleIcon = computed(() => {
-  const cfg = roleConfig[auth.role] || { iconKey: 'User', bg: 'rgba(100,116,139,.12)', fg: '#64748b' }
-  return { icon: icons.value[cfg.iconKey], bg: cfg.bg, fg: cfg.fg }
-})
-const roleLabel = computed(() => t(`users.roles.${auth.role}`) || auth.role?.replace('_', ' ') || '')
+const roleIcon = computed(() => roleConfig[auth.role] || { iconKey: 'User', labelKey: 'users.roles.READ_ONLY', bg: 'rgba(100,116,139,.12)', fg: '#64748b' })
+const roleLabel = computed(() => t(roleIcon.value.labelKey) || auth.role?.replace('_', ' ') || '')
 
-const showCollapsed = computed(() => {
-  if (isMobile.value) return false
-  if (isTablet.value) return true
-  return collapsed.value
-})
 const isActive = (path) => path === '/' ? route.path === '/' : route.path.startsWith(path)
-
-const sidebarStyle = computed(() => {
-  if (isMobile.value) return { width: 'min(260px, 86vw)' }
-  if (isTablet.value) return { width: '60px' }
-  return { width: collapsed.value ? '60px' : 'var(--sidebar-width)' }
-})
 
 function checkViewport() {
   const w = window.innerWidth
   isMobile.value = w < 768
-  isTablet.value = w >= 768 && w < 1024
-  if (isMobile.value || isTablet.value) mobileOpen.value = false
+  if (isMobile.value) mobileOpen.value = false
 }
+
+function closeMobileSidebar() {
+  if (isMobile.value) mobileOpen.value = false
+}
+
 function handleLogout() {
   try {
     saveDraft({ route: router.currentRoute.value.fullPath, forms: captureForms() })
     setReturnTo(router.currentRoute.value.fullPath)
   } catch {}
-  auth.logout(); router.push('/login')
+  auth.logout()
+  router.push('/login')
 }
-defineExpose({ mobileOpen, isMobile })
+
+defineExpose({ mobileOpen, isMobile, collapsed })
 onMounted(() => { checkViewport(); window.addEventListener('resize', checkViewport) })
 onUnmounted(() => { window.removeEventListener('resize', checkViewport) })
 
 const allMenuItems = computed(() => [
-  { path: '/',              label: t('sidebar.dashboard'),   iconKey: 'Gauge',          view: 'DASHBOARD',     color: '#e11d48' },
-  { path: '/bookings',      label: t('sidebar.bookings'),    iconKey: 'CalendarEvent',  view: 'BOOKINGS',      color: '#3e7bfa' },
-  { path: '/receipts',      label: t('sidebar.receipts'),    iconKey: 'FileInvoice',    view: 'RECEIPTS',      color: '#d97706' },
-  { path: '/flights',       label: t('sidebar.flights'),     iconKey: 'PlaneDeparture', view: 'FLIGHTS',       color: '#7c3aed' },
-  { path: '/mawbs',         label: t('sidebar.mawbs'),       iconKey: 'ClipboardList',  view: 'MAWBS',         color: '#16a34a' },
-  { path: '/load-planning', label: t('sidebar.loadPlanning'),iconKey: 'Route',          view: 'LOAD_PLANNING', color: '#475569' },
-  { path: '/ulds',          label: t('sidebar.ulds'),        iconKey: 'Package',        view: 'ULDS',          color: '#0891b2' },
-  { path: '/exports',       label: 'Reviews / Audit',        iconKey: 'LayoutGrid',     view: 'EXPORTS',       color: '#ea580c' },
+  { path: '/',              labelKey: 'sidebar.dashboard',   iconKey: 'ChartPie',   view: 'DASHBOARD',     },
+  { path: '/bookings',      labelKey: 'sidebar.bookings',    iconKey: 'Book',       view: 'BOOKINGS',      },
+  { path: '/receipts',      labelKey: 'sidebar.receipts',    iconKey: 'Inbox',      view: 'RECEIPTS',      },
+  { path: '/flights',       labelKey: 'sidebar.flights',     iconKey: 'Send',       view: 'FLIGHTS',       },
+  { path: '/mawbs',         labelKey: 'sidebar.mawbs',       iconKey: 'File',       view: 'MAWBS',         },
+  { path: '/load-planning', labelKey: 'sidebar.loadPlanning',iconKey: 'ThLarge',    view: 'LOAD_PLANNING', },
+  { path: '/ulds',          labelKey: 'sidebar.ulds',        iconKey: 'Truck',      view: 'ULDS',          },
+  { path: '/exports',       labelKey: 'sidebar.exports',     iconKey: 'ChartBar',   view: 'EXPORTS',       },
 ])
 const mainMenu = computed(() => allMenuItems.value.filter(item => auth.canView(item.view)))
 const settingsMenu = computed(() => {
   const items = []
-  if (auth.canView('USERS')) items.push({ path: '/users', label: t('sidebar.users'), iconKey: 'Users', color: '#334155' })
-  if (auth.canView('SETTINGS')) items.push({ path: '/settings', label: t('sidebar.settings'), iconKey: 'Settings', color: '#6d28d9' })
-  if (auth.canView('SECURITY')) items.push({ path: '/security', label: t('sidebar.security'), iconKey: 'Key', color: '#dc2626' })
-  if (auth.canView('API_CATALOG')) items.push({ path: '/api-catalog', label: 'API Catalog', iconKey: 'Api', color: '#0e7490' })
+  if (auth.canView('USERS')) items.push({ path: '/users', labelKey: 'sidebar.users', iconKey: 'Users' })
+  if (auth.canView('SETTINGS')) items.push({ path: '/settings', labelKey: 'sidebar.settings', iconKey: 'Cog' })
+  if (auth.canView('SECURITY')) items.push({ path: '/security', labelKey: 'sidebar.security', iconKey: 'Shield' })
+  if (auth.canView('API_CATALOG')) items.push({ path: '/api-catalog', labelKey: 'sidebar.apiCatalog', iconKey: 'Code' })
   return items
 })
 </script>
 
 <style scoped>
-.nav-default { color: #64748b; }
-.nav-default:hover { background: var(--accent-soft); color: #1e293b; }
-.nav-active { background: var(--accent-soft); color: #1e293b; font-weight: 700; box-shadow: inset 3px 0 0 0 var(--accent); }
-.nav-label { font-size: 14px; letter-spacing: 0.02em; }
-
-/* Icon frame — light theme */
-.ico-frame {
-  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
-  border-radius: 8px; position: relative;
-  border: 1.5px solid color-mix(in srgb, var(--ic) 20%, transparent);
-  background: color-mix(in srgb, var(--ic) 4%, transparent);
-  transition: all 0.2s ease;
+.sidebar {
+  width: 210px;
+  background: #ededed;
+  border-right: 1px solid #dfe2e7;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 50;
+  transition: width 0.3s ease;
 }
-.ico-frame::before {
-  content: ''; position: absolute; top: -1px; right: -1px;
-  width: 6px; height: 6px; border-top: 1.5px solid var(--ic); border-right: 1.5px solid var(--ic);
-  border-radius: 0 3px 0 0; opacity: 0; transition: opacity 0.2s;
+.sidebar.sidebar-collapsed {
+  width: 60px;
 }
-.nav-default:hover .ico-frame {
-  border-color: color-mix(in srgb, var(--ic) 40%, transparent);
-  background: color-mix(in srgb, var(--ic) 10%, transparent);
-  transform: translateY(-1px);
+.sidebar.sidebar-mobile {
+  transform: translateX(0);
+  box-shadow: 4px 0 20px rgba(0,0,0,0.15);
 }
-.ico-frame-active {
-  border-color: color-mix(in srgb, var(--ic) 60%, transparent) !important;
-  background: color-mix(in srgb, var(--ic) 15%, transparent) !important;
-  border-width: 1.5px;
+.sidebar.sidebar-mobile:not(.sidebar-collapsed) {
+  width: 210px;
 }
-.ico-frame-active::before { opacity: 0.6; }
-
+.rail {
+  width: 5px;
+  background: #31216b;
+  border-radius: 0 4px 4px 0;
+  margin: 8px 0;
+}
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  border-bottom: 1px solid #dfe2e7;
+  font-weight: 800;
+  color: #31216b;
+}
+.sidebar-logo .pi {
+  font-size: 20px;
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 8px;
+  overflow-y: auto;
+}
+.sidebar-nav-collapsed {
+  flex: 1;
+  padding: 8px 4px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.nav-section {
+  padding: 8px 14px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.nav-divider {
+  width: 100%;
+  height: 1px;
+  background: #dfe2e7;
+  margin: 8px 0;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px;
+  cursor: pointer;
+  color: #31216b;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 8px;
+  margin: 1px 4px;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.nav-item .pi {
+  font-size: 15px;
+}
+.nav-item:hover {
+  background: #e2e2e6;
+}
+.nav-item.on {
+  background: #31216b;
+  color: #fff;
+}
+.nav-item.on .pi {
+  color: #fff;
+}
+.nav-item-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  color: #31216b;
+  border-radius: 8px;
+  margin: 4px 0;
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.nav-item-collapsed .pi {
+  font-size: 18px;
+}
+.nav-item-collapsed:hover {
+  background: #e2e2e6;
+}
+.nav-item-collapsed.on {
+  background: #31216b;
+  color: #fff;
+}
+.nav-item-collapsed.on .pi {
+  color: #fff;
+}
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid #dfe2e7;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+.user-actions {
+  display: flex;
+  gap: 6px;
+}
+.user-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #64748b;
+  background: transparent;
+  border: none;
+}
+.user-actions button:hover {
+  background: #dfe2e7;
+  color: #31216b;
+}
 @media (max-width: 767px) {
-  aside {
-    padding-bottom: env(safe-area-inset-bottom);
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease, width 0.3s ease;
+  }
+  .sidebar.sidebar-mobile {
+    transform: translateX(0);
+  }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar:not(.sidebar-collapsed) {
+    width: 60px;
   }
 }
 </style>

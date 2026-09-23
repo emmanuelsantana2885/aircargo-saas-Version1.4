@@ -114,6 +114,18 @@ public class UldController {
         }
     }
 
+    @PostMapping("/{id}/release")
+    public ResponseEntity<?> releaseFromFlight(@PathVariable UUID id,
+                                               @AuthenticationPrincipal UserPrincipal principal,
+                                               HttpServletRequest request) {
+        try {
+            UldDTO updated = uldService.assignFlight(id, null);
+            return ResponseEntity.ok(updated);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/{uldId}/transfer")
     public ResponseEntity<?> transferUld(@PathVariable UUID uldId, @Valid @RequestBody TransferRequest transferRequest,
                                           @AuthenticationPrincipal UserPrincipal principal,
