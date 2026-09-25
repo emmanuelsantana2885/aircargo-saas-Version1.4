@@ -2,10 +2,11 @@
   <header class="shell-header">
     <button v-if="!isMobile" @click="emit('toggleSidebar')"
       class="sidebar-toggle" :class="{ 'rotated': collapsed }"
-      :title="collapsed ? t('header.expand') : t('header.collapse')">
+      :title="collapsed ? t('header.expand') : t('header.collapse')" :aria-label="collapsed ? t('header.expand') : t('header.collapse')">
       <component :is="icons.ChevronRight" :size="16" :stroke-width="2" />
     </button>
-    <button v-else @click="emit('toggleSidebar')" class="sidebar-toggle" :title="t('header.menu')">
+    <button v-else @click="emit('toggleSidebar')" class="sidebar-toggle" :title="t('header.menu')"
+      :aria-label="t('header.menu')">
       <component :is="icons.Menu" :size="16" :stroke-width="2" />
     </button>
     <div class="brand">
@@ -19,14 +20,17 @@
       <button @click="toggleIconLib" class="ctrl-chip" :title="t('header.appearanceIconLib')">{{ iconCode }}</button>
       <button @click="cycleFont" class="ctrl-chip" :title="t('header.fontHint')">{{ fontLabel }}</button>
       <button @click="cycleDensity" class="ctrl-chip" :title="t('header.densityHint')">{{ densityLabel }}</button>
-      <button @click="toggleMode" class="h-chip" :title="mode === 'light' ? t('header.themeLight') : t('header.themeDark')">
+      <button @click="toggleMode" class="h-chip" :title="mode === 'light' ? t('header.themeLight') : t('header.themeDark')"
+        :aria-label="mode === 'light' ? t('header.themeLight') : t('header.themeDark')">
         <component :is="icons.Moon" v-if="mode === 'light'" :size="14" :stroke-width="2" />
         <component :is="icons.Sun" v-else :size="14" :stroke-width="2" style="color: #ffd700" />
       </button>
-      <button ref="appearanceBtnRef" @click="toggleAppearance" class="h-chip h-chip-swatch" :title="t('header.appearanceHint')">
+      <button ref="appearanceBtnRef" @click.stop="toggleAppearance" class="h-chip h-chip-swatch" :title="t('header.appearanceHint')"
+        :aria-label="t('header.appearanceHint')">
         <span class="appearance-swatch"></span>
       </button>
-      <button ref="notifBtnRef" @click="toggleNotif" class="h-chip h-chip-bell" :title="t('notifications.title')">
+      <button ref="notifBtnRef" @click.stop="toggleNotif" class="h-chip h-chip-bell" :title="t('notifications.title')"
+        :aria-label="t('notifications.title')">
         <component :is="icons.Bell" :size="14" :stroke-width="2" />
         <span v-if="notif.unread > 0" class="notif-badge">{{ notif.unread > 99 ? '99+' : notif.unread }}</span>
       </button>
@@ -85,21 +89,21 @@
           style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent;">
           <div class="grid grid-cols-5 gap-1.5">
             <button v-for="(th, key) in THEMES" :key="key" type="button"
-              class="h-9 rounded-lg transition-all"
-              :class="themeKey === key ? 'ring-2 ring-white scale-105' : 'opacity-80 hover:opacity-100 hover:ring-1 hover:ring-white/50'"
+              class="h-9 rounded-lg ring-1 ring-inset ring-white/10 transition-all"
+              :class="themeKey === key ? 'ring-2 ring-white scale-105' : 'opacity-80 hover:opacity-100 hover:ring-white/50'"
               :style="{ background: accentFor(key, tone).acc }"
-              :title="th.name + ' · ' + th.mode"
+              :title="th.name + ' · ' + th.mode" :aria-label="th.name + ' · ' + th.mode"
               @click="pickTheme(key)">
               <span v-if="themeKey === key" class="flex items-center justify-center h-full text-white drop-shadow" style="font-size: 12px">✓</span>
             </button>
           </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceTone') }}</span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceTone') }}</span>
             <button v-for="(tn, i) in TONE_NAMES" :key="`t${i}`" type="button"
-              class="h-5 w-5 rounded-full transition-all"
-              :class="tone === i ? 'ring-2 ring-white scale-110' : 'opacity-75 hover:opacity-100'"
+              class="h-5 w-5 rounded-full ring-1 ring-inset ring-white/10 transition-all"
+              :class="tone === i ? 'ring-2 ring-white scale-110' : 'opacity-75 hover:opacity-100 hover:ring-white/30'"
               :style="{ background: accentFor(themeKey, i).acc }"
-              :title="tn"
+              :title="tn" :aria-label="tn"
               @click="pickTone(i)">
               <span v-if="tone === i" class="flex items-center justify-center h-full text-white drop-shadow" style="font-size: 10px">✓</span>
             </button>
@@ -111,7 +115,7 @@
               :class="font === f
                 ? 'border-white text-white bg-white/15'
                 : 'border-white/20 text-slate-300 hover:border-white/50 hover:text-white'"
-              :title="f"
+              :title="f" :aria-label="f"
               @click="pickFont(f)">{{ FONT_LABEL[f] }}</button>
           </div>
           <div class="flex items-center gap-1.5">
@@ -392,18 +396,28 @@ onUnmounted(() => {
 .spacer {
   flex: 1;
 }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
 .h-chip {
   background: rgba(255,255,255,.14);
   border: 1px solid rgba(255,255,255,.2);
-  padding: 5px 11px;
+  height: 26px;
+  padding: 0 11px;
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 700;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
   color: #fff;
+  white-space: nowrap;
   cursor: pointer;
+  box-sizing: border-box;
   transition: background 0.15s;
 }
 .h-chip:hover {
@@ -434,7 +448,7 @@ onUnmounted(() => {
   box-shadow: 0 2px 6px rgba(2,44,34,.35);
 }
 .h-chip-swatch {
-  padding: 5px 9px;
+  padding: 0 9px;
 }
 .appearance-swatch {
   width: 16px;
@@ -446,7 +460,7 @@ onUnmounted(() => {
 }
 .h-chip-bell {
   position: relative;
-  padding: 5px 9px;
+  padding: 0 9px;
 }
 .notif-badge {
   position: absolute;

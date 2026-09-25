@@ -24,18 +24,18 @@ describe('useIdleLogout', () => {
     vi.useRealTimers()
   })
 
-  it('no avisa antes de los 40 min', () => {
+  it('no avisa antes de los 15 min', () => {
     const { start, stop, warningSeconds } = useIdleLogout()
     start()
-    vi.advanceTimersByTime(40 * 60 * 1000 - 1000)
+    vi.advanceTimersByTime(15 * 60 * 1000 - 1000)
     expect(warningSeconds.value).toBeNull()
     stop()
   })
 
-  it('a los 40 min activa la cuenta regresiva; la actividad la cancela y evita el logout', () => {
+  it('a los 15 min activa la cuenta regresiva; la actividad la cancela y evita el logout', () => {
     const { start, stop, warningSeconds } = useIdleLogout()
     start()
-    vi.advanceTimersByTime(40 * 60 * 1000 + 500)
+    vi.advanceTimersByTime(15 * 60 * 1000 + 500)
     expect(warningSeconds.value).not.toBeNull()
 
     document.dispatchEvent(new Event('pointerdown')) // "Seguir trabajar" / interacción (listeners en document, captura)
@@ -50,12 +50,12 @@ describe('useIdleLogout', () => {
     stop()
   })
 
-  it('a los 50 min: preserva borrador + returnTo, hace logout y navega a /login?idle=1', async () => {
+  it('a los 20 min: preserva borrador + returnTo, hace logout y navega a /login?idle=1', async () => {
     let expired = false
     const { start, stop } = useIdleLogout(async () => { expired = true })
     start()
 
-    await vi.advanceTimersByTimeAsync(50 * 60 * 1000 + 500)
+    await vi.advanceTimersByTimeAsync(20 * 60 * 1000 + 500)
 
     expect(expired).toBe(true)
     expect(loadDraft().route).toBe('/receipts?mawbId=123')

@@ -103,11 +103,11 @@
 
           <div class="col-span-1 flex justify-center gap-1.5 relative z-10 ds-row-actions">
             <button @click.stop="openEdit(f)"
-              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-slate-950 hover:text-slate-950 transition">
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-slate-950 hover:text-slate-950 transition" :aria-label="t('common.edit')">
               <component :is="icons.Pencil" :size="13" :stroke-width="2" />
             </button>
             <button @click.stop="confirmDelete(f)"
-              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:border-red-300 hover:text-red-500 transition">
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:border-red-300 hover:text-red-500 transition" :aria-label="t('common.delete')">
               <component :is="icons.Trash" :size="13" :stroke-width="2" />
             </button>
           </div>
@@ -124,7 +124,7 @@
           <h2 class="ds-modal-title">
             {{ editingFlight ? t('flights.editFlight') : t('flights.newFlight') }}
           </h2>
-          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition">
+          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition" :aria-label="t('common.close')">
             <component :is="icons.X" :size="18" :stroke-width="2" />
           </button>
         </div>
@@ -407,5 +407,3 @@ function selectFlight(f) {
   router.push({ name: 'load-planning', query: { flightId: f.id } })
 }
 </script>
-
-

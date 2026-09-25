@@ -216,7 +216,7 @@ input:focus, select:focus, textarea:focus {
 
   /* ── Card (elevación en capas + hover lift) ─── */
   .ds-card {
-    @apply bg-white border px-3.5 py-2.5 rounded-xl transition-all duration-200;
+    @apply bg-white border px-3 py-2 rounded-xl transition-all duration-200;
     border-color: #dbe4f2;
     box-shadow: var(--shadow-xs), 0 8px 24px -16px rgba(15, 23, 42, 0.14);
   }
@@ -227,11 +227,11 @@ input:focus, select:focus, textarea:focus {
   }
 
   .ds-card-label {
-    @apply text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-wide mb-1;
+    @apply text-[9.5px] font-mono font-semibold text-slate-500 uppercase tracking-wide mb-0.5;
   }
 
   .ds-card-value {
-    @apply text-[18px] font-mono font-bold text-slate-900;
+    @apply text-[15px] font-mono font-bold text-slate-900;
   }
 
   /* ── Small info chip/badge ───────────────── */
@@ -885,7 +885,23 @@ input:focus, select:focus, textarea:focus {
 :root[data-theme='dark'] .bg-green-100 { background-color: rgb(20 83 45 / 0.3); }
 :root[data-theme='dark'] .bg-red-50 { background-color: rgb(127 29 29 / 0.2); }
 :root[data-theme='dark'] .bg-red-100 { background-color: rgb(127 29 29 / 0.3); }
+:root[data-theme='dark'] .bg-amber-50 { background-color: rgb(120 53 15 / 0.25); }
 :root[data-theme='dark'] .bg-amber-100 { background-color: rgb(120 53 15 / 0.25); }
+:root[data-theme='dark'] .bg-amber-200 { background-color: rgb(120 53 15 / 0.35); }
+
+/* Remaps de modo claro: estos shades de texto no alcanzan 4.5:1 NI sobre blanco
+   (amber-500 = 2.15:1, amber-600 = 3.19:1, emerald-600 = 3.77:1, cyan-600 = 3.68:1),
+   por lo que se oscurecen al shade -700 equivalente. Se corrige de una vez toda la
+   clase de fallos, incluidas las clases de mapas/:class dinamicos que el auditor
+   de contraste no puede resolver estaticamente. Solo texto: los fondos no cambian. */
+:root[data-theme='light'] .text-amber-500 { color: #b45309; }
+:root[data-theme='light'] .text-amber-600 { color: #b45309; }
+:root[data-theme='light'] .text-emerald-600 { color: #047857; }
+:root[data-theme='light'] .text-cyan-600 { color: #0e7490; }
+:root[data-theme='dark'] .bg-orange-100 { background-color: rgb(124 45 18 / 0.25); }
+:root[data-theme='dark'] .bg-cyan-50 { background-color: rgb(14 116 144 / 0.2); }
+:root[data-theme='dark'] .bg-indigo-50 { background-color: rgb(49 46 129 / 0.2); }
+:root[data-theme='dark'] .bg-rose-50 { background-color: rgb(136 19 55 / 0.2); }
 :root[data-theme='dark'] .bg-emerald-50 { background-color: rgb(6 78 59 / 0.15); }
 :root[data-theme='dark'] .bg-emerald-100 { background-color: rgb(6 78 59 / 0.25); }
 :root[data-theme='dark'] .bg-blue-50 { background-color: rgb(30 58 138 / 0.15); }
@@ -909,15 +925,31 @@ input:focus, select:focus, textarea:focus {
 :root[data-theme='dark'] .text-slate-900 { color: #e2e8f0; }
 :root[data-theme='dark'] .text-slate-950 { color: #f8fafc; }
 :root[data-theme='dark'] .text-white { color: #f8fafc; }
-:root[data-theme='dark'] .text-green-700 { color: #4ade80; }
-:root[data-theme='dark'] .text-green-600 { color: #4ade80; }
-:root[data-theme='dark'] .text-red-600 { color: #f87171; }
-:root[data-theme='dark'] .text-red-700 { color: #f87171; }
+/* Status families: the 600–900 shades are dark-on-light in light mode, so they
+   need the family's light shade in dark mode. Each one is paired with a
+   dark-tinted chip (see the background block above), where the unremapped dark
+   shade landed at ~1.2:1 — the family 300 shade clears AA on every tint. */
+:root[data-theme='dark'] .text-green-600,
+:root[data-theme='dark'] .text-green-700,
+:root[data-theme='dark'] .text-green-800,
+:root[data-theme='dark'] .text-green-900 { color: #86efac; }
+:root[data-theme='dark'] .text-red-600,
+:root[data-theme='dark'] .text-red-700,
+:root[data-theme='dark'] .text-red-800,
+:root[data-theme='dark'] .text-red-900 { color: #fca5a5; }
+:root[data-theme='dark'] .text-amber-600,
+:root[data-theme='dark'] .text-amber-800,
+:root[data-theme='dark'] .text-amber-900 { color: #fcd34d; }
 :root[data-theme='dark'] .text-amber-700 { color: #fbbf24; }
-:root[data-theme='dark'] .text-emerald-500 { color: #34d399; }
+:root[data-theme='dark'] .text-emerald-500,
 :root[data-theme='dark'] .text-emerald-700 { color: #34d399; }
-:root[data-theme='dark'] .text-blue-600 { color: #60a5fa; }
-:root[data-theme='dark'] .text-blue-700 { color: #60a5fa; }
+:root[data-theme='dark'] .text-emerald-600,
+:root[data-theme='dark'] .text-emerald-800,
+:root[data-theme='dark'] .text-emerald-900 { color: #6ee7b7; }
+:root[data-theme='dark'] .text-blue-600,
+:root[data-theme='dark'] .text-blue-700,
+:root[data-theme='dark'] .text-blue-800,
+:root[data-theme='dark'] .text-blue-900 { color: #93c5fd; }
 :root[data-theme='dark'] .text-purple-700 { color: #c084fc; }
 
 /* ── Borders ──────────────────────────────────────────── */
@@ -997,7 +1029,6 @@ input:focus, select:focus, textarea:focus {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* ── Reduced motion: disable decorative animation ─────── */
@@ -1118,7 +1149,7 @@ input:focus, select:focus, textarea:focus {
 }
 .lp-grid {
   display: grid;
-  grid-template-columns: 56px 9fr 4fr 6fr 6fr 5fr 5fr 6fr 9fr 9fr 5fr;
+  grid-template-columns: 6fr 56px 9fr 4fr 6fr 6fr 5fr 5fr 9fr 9fr 5fr;
   min-width: 1120px;
 }
 .lp-grid > div {

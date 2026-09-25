@@ -1,7 +1,8 @@
 <template>
   <Teleport to="body">
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center p-4 ds-confirm-backdrop" @click.self="onCancel">
-      <div class="ds-modal-panel max-w-md py-5 animate-pop" @keydown.esc="onCancel">
+      <div class="ds-modal-panel max-w-md py-5 animate-pop" @keydown.esc="onCancel"
+        role="dialog" aria-modal="true" :aria-label="title || 'Confirmacion'">
         <div v-if="title" class="mb-4 pb-3 border-b border-slate-200">
           <h3 class="ds-modal-title">{{ title }}</h3>
         </div>

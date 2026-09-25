@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, shallowRef, computed } from 'vue'
 import api from '../api/client'
 import { useAppStore, inferUldType } from './app'
+import { extractError } from '../utils/error'
 
 export const useUldsStore = defineStore('ulds', () => {
   const flights = shallowRef([])
@@ -23,18 +24,6 @@ export const useUldsStore = defineStore('ulds', () => {
     return uldsByFlight.value[selectedFlightId.value] || []
   })
 
-  function apiError(e) {
-    if (e instanceof Error) {
-      const axios = e.response
-      if (axios) {
-        const d = axios.data
-        if (d?.message && typeof d.message === 'string') return d.message
-      }
-      return e.message
-    }
-    return String(e)
-  }
-
   async function loadFlights() {
     try {
       loading.value = true
@@ -49,7 +38,7 @@ export const useUldsStore = defineStore('ulds', () => {
         if (first) await selectFlight(first.id)
       }
     } catch (e) {
-      error.value = 'Error cargando vuelos: ' + apiError(e)
+      error.value = 'Error cargando vuelos: ' + extractError(e)
     } finally {
       loading.value = false
     }
@@ -64,7 +53,7 @@ export const useUldsStore = defineStore('ulds', () => {
       const res = await api.get('/ulds', { params })
       uldsByFlight.value = { ...uldsByFlight.value, [flightId]: res.data?.content || res.data }
     } catch (e) {
-      error.value = 'Error cargando ULDs: ' + apiError(e)
+      error.value = 'Error cargando ULDs: ' + extractError(e)
     } finally {
       loading.value = false
     }
@@ -80,7 +69,7 @@ export const useUldsStore = defineStore('ulds', () => {
       floatingUlDs.value = (res.data?.content || res.data || []).filter(u => !u.flightId)
       selectedFlightId.value = '__floating__'
     } catch (e) {
-      error.value = 'Error cargando ULDs flotantes: ' + apiError(e)
+      error.value = 'Error cargando ULDs flotantes: ' + extractError(e)
     } finally {
       loading.value = false
     }

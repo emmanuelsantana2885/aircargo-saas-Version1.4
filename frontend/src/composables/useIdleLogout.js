@@ -3,10 +3,12 @@ import { useRouter } from 'vue-router'
 import { captureForms, saveDraft, setReturnTo } from '@/utils/formDraft'
 
 /**
- * Cierre de sesión automático por inactividad (50 minutos).
+ * Cierre de sesión automático por inactividad (20 minutos desde la última
+ * interacción del usuario — cualquier click, tecla o ingreso de datos reinicia
+ * el contador).
  *
- * · A los 40 min muestra un aviso con cuenta regresiva y opción de continuar.
- * · A los 50 min: snapshot de formularios en edición → logout limpio
+ * · A los 15 min muestra un aviso con cuenta regresiva y opción de continuar.
+ * · A los 20 min: snapshot de formularios en edición → logout limpio
  *   (revoca cookies en el servidor) → /login con aviso y retorno a la vista.
  * · Cualquier interacción del usuario (click, tecla, scroll, movimiento, arrastre,
  *   input, cambio de pestaña, foco, navegación) reinicia el contador de inactividad.
@@ -15,8 +17,8 @@ import { captureForms, saveDraft, setReturnTo } from '@/utils/formDraft'
  * · Guard de suspensión: un salto de reloj entre ticks (laptop dormida) no cuenta
  *   como inactividad.
  */
-const IDLE_MS = 50 * 60 * 1000
-const WARN_MS = 40 * 60 * 1000
+const IDLE_MS = 20 * 60 * 1000
+const WARN_MS = 15 * 60 * 1000
 const TICK_MS = 1000
 
 const warningSeconds = ref(null) // null = sin aviso activo

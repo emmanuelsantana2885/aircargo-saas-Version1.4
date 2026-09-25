@@ -87,7 +87,7 @@
               </td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="user.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
+                  :class="user.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
                   {{ user.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -103,7 +103,7 @@
                     ? (user.mfaLocked
                       ? 'bg-red-50 text-red-800'
                       : 'bg-green-50 text-green-800')
-                    : 'bg-slate-100 text-slate-400'">
+                    : 'bg-slate-100 text-slate-600'">
                   {{ user.mfaLocked ? t('settings.users.mfaStatus.locked') : (user.mfaEnabled ? t('settings.users.mfaStatus.active') : t('settings.users.mfaStatus.inactive')) }}
                 </span>
               </td>
@@ -324,7 +324,7 @@
               <td class="text-slate-900">{{ site.country || '—' }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="site.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
+                  :class="site.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
                   {{ site.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -441,7 +441,7 @@
               <td class="text-slate-900">{{ a.country || '—' }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="a.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
+                  :class="a.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
                   {{ a.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -686,15 +686,15 @@
                 <td class="px-4 py-1.5">
                   <button v-if="tp.id" @click="toggleUldTypeActive(tp)"
                     class="text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors"
-                    :class="tp.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-200'">
+                      :class="tp.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'">
                     {{ tp.isActive ? t('settings.uldConfig.catalog.active') : t('settings.uldConfig.catalog.inactive') }}
                   </button>
                   <span v-else class="text-[11px] text-slate-300">legacy</span>
                 </td>
                 <td class="px-4 py-1.5 text-right">
                   <div class="flex gap-1 justify-end">
-                    <button @click="startEditUldType(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px]" :disabled="!tp.id">✎</button>
-                    <button @click="removeCatalogEntry(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px] hover:!bg-red-50 hover:!text-red-600" :disabled="!tp.id">✕</button>
+                    <button @click="startEditUldType(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px]" :disabled="!tp.id" :aria-label="t('common.edit')">✎</button>
+                    <button @click="removeCatalogEntry(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px] hover:!bg-red-50 hover:!text-red-600" :disabled="!tp.id" :aria-label="t('common.delete')">✕</button>
                   </div>
                 </td>
               </tr>
@@ -779,7 +779,7 @@
               <td class="text-right font-mono text-slate-700">{{ c.sortOrder }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="c.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-400'">
+                  :class="c.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
                   {{ c.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>

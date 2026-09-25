@@ -110,7 +110,17 @@ export function defaultElement(type, idx) {
   }
 }
 
-export function resolveElementValue(el, type) {
+export function nextVariableKey(existing = []) {
+  let max = 0
+  for (const v of existing) {
+    const m = /^VAR_(\d+)$/.exec(v.key || '')
+    if (m) max = Math.max(max, Number(m[1]))
+  }
+  return `VAR_${max + 1}`
+}
+
+export function resolveElementValue(el, type, samples) {
   if (el.dataSource === 'TEXT' || !el.dataSource) return el.text || ''
+  if (samples && Object.prototype.hasOwnProperty.call(samples, el.dataSource)) return samples[el.dataSource] ?? ''
   return SAMPLE_DATA[type]?.[el.dataSource] ?? ''
 }

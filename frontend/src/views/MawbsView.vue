@@ -30,7 +30,7 @@
       <div class="flex flex-wrap items-center gap-2">
         <span class="badge gy">{{ filteredRows.length }} / {{ matrixRows.length }} MAWBs · {{ flightColumns.length }} vuelos</span>
         <button @click="showLabels = true" class="button ghost" :title="t('mawbs.labelsTooltip')">
-          <i class="pi pi-tags"></i> {{ t('mawbs.labelsButton') }}
+          <i class="pi pi-print"></i> {{ t('mawbs.labelsButton') }}
         </button>
         <button @click="exportCSV" class="button ghost">
           <i class="pi pi-download"></i> {{ t('mawbs.exportCsv') }}
@@ -86,7 +86,7 @@
           </div>
           <span v-else class="text-[13px] text-slate-300 font-mono px-2 whitespace-nowrap">{{ t('mawbs.noDates') }}</span>
         </div>
-        <button v-if="rangeStartSeg" @click="clearTimeline" class="button ghost text-[12px]">✕</button>
+        <button v-if="rangeStartSeg" @click="clearTimeline" class="button ghost text-[12px]" :aria-label="t('common.clear')">✕</button>
         <select v-model="localFlightId" @change="onFlightChange" class="sel cursor-pointer min-w-[140px] uppercase tracking-widest font-bold">
           <option value="">{{ t('mawbs.allFlights') }}</option>
           <option v-for="flight in store.flights" :key="flight.id" :value="flight.id">
@@ -226,7 +226,7 @@
                     @click="scrollToFlight(f.id)">
                     <div class="text-[11px] leading-tight">{{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }}</div>
                     <div class="text-[11px] font-bold opacity-90 tracking-wide">{{ formatDate(f.flightDate) }}</div>
-                    <div v-if="flightTotals[f.id]" class="text-[11px] font-normal opacity-60 mt-0.5">{{ flightTotals[f.id] }} {{ t('common.pcs') }}</div>
+                    <div v-if="flightTotals[f.id]" class="text-[11px] font-normal opacity-85 mt-0.5">{{ flightTotals[f.id] }} {{ t('common.pcs') }}</div>
                     <div class="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group z-40" @pointerdown.stop="startColResize(8 + fi, $event)">
                       <div class="w-0.5 h-full mx-auto bg-transparent group-hover:bg-white/40 transition-colors"></div>
                     </div>
@@ -244,7 +244,7 @@
                   @click="openInfoPanel(row)">
                   <div class="flex flex-col leading-tight">
                     <span class="underline decoration-dotted underline-offset-2 truncate text-[12px]">{{ row.awbNumber || '—' }}</span>
-                    <span class="text-[11px] font-normal opacity-70 mt-0.5">
+                    <span class="text-[11px] font-normal opacity-90 mt-0.5">
                       <template v-if="row.status === 'BOOKED'">{{ t('mawbs.rowStatus.BOOKED') }}</template>
                       <template v-else-if="row.status === 'RECEIVED'">{{ t('mawbs.rowStatus.RECEIVED') }}</template>
                       <template v-else-if="row.status === 'MANIFESTED'">{{ t('mawbs.rowStatus.MANIFESTED') }}</template>
@@ -258,7 +258,7 @@
                   :title="(row.shipperName || '?') + ' / ' + (row.consigneeName || '?')">
                   <div class="flex flex-col leading-tight">
                     <span class="truncate text-[12px]">{{ row.shipperName || '—' }}</span>
-                    <span class="truncate text-[11px] text-slate-400">/ {{ row.consigneeName || '—' }}</span>
+                    <span class="truncate text-[11px] text-slate-300">/ {{ row.consigneeName || '—' }}</span>
                   </div>
                 </td>
                 <td :style="[{ left: stickyOffsets[2] + 'px', zIndex: 10 }, colStyle(2)]"
@@ -292,17 +292,17 @@
                   <span v-if="getPieces(row, f)" class="relative text-[12px]">
                     <span class="flex flex-col items-center leading-tight">
                       <span class="font-bold">{{ getPieces(row, f) }}</span>
-                      <span class="text-[10px] font-normal opacity-60">{{ row.uldCountByFlight[f.id] || 0 }} ULDs</span>
+                      <span class="text-[10px] font-normal opacity-85">{{ row.uldCountByFlight[f.id] || 0 }} ULDs</span>
                     </span>
                     <svg width="14" height="14" viewBox="0 0 14 14" class="inline-block shrink-0 ml-0.5">
-                      <circle cx="7" cy="7" r="5.5" fill="none" stroke="#1a3a36" stroke-width="1.5" />
+                      <circle cx="7" cy="7" r="5.5" fill="none" stroke="#2a5249" stroke-width="1.5" />
                       <circle cx="7" cy="7" r="5.5" fill="none" stroke="#4a9b8e" stroke-width="1.5"
                         :stroke-dasharray="arcCircum"
                         :stroke-dashoffset="arcOffset(row, f)"
                         transform="rotate(-90 7 7)" />
                     </svg>
                   </span>
-                  <span v-else class="text-slate-500">&middot;</span>
+                  <span v-else class="text-slate-400">&middot;</span>
                 </td>
               </tr>
             </tbody>
@@ -327,7 +327,7 @@
       <aside v-if="infoPanel.show" class="hidden md:flex w-72 shrink-0 border border-slate-300 rounded bg-white flex-col overflow-hidden">
         <div class="flex items-center justify-between px-3 py-2 border-b border-slate-400 bg-slate-100 shrink-0">
           <span class="text-[12px] font-mono font-bold uppercase tracking-widest text-slate-950">{{ t('mawbs.infoPanel.title') }}</span>
-          <button @click="closeInfoPanel" class="text-slate-500 hover:text-slate-950 transition text-sm">✕</button>
+          <button @click="closeInfoPanel" class="text-slate-500 hover:text-slate-950 transition text-sm" :aria-label="t('common.close')">✕</button>
         </div>
         <div class="overflow-y-auto flex-1 p-3 space-y-2.5 text-[12px] font-mono text-slate-950">
           <template v-if="infoPanel.row">
@@ -752,6 +752,13 @@ import { useIcons } from '../composables/useIcons'
 import { useHeaderFilters } from '../composables/useHeaderFilters'
 import { useI18n } from 'vue-i18n'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import { useDragSession } from '../composables/useDragSession'
+import {
+  DEFAULT_COL_WIDTHS, colStyle as colStyleFor, clampColWidth, stickyOffsetsFor,
+  indexMatrixData, selectFlightScope, buildMatrixRows,
+  getPieces, cellClasses as cellClassesFor, arcOffsetFor,
+  mawbStatusClass, mawbStatusClassRaw,
+} from '../utils/mawbMatrix'
 
 const router = useRouter()
 const store = useAppStore()
@@ -763,7 +770,9 @@ const hf = useHeaderFilters({ containerSelector: '.ds-table-section' })
 
 const showLabels = ref(false)
 const labelItems = computed(() =>
-  filteredRows.value.map(r => r.mawbId).filter(Boolean)
+  filteredRows.value
+    .filter(r => r.mawbId)
+    .map(r => ({ id: r.mawbId, label: r.awbNumber || r.mawbId }))
 )
 
 function airlineCodeById(airlineId) {
@@ -952,11 +961,12 @@ const flightColumns = shallowRef([])
 const stickyOffsets = ref([0, 180, 380, 470, 560, 650, 740])
 
 // Column resize state
-const defaultColWidths = [180, 200, 90, 90, 90, 90, 80]
+const defaultColWidths = DEFAULT_COL_WIDTHS
 const colWidths = reactive({})
 let resizeColIndex = null
 let resizeStartX = 0
 let resizeStartWidth = 0
+const dragSession = useDragSession()
 
 function startColResize(colIdx, e) {
   resizeColIndex = colIdx
@@ -970,16 +980,10 @@ function startColResize(colIdx, e) {
 function onColResize(e) {
   if (resizeColIndex === null) return
   const diff = e.clientX - resizeStartX
-  let newWidth = Math.max(50, resizeStartWidth + diff)
+  const newWidth = clampColWidth(resizeStartWidth + diff)
   colWidths[resizeColIndex] = newWidth
   // Update sticky offsets for sticky columns (0-7)
-  if (resizeColIndex <= 7) {
-    const offsets = [0]
-    for (let i = 0; i < 7; i++) {
-      offsets.push(offsets[i] + (colWidths[i] || defaultColWidths[i]))
-    }
-    stickyOffsets.value = offsets
-  }
+  if (resizeColIndex <= 7) stickyOffsets.value = stickyOffsetsFor(colWidths, defaultColWidths)
 }
 
 function stopColResize() {
@@ -989,10 +993,7 @@ function stopColResize() {
 }
 
 function colStyle(colIdx) {
-  const w = colWidths[colIdx]
-  if (w) return { width: w + 'px', minWidth: w + 'px' }
-  if (colIdx < defaultColWidths.length) return { width: defaultColWidths[colIdx] + 'px', minWidth: defaultColWidths[colIdx] + 'px' }
-  return { width: '100px', minWidth: '100px' }
+  return colStyleFor(colIdx, colWidths, defaultColWidths)
 }
 
 const filteredRows = computed(() => {
@@ -1158,64 +1159,24 @@ async function buildMatrix(silent = false) {
     const ulds = uldRes.data
     const links = linkRes.data
 
-    const uldFlightMap = {}
-    const uldNumberMap = {}
-    for (const u of ulds) {
-      uldFlightMap[u.id] = u.flightId
-      uldNumberMap[u.id] = u.uldNumber || u.id.slice(0, 8)
-    }
+    // Pure indexing + row projection live in utils/mawbMatrix (unit-tested).
+    const index = indexMatrixData({
+      ulds,
+      links,
+      receipts: store.receipts || [],
+      bookings: store.bookings || [],
+    })
 
-    const receivedByMawb = {}
-    for (const r of store.receipts || []) {
-      const mawbId = r.mawbId
-      if (!mawbId) continue
-      const pc = r.pieceCount || 0
-      // SUM de todos los recibos: cada recibo contiene un conjunto unico de piezas
-      receivedByMawb[mawbId] = (receivedByMawb[mawbId] || 0) + pc
-    }
+    const scope = selectFlightScope({
+      mawbs: store.mawbs,
+      flights: store.flights,
+      flightIds: index.flightIds,
+      mawbPcsByFlight: index.mawbPcsByFlight,
+      flightIdFilter: localFlightId.value,
+    })
+    const filteredMawbs = scope.mawbs
+    let flights = scope.flights
 
-    const bookingByMawb = {}
-    for (const b of store.bookings) {
-      if (b.mawbId) {
-        if (!bookingByMawb[b.mawbId]) bookingByMawb[b.mawbId] = []
-        bookingByMawb[b.mawbId].push(b)
-      }
-    }
-
-    const mawbPcsByFlight = new Map()
-    const mawbUldsByFlight = new Map()
-    for (const link of links) {
-      const mawbId = link.mawbId
-      const flightId = uldFlightMap[link.uldId]
-      const pcs = link.pieces || 0
-      if (!mawbId || !flightId) continue
-      if (!mawbPcsByFlight.has(mawbId)) mawbPcsByFlight.set(mawbId, new Map())
-      const fm = mawbPcsByFlight.get(mawbId)
-      fm.set(flightId, (fm.get(flightId) || 0) + pcs)
-      if (!mawbUldsByFlight.has(mawbId)) mawbUldsByFlight.set(mawbId, new Map())
-      const um = mawbUldsByFlight.get(mawbId)
-      if (!um.has(flightId)) um.set(flightId, [])
-      um.get(flightId).push({ uldNumber: uldNumberMap[link.uldId] || 'ULD?', pieces: pcs })
-    }
-
-    const flightIds = new Set()
-    for (const fm of mawbPcsByFlight.values())
-      for (const fid of fm.keys()) flightIds.add(fid)
-
-    let filteredMawbs = store.mawbs
-    if (localFlightId.value) {
-      filteredMawbs = store.mawbs.filter(m => m.flight?.id === localFlightId.value || m.flightId === localFlightId.value)
-      const extraFids = new Set()
-      for (const m of filteredMawbs) {
-        const fm = mawbPcsByFlight.get(m.id)
-        if (fm) for (const fid of fm.keys()) extraFids.add(fid)
-      }
-      flightIds.clear()
-      flightIds.add(localFlightId.value)
-      for (const fid of extraFids) flightIds.add(fid)
-    }
-
-    let flights = store.flights.filter(f => flightIds.has(f.id))
     if (rangeStartSeg.value || rangeEndSeg.value) {
       const keys = timelineSegments.value.filter(s => isInRange(s.value)).map(s => s.value)
       const dates = []
@@ -1240,48 +1201,14 @@ async function buildMatrix(silent = false) {
     }
     flights.sort((a, b) => (a.flightDate || '').localeCompare(b.flightDate || '') || (a.flightNumber || '').localeCompare(b.flightNumber || ''))
 
-    const rows = filteredMawbs.map(m => {
-      const fm = mawbPcsByFlight.get(m.id) || new Map()
-      const um = mawbUldsByFlight.get(m.id) || new Map()
-      const cells = {}
-      const uldCountByFlight = {}
-      const breakdown = {}
-      let pcsDispatched = 0
-      for (const f of flights) {
-        const pcs = fm.get(f.id) || 0
-        cells[f.id] = pcs
-        pcsDispatched += pcs
-        uldCountByFlight[f.id] = (um.get(f.id) || []).length
-        breakdown[f.id] = um.get(f.id) || []
-      }
-      const receivedPieces = receivedByMawb[m.id] || 0
-      const bookingList = bookingByMawb[m.id]
-      const reservedPieces = bookingList && bookingList.length > 0
-        ? Math.max(...bookingList.map(b => b.skids || 0))
-        : (m.pieces || 0)
-      return {
-        mawbId: m.id,
-        awbNumber: m.awbNumber,
-        shipperName: m.shipperName,
-        consigneeName: m.consigneeName,
-        destination: m.destination,
-        commodityType: m.commodityType || null,
-        totalPieces: receivedPieces || pcsDispatched || m.pieces || 0,
-        totalWeightKg: m.reportedWeightKg || m.chargeableWeightKg || null,
-        physicalWeightLbs: m.reportedWeightKg ? (Number(m.reportedWeightKg) * 2.20462) : (m.chargeableWeightKg ? (Number(m.chargeableWeightKg) * 2.20462) : null),
-        status: m.status,
-        reservedPieces,
-        receivedPieces,
-        pieceDiff: receivedPieces - reservedPieces,
-        hasDispatchedExcess: receivedPieces > 0 && pcsDispatched > receivedPieces,
-        pcsDispatched,
-        cells,
-        uldCountByFlight,
-        breakdownByFlight: breakdown,
-      }
+    matrixRows.value = buildMatrixRows({
+      mawbs: filteredMawbs,
+      flights,
+      bookingByMawb: index.bookingByMawb,
+      receivedByMawb: index.receivedByMawb,
+      mawbPcsByFlight: index.mawbPcsByFlight,
+      mawbUldsByFlight: index.mawbUldsByFlight,
     })
-
-    matrixRows.value = rows
     flightColumns.value = flights
     await nextTick()
     computeStickyOffsets()
@@ -1551,30 +1478,28 @@ function toggleRangeSegment(value) {
 
 function startRangeDrag(side, e) {
   rangeDragging = side
-  const onMove = (ev) => {
-    if (!rangeDragging || !timelineSegments.value.length) return
-    const bar = e.currentTarget?.parentElement?.parentElement
-    const container = bar?.querySelector?.('.h-6') || bar?.closest?.('[style*="min-width"]')
-    if (!container) return
-    const rect = container.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100))
-    const idx = Math.round((pct / 100) * (timelineSegments.value.length - 1))
-    const seg = timelineSegments.value[Math.max(0, Math.min(idx, timelineSegments.value.length - 1))]
-    if (!seg) return
-    if (rangeDragging === 'left') {
-      rangeStartSeg.value = seg.value
-    } else {
-      rangeEndSeg.value = seg.value
-    }
-  }
-  const onUp = () => {
-    rangeDragging = null
-    document.removeEventListener('pointermove', onMove)
-    document.removeEventListener('pointerup', onUp)
-    buildMatrix()
-  }
-  document.addEventListener('pointermove', onMove)
-  document.addEventListener('pointerup', onUp)
+  const bar = e.currentTarget?.parentElement?.parentElement
+  dragSession.begin({
+    onMove: (ev) => {
+      if (!rangeDragging || !timelineSegments.value.length) return
+      const container = bar?.querySelector?.('.h-6') || bar?.closest?.('[style*="min-width"]')
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const pct = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100))
+      const idx = Math.round((pct / 100) * (timelineSegments.value.length - 1))
+      const seg = timelineSegments.value[Math.max(0, Math.min(idx, timelineSegments.value.length - 1))]
+      if (!seg) return
+      if (rangeDragging === 'left') {
+        rangeStartSeg.value = seg.value
+      } else {
+        rangeEndSeg.value = seg.value
+      }
+    },
+    onEnd: () => {
+      rangeDragging = null
+      buildMatrix()
+    },
+  })
 }
 
 function clearTimeline() {
@@ -1583,45 +1508,16 @@ function clearTimeline() {
   buildMatrix()
 }
 
-function getPieces(row, flight) { return row.cells[flight.id] || 0 }
-
 function cellClasses(row, flight) {
-  const pcs = getPieces(row, flight)
-  if (!pcs) return ''
-  const base = 'relative'
-  const colGlow = hoverFlightCol.value === flight.id ? 'ring-1 ring-inset ring-slate-300' : ''
-  return `${base} bg-white text-slate-900 ${colGlow}`
+  return cellClassesFor(getPieces(row, flight), hoverFlightCol.value, flight.id)
 }
 
-const arcCircum = 2 * Math.PI * 5.5
-
 function arcOffset(row, flight) {
-  const pcs = getPieces(row, flight)
-  const total = row.totalPieces || 1
-  const pct = Math.min(pcs / total, 1)
-  return arcCircum * (1 - pct)
+  return arcOffsetFor(getPieces(row, flight), row.totalPieces)
 }
 
 function rowBgClass(_row) {
   return 'hover:bg-slate-50'
-}
-
-function mawbStatusClassRaw(status) {
-  if (!status || status === 'BOOKED') return 'bg-slate-500'
-  if (status === 'RECEIVED') return 'bg-slate-600'
-  if (status === 'MANIFESTED') return 'bg-slate-500'
-  if (status === 'DEPARTED') return 'bg-slate-700'
-  return 'bg-slate-400'
-}
-
-function mawbStatusClass(row) {
-  if (row.hasDispatchedExcess) return 'text-slate-700 bg-slate-50/80 hover:bg-slate-100 border-l-4 border-l-slate-500'
-  const s = row.status
-  if (!s || s === 'BOOKED') return 'text-slate-600 bg-slate-50 hover:bg-slate-100 border-l-4 border-l-slate-400'
-  if (s === 'RECEIVED') return 'text-slate-700 bg-slate-50/60 hover:bg-slate-100 border-l-4 border-l-slate-500'
-  if (s === 'MANIFESTED') return 'text-slate-600 bg-slate-50/60 hover:bg-slate-100 border-l-4 border-l-slate-400'
-  if (s === 'DEPARTED') return 'text-slate-800 bg-slate-50/60 hover:bg-slate-100 border-l-4 border-l-slate-600'
-  return 'bg-white hover:bg-slate-50'
 }
 
 function statusTitle(row) {
@@ -1716,18 +1612,16 @@ function startResize(e) {
   const startHeight = section.offsetHeight
   const parent = section.parentElement
   const maxH = parent ? parent.clientHeight - 20 : 800
-  const onMove = (ev) => {
-    const delta = ev.clientY - startY
-    const newH = Math.min(maxH, Math.max(180, startHeight + delta))
-    section.style.flex = 'none'
-    section.style.height = newH + 'px'
-  }
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove)
-    document.removeEventListener('mouseup', onUp)
-  }
-  document.addEventListener('mousemove', onMove)
-  document.addEventListener('mouseup', onUp)
+  dragSession.begin({
+    moveEvents: ['mousemove'],
+    endEvents: ['mouseup'],
+    onMove: (ev) => {
+      const delta = ev.clientY - startY
+      const newH = Math.min(maxH, Math.max(180, startHeight + delta))
+      section.style.flex = 'none'
+      section.style.height = newH + 'px'
+    },
+  })
 }
 
 function scrollToFlight(flightId) {

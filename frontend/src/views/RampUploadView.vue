@@ -69,7 +69,7 @@
       <button 
         @click="processRampManifest"
         :disabled="!selectedFile || uploading || missingContext"
-        :class="selectedFile && !uploading && !missingContext ? 'bg-slate-950 hover:bg-slate-900 text-white cursor-pointer' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+        :class="selectedFile && !uploading && !missingContext ? 'bg-slate-950 hover:bg-slate-900 text-white cursor-pointer' : 'bg-slate-200 text-slate-700 cursor-not-allowed'"
         class="w-full font-bold uppercase tracking-widest py-2.5 rounded text-sm transition-colors mt-4"
       >
         Sincronizar con Base de Datos

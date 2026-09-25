@@ -128,6 +128,7 @@ import { ref, computed, reactive } from 'vue'
 import { exportData } from '../api/exports'
 import { useIcons } from '../composables/useIcons'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import { useDragSession } from '../composables/useDragSession'
 import FilterBar from '../components/FilterBar.vue'
 
 const icons = useIcons()
@@ -185,13 +186,16 @@ const colWidths = reactive({})
 let resizeColIndex = null
 let resizeStartX = 0
 let resizeStartWidth = 0
+const colDrag = useDragSession()
 
 function startColResize(colIdx, e) {
   resizeColIndex = colIdx
   resizeStartX = e.clientX
   resizeStartWidth = colWidths[colIdx] || DEFAULT_COL_WIDTH
-  document.addEventListener('pointermove', onColResize)
-  document.addEventListener('pointerup', stopColResize)
+  colDrag.begin({
+    onMove: onColResize,
+    onEnd: () => { resizeColIndex = null },
+  })
   e.preventDefault()
 }
 
@@ -199,12 +203,6 @@ function onColResize(e) {
   if (resizeColIndex === null) return
   const diff = e.clientX - resizeStartX
   colWidths[resizeColIndex] = Math.max(60, resizeStartWidth + diff)
-}
-
-function stopColResize() {
-  resizeColIndex = null
-  document.removeEventListener('pointermove', onColResize)
-  document.removeEventListener('pointerup', stopColResize)
 }
 
 function colStyle(colIdx) {

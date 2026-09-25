@@ -174,7 +174,7 @@
                           {{ t('ulds.receivedBadge') }}
                         </span>
                         <span v-else
-                          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-slate-500 bg-slate-100 border border-slate-200 cursor-help"
+                          class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-bold text-slate-600 bg-slate-100 border border-slate-200 cursor-help"
                           :title="t('ulds.noReceiptTooltip')">
                           &#9888; {{ t('ulds.pendingShort') }}
                         </span>
@@ -258,25 +258,25 @@
                 <div v-if="!uld.backendId && creationStep > 0" class="flex items-center gap-3 mb-4 px-3 py-2 rounded-lg"
                   :class="creationStep === 1 ? 'bg-amber-50 ring-2 ring-amber-300' : creationStep === 2 ? 'bg-emerald-50 ring-2 ring-emerald-300' : 'bg-slate-50'">
                   <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider"
-                    :class="creationStep >= 1 ? 'text-amber-700' : 'text-slate-300'">
+                    :class="creationStep >= 1 ? 'text-amber-700' : 'text-slate-500'">
                     <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      :class="creationStep > 1 ? 'bg-emerald-500 text-white' : creationStep === 1 ? 'bg-amber-400 text-white' : 'bg-slate-200'">1</span>
+                      :class="creationStep > 1 ? 'bg-emerald-700 text-white' : creationStep === 1 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-900'">1</span>
                     {{ t('ulds.form.flight') }}
                     <span v-if="creationStep > 1" class="text-emerald-600 ml-1">✓</span>
                   </div>
                   <span class="text-slate-300 text-[10px]">▸</span>
                   <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider"
-                    :class="creationStep >= 2 ? 'text-emerald-700' : 'text-slate-300'">
+                    :class="creationStep >= 2 ? 'text-emerald-700' : 'text-slate-500'">
                     <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      :class="creationStep > 2 ? 'bg-emerald-500 text-white' : creationStep === 2 ? 'bg-emerald-400 text-white' : 'bg-slate-200'">2</span>
+                      :class="creationStep > 2 ? 'bg-emerald-700 text-white' : creationStep === 2 ? 'bg-emerald-700 text-white' : 'bg-slate-200 text-slate-900'">2</span>
                     {{ t('ulds.steps.scanUld') }}
                     <span v-if="creationStep > 2" class="text-emerald-600 ml-1">✓</span>
                   </div>
                   <span class="text-slate-300 text-[10px]">▸</span>
                   <div class="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider"
-                    :class="creationStep >= 3 ? 'text-slate-900' : 'text-slate-300'">
+                    :class="creationStep >= 3 ? 'text-slate-900' : 'text-slate-500'">
                     <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      :class="creationStep >= 3 ? 'bg-slate-900 text-white' : 'bg-slate-200'">3</span>
+                      :class="creationStep >= 3 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-900'">3</span>
                     {{ t('ulds.steps.registerPieces') }}
                   </div>
                 </div>
@@ -306,7 +306,7 @@
                   <div class="flex items-center gap-2">
                     <button @click="toggleScanMode(uld)"
                       class="font-mono font-bold uppercase text-[12px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
-                      :class="creationStep === 2 ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300 animate-pulse' : scanMode ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
+                      :class="creationStep === 2 ? 'bg-emerald-700 hover:bg-emerald-800 text-white ring-2 ring-emerald-300 animate-pulse' : scanMode ? 'bg-emerald-700 hover:bg-emerald-800 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
                       <template v-if="creationStep === 2">{{ t('ulds.scanNow') }}</template>
                       <template v-else-if="scanMode">{{ t('ulds.scanning') }}</template>
                       <template v-else>📷 {{ t('ulds.scanMode') }}</template>
@@ -322,7 +322,7 @@
                     </button>
                     <button v-if="uld.backendId" @click="printPalletLabel(uld)"
                       class="ds-btn-secondary" :title="t('ulds.printPalletTooltip')">
-                      &#9642; {{ t('ulds.actions.palletLabel') }}
+                      <i class="pi pi-print"></i> {{ t('ulds.actions.palletLabel') }}
                     </button>
                     <button @click="saveUld(uld)"
                       class="ds-btn-primary">
@@ -443,7 +443,7 @@ const showLabels = ref(false)
 const labelIds = ref([])
 function printPalletLabel(uld) {
   if (!uld.backendId) { toast.warning(t('ulds.toast.saveBeforePrint')); return }
-  labelIds.value = [uld.backendId]
+  labelIds.value = [{ id: uld.backendId, label: uld.uldNumber || uld.backendId }]
   showLabels.value = true
 }
 

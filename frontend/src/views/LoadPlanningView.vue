@@ -82,7 +82,7 @@
         <span class="font-bold text-slate-900">{{ p.pos }}</span>
         <span class="text-slate-900">{{ p.count }} ULD</span>
         <span class="text-slate-900 text-[13px]">({{ p.pcs }} pcs)</span>
-        <span v-if="p.isBelly" class="text-[13px] font-bold text-slate-500 bg-slate-100 px-1 rounded">BELLY</span>
+        <span v-if="p.isBelly" class="text-[13px] font-bold text-slate-600 bg-slate-100 px-1 rounded">BELLY</span>
       </div>
       <span class="text-slate-300 mx-1">|</span>
       <span class="text-slate-900 font-bold whitespace-nowrap">A/C: {{ aircraftType }}</span>
@@ -173,6 +173,7 @@
       :class="dragOver ? 'ring-2 ring-slate-400 ring-offset-2' : ''">
       <div class="overflow-x-auto flex flex-col flex-1 min-h-0 lp-scroll-x">
       <div class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider lp-grid py-3.5 px-5 items-center shrink-0 border-b border-slate-500 whitespace-nowrap shadow-sm">
+        <span class="text-center">{{ t('loadPlanning.colPos') }}</span>
         <span class="flex items-center gap-1">
           <svg class="w-2.5 h-2.5 text-slate-950" viewBox="0 0 8 8" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor" /><circle cx="6" cy="2" r="1" fill="currentColor" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="6" cy="6" r="1" fill="currentColor" /></svg>
           ULD
@@ -183,7 +184,6 @@
         <span class="text-center">{{ t('loadPlanning.colTare') }}</span>
         <span class="text-center">{{ t('loadPlanning.colType') }}</span>
         <span class="text-center">{{ t('loadPlanning.colSeal') }}</span>
-        <span class="text-center">{{ t('loadPlanning.colPos') }}</span>
         <span class="text-center">{{ t('loadPlanning.colDesc') }}</span>
         <span class="text-center">{{ t('loadPlanning.colMawb') }}</span>
         <span class="text-center">{{ t('loadPlanning.colDest') }}</span>
@@ -204,6 +204,11 @@
           class="bg-white lp-container-block transition-all duration-150"
           :class="[getRowBgStyle(uldGroup.status), { 'opacity-40': rowDragging === uldGroup.uldId, 'ring-2 ring-slate-400': rowDropIndex === uIdx }]">
           <div v-if="uldGroup.items.length === 0" class="lp-grid py-2 px-5 items-center text-slate-900">
+            <span class="text-center" :class="posCellClass(uldGroup.pos)">
+              <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
+                @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
+            </span>
             <span
               @pointerdown="onTableUldPointerDown(uldGroup.uldId, $event)"
               class="font-semibold text-slate-900 truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
@@ -213,16 +218,17 @@
             <span class="text-center">{{ (uldGroup.tara || 0).toLocaleString() }}</span>
             <span class="text-center">{{ uldGroup.config }}</span>
             <span class="text-center truncate">{{ uldGroup.sello || '-' }}</span>
-            <span class="text-center" :class="posCellClass(uldGroup.pos)">
-              <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
-                @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
-            </span>
             <span class="text-center text-slate-900 italic">—</span>
             <span class="text-center text-slate-900 italic">{{ t('loadPlanning.emptyUld') }}</span>
             <span class="text-center">-</span>
           </div>
           <div v-for="(item, iIdx) in uldGroup.items" :key="iIdx" class="lp-grid py-2 px-5 items-center border-b border-slate-300 last:border-b-0">
+            <span v-if="iIdx === 0" class="text-center" :class="posCellClass(uldGroup.pos)">
+              <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
+                @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
+            </span>
+            <span v-else class="text-slate-200 text-center">—</span>
             <span v-if="iIdx === 0"
               @pointerdown="onTableUldPointerDown(uldGroup.uldId, $event)"
               class="font-semibold text-slate-900 truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
@@ -236,12 +242,6 @@
             <span v-if="iIdx === 0" class="text-center">{{ uldGroup.config }}</span>
             <span v-else class="text-slate-200 text-center">—</span>
             <span v-if="iIdx === 0" class="text-center truncate">{{ uldGroup.sello || '-' }}</span>
-            <span v-else class="text-slate-200 text-center">—</span>
-            <span v-if="iIdx === 0" class="text-center" :class="posCellClass(uldGroup.pos)">
-              <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
-                @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
-            </span>
             <span v-else class="text-slate-200 text-center">—</span>
             <span class="text-center font-mono truncate">{{ item.description }}</span>
             <span class="text-center flex items-center justify-center gap-1 min-w-0">
@@ -1418,7 +1418,7 @@ watch(calculatedTotals, (t) => {
 
 <style scoped>
 .shadow-pencil-marine { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-.lp-grid { display: grid; grid-template-columns: 10fr 5fr 4fr 6fr 4fr 4fr 12fr 4fr 14fr 14fr 4fr; gap: 4px; min-width: 960px; }
+.lp-grid { display: grid; grid-template-columns: 4fr 10fr 5fr 4fr 6fr 4fr 4fr 12fr 14fr 14fr 4fr; gap: 4px; min-width: 960px; }
 .lp-grid > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lp-container-block:hover { background-color: #f8fafc !important; }
 .lp-scroll-x::-webkit-scrollbar { height: 8px; display: block; }

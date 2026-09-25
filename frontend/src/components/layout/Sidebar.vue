@@ -53,17 +53,17 @@
     <!-- User -->
     <div class="sidebar-user" v-if="!collapsed">
       <div class="user-avatar" :style="{ background: roleIcon.bg }">
-        <component :is="roleIcon.icon" :size="16" :stroke-width="1.8" style="color: white" />
+        <component :is="icons[roleIcon.iconKey]" :size="16" :stroke-width="1.8" style="color: white" />
       </div>
       <div class="user-info">
         <div class="font-bold text-[12px] truncate">{{ auth.fullName || auth.email }}</div>
         <div class="text-[10px] truncate" :style="{ color: roleIcon.fg }">{{ roleLabel }}</div>
       </div>
       <div class="user-actions">
-        <button @click="showPasswordChange = true" :title="t('sidebar.changePassword')" class="hover:opacity-70 transition-opacity">
+        <button @click="showPasswordChange = true" :title="t('sidebar.changePassword')" class="hover:opacity-70 transition-opacity" :aria-label="t('sidebar.changePassword')">
           <component :is="icons.Key" :size="14" :stroke-width="1.5" />
         </button>
-        <button @click="handleLogout" :title="t('sidebar.logout')" class="hover:opacity-70 transition-opacity">
+        <button @click="handleLogout" :title="t('sidebar.logout')" class="hover:opacity-70 transition-opacity" :aria-label="t('sidebar.logout')">
           <component :is="icons.Logout" :size="14" :stroke-width="1.5" />
         </button>
       </div>
@@ -141,7 +141,7 @@ const allMenuItems = computed(() => [
   { path: '/flights',       labelKey: 'sidebar.flights',     iconKey: 'Send',       view: 'FLIGHTS',       },
   { path: '/mawbs',         labelKey: 'sidebar.mawbs',       iconKey: 'File',       view: 'MAWBS',         },
   { path: '/load-planning', labelKey: 'sidebar.loadPlanning',iconKey: 'ThLarge',    view: 'LOAD_PLANNING', },
-  { path: '/ulds',          labelKey: 'sidebar.ulds',        iconKey: 'Truck',      view: 'ULDS',          },
+  { path: '/ulds',          labelKey: 'sidebar.ulds',        iconKey: 'Pallet',     view: 'ULDS',          },
   { path: '/exports',       labelKey: 'sidebar.exports',     iconKey: 'ChartBar',   view: 'EXPORTS',       },
 ])
 const mainMenu = computed(() => allMenuItems.value.filter(item => auth.canView(item.view)))

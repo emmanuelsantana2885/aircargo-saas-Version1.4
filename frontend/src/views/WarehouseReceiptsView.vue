@@ -303,7 +303,7 @@
                           <span class="text-slate-200">HAWBs: <strong class="text-white">{{ (receiptForms[m.id].hawbEntries || []).length }}</strong></span>
                           <button @click="addHawbEntry(m)"
                             class="ml-1 w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition text-[14px] font-bold leading-none"
-                            title="Agregar HAWB">+</button>
+                            title="Agregar HAWB" aria-label="Agregar HAWB">+</button>
                           <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 0"
                             class="text-slate-300 ml-1">({{ receiptHawbs[m.id].length }} en DB)</span>
                         </div>
@@ -346,7 +346,7 @@
                               </td>
                               <td v-if="(receiptForms[m.id].hawbEntries || []).length > 1"
                                 class="px-2 py-1 text-center border-b border-slate-100">
-                                <button @click="removeHawbEntry(m.id, ei)"
+                                <button @click="removeHawbEntry(m.id, ei)" aria-label="Eliminar HAWB"
                                   class="text-slate-400 hover:text-slate-600 transition text-[12px] font-bold">✕</button>
                               </td>
                             </tr>
@@ -450,7 +450,7 @@
                           <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableKg ? p.chargeableKg.toFixed(2) : '—' }}</td>
                           <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableLbs ? p.chargeableLbs.toFixed(2) : '—' }}</td>
                           <td class="px-2 py-1 text-center">
-                            <button @click="removePiece(m.id, pi)" class="text-slate-400 hover:text-slate-600 transition text-[12px]">✕</button>
+                            <button @click="removePiece(m.id, pi)" aria-label="Eliminar pieza" class="text-slate-400 hover:text-slate-600 transition text-[12px]">✕</button>
                           </td>
                         </tr>
                       </tbody>
@@ -546,7 +546,7 @@
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableKg ? entry.piece.chargeableKg.toFixed(2) : '—' }}</td>
                             <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableLbs ? entry.piece.chargeableLbs.toFixed(2) : '—' }}</td>
                             <td class="px-1 py-0.5 text-center">
-                              <button @click="removePiece(m.id, entry.idx)" class="text-slate-400 hover:text-slate-600 text-[12px]">✕</button>
+                              <button @click="removePiece(m.id, entry.idx)" aria-label="Eliminar pieza" class="text-slate-400 hover:text-slate-600 text-[12px]">✕</button>
                             </td>
                           </tr>
                         </tbody>
@@ -672,7 +672,7 @@
                       <span class="text-[11px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                     </div>
                     <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[12px] font-mono">{{ ev.name }}</div>
-                    <button @click.stop="removeEvidence(m.id, ei)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                    <button @click.stop="removeEvidence(m.id, ei)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
                     <span class="block text-[12px] font-mono text-slate-950 px-1.5 py-0.5 truncate">{{ ev.name }}</span>
                   </div>
                   <div class="border-2 border-dashed border-slate-400 rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
@@ -772,7 +772,7 @@
             <span class="ds-modal-title">
               {{ t('warehouse.evidence.title') }} — {{ mawbEvidenceMgr.mawb?.awbNumber || 'MAWB' }}
             </span>
-            <button @click="closeMawbEvidenceMgr" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="closeMawbEvidenceMgr" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
           </div>
           <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 120px);">
             <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[14px] font-mono text-slate-950 text-center py-6 uppercase tracking-widest">
@@ -787,7 +787,7 @@
                   <span class="text-[12px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                 </div>
                 <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[13px] font-mono">{{ doc.name }}</div>
-                <button @click.stop="removeMawbEvidence(di)" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                <button @click.stop="removeMawbEvidence(di)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
                 <span class="block text-[13px] font-mono text-slate-950 px-2 py-1 truncate">{{ doc.name }}</span>
               </div>
             </div>
@@ -824,7 +824,7 @@
         <div class="ds-modal-panel max-w-lg p-0" style="max-height: 80vh;">
           <div class="ds-modal-header px-4 py-2.5">
             <span class="ds-modal-title">Confirmar Recibo</span>
-            <button @click="showConfirmModal = false" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="showConfirmModal = false" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
           </div>
           <div class="overflow-y-auto" style="max-height: calc(80vh - 110px);">
             <template v-if="pendingSubmitMawb">
@@ -901,7 +901,7 @@
               &#10007; Ajustar
             </button>
             <button @click="confirmBookingCorrection"
-              class="flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-amber-600 hover:bg-amber-500 transition">
+              class="flex items-center gap-1.5 text-[12px] px-4 py-1.5 rounded font-mono uppercase tracking-wider font-bold text-white bg-amber-700 hover:bg-amber-500 transition">
               &#10003; Aceptar y Emitir
             </button>
           </div>
@@ -917,7 +917,7 @@
             <span class="ds-modal-title truncate max-w-[70%]">
               {{ evidencePreview.item?.name || 'Vista previa' }}
             </span>
-            <button @click="closeEvidencePreview" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="closeEvidencePreview" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
           </div>
           <div class="overflow-auto bg-slate-900 flex items-center justify-center" style="max-height: calc(90vh - 110px); min-height: 200px;">
             <img v-if="evidencePreview.item?.type === 'image' && evidencePreview.item?.url" :src="evidencePreview.item.url"

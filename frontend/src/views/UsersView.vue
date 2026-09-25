@@ -199,8 +199,8 @@
               <button @click="saveRolePermissions"
                 class="px-3 py-1 rounded text-[11px] font-bold transition-all"
                 :class="hasChanges
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+                  ? 'bg-green-700 text-white hover:bg-green-800'
+                  : 'bg-slate-200 text-slate-700 cursor-not-allowed'"
                 :disabled="!hasChanges">
                 {{ saving ? t('common.saving') : t('common.save') }}
               </button>
@@ -219,7 +219,7 @@
                     class="w-7 h-4 rounded-sm border transition-all shrink-0 relative flex items-center"
                     :class="localPerms[v.viewCode]
                       ? 'bg-blue-600 border-blue-600'
-                      : 'bg-white border-slate-300'">
+                      : 'bg-white border-slate-300'" :aria-label="v.viewName + ': ' + (localPerms[v.viewCode] ? 'AUTHORIZED' : 'RESTRICTED')">
                     <span class="w-[11px] h-[11px] rounded-sm absolute transition-all"
                       :class="localPerms[v.viewCode]
                         ? 'bg-white left-[11px]'
@@ -230,7 +230,7 @@
                     <div class="text-[11px] truncate max-w-md text-slate-500">{{ v.viewDescription }}</div>
                   </div>
                 </div>
-                <div class="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0" :class="localPerms[v.viewCode] ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-400'">
+                <div class="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0" :class="localPerms[v.viewCode] ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'">
                   {{ localPerms[v.viewCode] ? 'AUTHORIZED' : 'RESTRICTED' }}
                 </div>
               </div>

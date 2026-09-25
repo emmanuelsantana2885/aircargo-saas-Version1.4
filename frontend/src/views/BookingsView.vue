@@ -208,7 +208,7 @@
           <div class="col-span-1 flex justify-end relative z-10 ds-row-actions">
             <button @click.stop="openEdit(b)"
               class="text-slate-400 hover:text-blue-600 transition-colors p-1"
-              :title="t('common.edit')">
+              :title="t('common.edit')" :aria-label="t('common.edit')">
               <component :is="icons.Pencil" :size="15" :stroke-width="1.5" />
             </button>
             <button @click.stop="removeBooking(b)"
@@ -225,7 +225,7 @@
       <div class="ds-modal-panel">
         <div class="ds-modal-header">
           <h2 class="ds-modal-title">{{ editingBooking ? t('bookings.editBooking') : t('bookings.newBooking') }}</h2>
-          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition"><component :is="icons.X" :size="18" :stroke-width="2" /></button>
+          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition" :aria-label="t('common.close')"><component :is="icons.X" :size="18" :stroke-width="2" /></button>
         </div>
           <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
@@ -328,7 +328,7 @@
             <h2 class="ds-modal-title">{{ t('bookings.import.previewTitle') }}</h2>
             <p class="text-[12px] font-mono text-slate-600 mt-0.5">{{ t('bookings.import.rowsFound', { n: parsedRows.length }) }}</p>
           </div>
-          <button @click="closeImportModal" class="text-slate-400 hover:text-slate-900 transition"><component :is="icons.X" :size="16" :stroke-width="2" /></button>
+          <button @click="closeImportModal" class="text-slate-400 hover:text-slate-900 transition" :aria-label="t('common.close')"><component :is="icons.X" :size="16" :stroke-width="2" /></button>
         </div>
 
         <div class="overflow-auto flex-1 min-h-0">
@@ -1014,4 +1014,3 @@ watch(() => store.selectedFlightId, (id) => {
   scrollWrapRef.value?.scrollTo({ top: 0, left: 0 })
 })
 </script>
-

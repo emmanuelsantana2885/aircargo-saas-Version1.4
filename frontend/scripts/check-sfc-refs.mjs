@@ -219,26 +219,44 @@ function candidates(code) {
 function extractDefinitions(script) {
   const defs = new Set()
 
-  // imports — parseo manual del specifier (robusto ante default/named/namespace/mixto)
-  const importRe = /import\s+([^;\n]+?)\s*from\s+[^;\n]+|import\s+['"][^'"]+['"]/g
+  // imports — parser por formas (soporta saltos de línea dentro de los { })
+  // 1) import { a, b as c } from 'x'   2) import d, { e } from 'x'
+  // 3) import * as ns from 'x'          4) import 'x'  (sin bindings)
+  const fromRe = /\s*from\s*['"][^'"]+['"]/g
+  const importRe = /\bimport\b/g
   let m
   while ((m = importRe.exec(script))) {
-    const spec = (m[1] || '').trim()
-    if (!spec) continue // side-effect import ('./x.css')
-    let parts = [spec]
-    if (spec.startsWith('{')) {
-      parts = spec.slice(1, -1).split(',').map((p) => p.trim())
-    } else if (spec.startsWith('*')) {
-      const ns = spec.match(/\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)/)
-      if (ns) defs.add(ns[1])
-      continue
-    } else {
-      parts = [spec]
+    const rest = script.slice(m.index + 'import'.length)
+    // side-effect: import 'x.css'
+    const bare = rest.match(/^\s*['"]/)
+    if (bare) continue
+    // namespace: import * as ns
+    const ns = rest.match(/^\s*\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)/)
+    if (ns) { defs.add(ns[1]); continue }
+    // localiza el `from '...'` que cierra este import (sin cruzar otro import)
+    fromRe.lastIndex = 0
+    let f
+    let fromAt = -1
+    while ((f = fromRe.exec(rest))) {
+      const between = rest.slice(0, f.index)
+      if (/\bimport\b/.test(between)) break // es otro import: fin
+      fromAt = f.index
+      break
     }
-    for (const p of parts) {
-      const name = p.split(/\s+as\s+/).pop().trim()
-      if (!name || !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) continue
-      defs.add(name)
+    if (fromAt === -1) continue
+    const spec = rest.slice(0, fromAt)
+    // recoge nombres: los del bloque { } y el default previo a la coma
+    const braced = spec.match(/\{([\s\S]*?)\}/)
+    if (braced) {
+      for (const p of braced[1].split(',')) {
+        const name = p.split(/\s+as\s+/).pop().trim()
+        if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) defs.add(name)
+      }
+    }
+    const beforeBrace = braced ? spec.slice(0, spec.indexOf('{')) : spec
+    for (const d of beforeBrace.split(',')) {
+      const name = d.trim()
+      if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) defs.add(name)
     }
   }
 

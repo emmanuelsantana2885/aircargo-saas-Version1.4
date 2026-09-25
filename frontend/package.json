@@ -8,12 +8,13 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "vite",
-    "build": "npm run check:refs && vite build",
+    "build": "npm run check:refs && npm run check:contrast && vite build",
     "preview": "vite preview",
-    "lint": "npm run check:refs && eslint src/",
+    "lint": "npm run check:refs && npm run check:contrast && eslint src/",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:refs": "node scripts/check-sfc-refs.mjs"
+    "check:refs": "node scripts/check-sfc-refs.mjs",
+    "check:contrast": "node scripts/audit-contrast.mjs"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",
@@ -22,8 +23,10 @@
     "axios": "^1.18.0",
     "date-fns": "^4.4.0",
     "html5-qrcode": "^2.3.8",
+    "jsbarcode": "^3.12.3",
     "lucide-vue-next": "^1.0.0",
     "pinia": "^3.0.4",
+    "qrcode-generator": "^2.0.4",
     "vue": "^3.5.32",
     "vue-i18n": "^10.0.8",
     "vue-router": "^5.0.4",

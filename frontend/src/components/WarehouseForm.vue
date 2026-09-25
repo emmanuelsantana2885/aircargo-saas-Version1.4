@@ -21,7 +21,7 @@
           <div v-if="idx < steps.length - 1" class="w-6 h-px mx-1" :class="currentStep > idx + 1 ? 'bg-slate-500' : 'bg-slate-200'"></div>
         </template>
       </div>
-      <button @click="$emit('cancel')" class="text-slate-400 hover:text-slate-700 transition">
+      <button @click="$emit('cancel')" class="text-slate-400 hover:text-slate-700 transition" :aria-label="t('common.close')">
         <component :is="icons.X" :size="16" :stroke-width="2" />
       </button>
     </div>

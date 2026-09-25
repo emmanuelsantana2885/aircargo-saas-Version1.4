@@ -51,7 +51,7 @@
           {{ t('filterBar.periods.today') }}
         </button>
         <button v-if="modelValue" type="button" @click="pick(null)"
-          class="text-[12px] font-bold py-1.5 px-3 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors">
+          class="text-[12px] font-bold py-1.5 px-3 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
           {{ t('common.clear') }}
         </button>
       </div>

@@ -1,7 +1,8 @@
 <template>
   <Teleport to="body">
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" @click.self="close">
-      <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4 flex flex-col" style="max-width: 960px; width: 100%; max-height: 90vh;">
+      <div class="bg-white rounded-lg shadow-2xl overflow-hidden mx-4 flex flex-col" style="max-width: 960px; width: 100%; max-height: 90vh;"
+        role="dialog" aria-modal="true" aria-label="Editar recibo">
         <div class="flex items-center justify-between px-4 py-2.5 border-b border-slate-300 bg-slate-50 shrink-0">
           <div class="flex items-center gap-2">
             <span class="text-[14px] font-mono font-bold uppercase tracking-widest text-slate-950">
@@ -9,7 +10,7 @@
             </span>
             <span v-if="loading" class="text-[12px] font-mono text-slate-400 uppercase">Cargando...</span>
           </div>
-          <button @click="close" class="text-slate-400 hover:text-slate-700 transition text-sm">✕</button>
+          <button @click="close" class="text-slate-400 hover:text-slate-700 transition text-sm" :aria-label="t('common.close')">✕</button>
         </div>
 
         <div v-if="loading" class="flex items-center justify-center py-20 text-[13px] font-mono text-slate-400 uppercase tracking-widest">
@@ -208,7 +209,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { receiptsApi } from '@/api/receipts'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['saved', 'close'])
 

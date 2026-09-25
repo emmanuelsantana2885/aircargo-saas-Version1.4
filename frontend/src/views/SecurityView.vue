@@ -106,7 +106,7 @@
                 <td class="px-3 py-2 text-center">
                   <span v-if="u.blocked" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">{{ t('security.blocked') }}</span>
                   <span v-else-if="u.isActive" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">{{ t('security.active') }}</span>
-                  <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">{{ t('security.inactive') }}</span>
+                  <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">{{ t('security.inactive') }}</span>
                 </td>
                 <td class="px-3 py-2 text-center">
                   <button v-if="u.id !== auth.userId" @click="toggleBlock(u)"

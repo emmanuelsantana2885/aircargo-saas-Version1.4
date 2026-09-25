@@ -182,53 +182,6 @@ export const useAppStore = defineStore('app', () => {
     } catch { /* non-critical */ }
   }
 
-  async function dispatchUld(localUld, flightId) {
-    const flight = flights.value.find(f => f.id === flightId) || selectedFlight.value
-    const dto = {
-      airlineId:     flight?.airlineId || null,
-      flightId:      flightId,
-      uldNumber:     localUld.id,
-      uldType:       inferUldType(localUld.id),
-      config:        localUld.config || null,
-      position:      localUld.pos || null,
-      sealNumber:    localUld.sealNumber || null,
-      grossWeightLbs: localUld.grossWeight || 0,
-      tareLbs:       localUld.tareWeight || 0,
-      status:        'BUILT',
-      notes:         localUld.notes ?? null,
-      destination:   localUld.destination ?? null,
-      loadedBy:      localUld.loadedBy ?? null,
-      weighedBy:     localUld.weighedBy ?? null,
-      confirmedWith: localUld.confirmedWith ?? null,
-    }
-    let saved
-    if (localUld.backendId) {
-      const res = await uldsApi.update(localUld.backendId, dto)
-      saved = res.data
-      const idx = ulds.value.findIndex(u => u.id === localUld.backendId)
-      if (idx >= 0) ulds.value[idx] = saved
-    } else {
-      const res = await uldsApi.create(dto)
-      saved = res.data
-      ulds.value.unshift(saved)
-    }
-    // Crear los uld-awbs vinculados
-    for (const mawb of (localUld.mawbs || [])) {
-      if (mawb.awbNumber && saved.id) {
-        await uldAwbsApi.create({
-          uldId:       saved.id,
-          mawbId:      mawb.mawbId || null,
-          mawbLabel:   mawb.awbNumber,
-          description: mawb.commodityType || mawb.description || 'DRY_CARGO',
-          destination: mawb.destination || mawb.dest || null,
-          pieces:      mawb.pieces || mawb.pcs || 0,
-          piecesPct:   mawb.piecesPct || mawb.percentage || 0,
-        })
-      }
-    }
-    return saved
-  }
-
   async function selectFlight(flightId) {
     selectedFlightId.value = flightId
     await Promise.all([
@@ -249,7 +202,7 @@ export const useAppStore = defineStore('app', () => {
     loadBookings, createBooking, updateBooking, deleteBooking,
     loadMawbs, loadAllMawbs, createMawb,
     loadReceipts, emitReceipt,
-    loadUlds, loadUldAwbs, dispatchUld,
+    loadUlds, loadUldAwbs,
     selectFlight,
   }
 })

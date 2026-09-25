@@ -45,21 +45,21 @@
     </div>
     <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
       <div class="ds-card border-l-emerald-500 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><component :is="icons.Scale" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"><component :is="icons.Scale" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalNet') }}</div>
-          <div class="ds-card-value text-emerald-700 truncate">{{ totalNetPayload }} <span class="text-[12px] font-semibold text-slate-400">{{ t('common.lbs') }}</span></div>
+          <div class="ds-card-value text-emerald-700 truncate">{{ totalNetAll }} <span class="text-[12px] font-semibold text-slate-400">{{ t('common.lbs') }}</span></div>
         </div>
       </div>
       <div class="ds-card border-l-blue-500 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><component :is="icons.Package" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><component :is="icons.Package" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalUlds') }}</div>
           <div class="ds-card-value text-blue-700">{{ totalUldsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.uldShort') }}</span></div>
         </div>
       </div>
       <div class="ds-card border-l-slate-800 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalMawbs') }}</div>
           <div class="ds-card-value text-slate-900">{{ reservedMawbsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.mawbShort') }}</span></div>
@@ -75,7 +75,7 @@
         <table class="w-full border-collapse text-[13px] font-mono flight-table" :style="{ minWidth: tableMinWidth + 'px' }">
           <thead class="sticky top-0 z-20">
             <tr class="bg-slate-100 text-slate-700 text-[13px] font-bold uppercase tracking-wider border-b-2 border-slate-300 font-mono [&>th]:px-2 [&>th]:py-3 [&>th]:whitespace-nowrap">
-              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-slate-100 text-slate-400">#</th>
+              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-slate-100 text-slate-600">#</th>
               <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-slate-100">
                 <button @click="toggleAllExpanded" class="flex items-center justify-center gap-1 hover:opacity-70 transition"
                   :title="allExpanded ? t('dashboard.collapseAll') : t('dashboard.expandAll')">
@@ -203,7 +203,7 @@
                   <button @click="toggleExpand(f.id)"
                     class="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-200 transition text-slate-500 hover:text-slate-900"
                     :aria-expanded="isExpanded(f.id)"
-                    :title="isExpanded(f.id) ? t('dashboard.collapseDetail') : t('dashboard.expandDetail')">
+                    :title="isExpanded(f.id) ? t('dashboard.collapseDetail') : t('dashboard.expandDetail')" :aria-label="isExpanded(f.id) ? t('dashboard.collapseDetail') : t('dashboard.expandDetail')">
                     <span class="text-[12px] transition-transform duration-200" :style="{ transform: isExpanded(f.id) ? 'rotate(180deg)' : '' }">▼</span>
                   </button>
                 </td>
@@ -297,28 +297,28 @@
     <!-- Summary Cards -->
     <div v-if="wrSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
       <div class="ds-card flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.LayoutGrid" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.LayoutGrid" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.wr.summary.totalRows') }}</div>
           <div class="ds-card-value text-slate-900">{{ wrSummary.totalRows }}</div>
         </div>
       </div>
       <div class="ds-card border-l-blue-500 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><component :is="icons.Package" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><component :is="icons.Package" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.wr.summary.receivedPieces') }}</div>
           <div class="ds-card-value text-blue-700">{{ wrSummary.totalReceivedPieces }}</div>
         </div>
       </div>
       <div class="ds-card border-l-emerald-500 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center"><component :is="icons.Scale" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"><component :is="icons.Scale" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.wr.summary.physicalWeightLbs') }}</div>
           <div class="ds-card-value text-emerald-700">{{ formatNum(wrSummary.totalPhysicalWeightLbs) }}</div>
         </div>
       </div>
       <div class="ds-card border-l-amber-500 flex items-center gap-3">
-        <span class="shrink-0 w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="18" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.wr.summary.dispatchedWeightLbs') }}</div>
           <div class="ds-card-value text-amber-700">{{ formatNum(wrSummary.totalDispatchedWeightLbs) }}</div>
@@ -687,10 +687,6 @@ function flightUlds(flightId) {
   return allUlDs.value.filter(u => u.flightId === flightId)
 }
 
-function flightMawbs(flightId) {
-  return allMawbs.value.filter(m => m.flightId === flightId)
-}
-
 function flightPositions(flightId) {
   const ulds = flightUlds(flightId)
   return new Set(ulds.map(u => u.position).filter(Boolean)).size
@@ -758,23 +754,64 @@ const uldFlightSignature = computed(() =>
 )
 watch(uldFlightSignature, () => _uldIdCache.clear())
 
+// Normalize AWB codes (covers historical labels with mixed formats:
+// "40605857585" vs "406-05857585" vs "406 05857585" vs "406/05857585")
+const normAwb = (raw) => String(raw || '').toUpperCase().replace(/[\s\-_/]/g, '')
+
+// Active (non-superseded) warehouse receipt for a MAWB, matched by mawbId or
+// normalized AWB number. Source of the REAL physical weight of the pieces.
+const activeReceiptForMawb = (mawb) => {
+  const awb = normAwb(mawb?.awbNumber)
+  return (appStore.receipts || []).find(r =>
+    !r.superseded &&
+    ((r.mawbId && r.mawbId === mawb?.id) || (r.mawbNumber && normAwb(r.mawbNumber) === awb))
+  )
+}
+
 // Dispatched weight per MAWB within a specific flight:
 // only counts ULD-AWB links whose ULD belongs to that flight.
-// Formula: (physicalWeight / totalPieces) * dispatchedPieces
+// Formula: (physicalWeight / receivedPieces) * dispatchedPieces
+// Basis: the receipt's ACTUAL weight (physical, in lbs) when a non-superseded
+// receipt exists; otherwise falls back to reported/chargeable kg from the MAWB
+// (declared weight — only a proxy when no physical receipt exists yet).
 function mawbDispatchedWeightLbs(mawb, flightId) {
-  const receivedKg = Number(mawb.reportedWeightKg || mawb.chargeableWeightKg || 0)
-  const receivedPcs = Number(mawb.pieces || 0)
-  if (!receivedKg || !receivedPcs) return 0
+  const rec = activeReceiptForMawb(mawb)
+  let receivedLbs = 0
+  let receivedPcs = Number(mawb.pieces || 0)
+  if (rec && Number(rec.actualWeightLbs) > 0) {
+    receivedLbs = Number(rec.actualWeightLbs)
+    receivedPcs = Number(rec.pieceCount || receivedPcs)
+  } else {
+    const receivedKg = Number(mawb.reportedWeightKg || mawb.chargeableWeightKg || 0)
+    receivedLbs = receivedKg ? receivedKg * 2.20462 : 0
+  }
+  if (!receivedLbs || !receivedPcs) return 0
   const uldIds = flightUldIdSet(flightId)
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
-  const dispatchedPcs = links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
+  const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(mawb.awbNumber) && uldIds.has(l.uldId)) || []
+  const dispatchedPcs = Math.min(links.reduce((s, l) => s + (Number(l.pieces) || 0), 0), receivedPcs)
   if (!dispatchedPcs) return 0
-  return (receivedKg * 2.20462 / receivedPcs) * dispatchedPcs
+  return (receivedLbs / receivedPcs) * dispatchedPcs
+}
+
+// MAWBs that actually have pieces dispatched on this flight's ULDs
+// (via ULD-AWB links). Source of truth for commodity weights: a MAWB
+// can be split across several flights, so its own flightId is not
+// enough to know which flights carry its pieces.
+function mawbsDispatchedOnFlight(flightId) {
+  const uldIds = flightUldIdSet(flightId)
+  const byAwb = new Map(allMawbs.value.map(m => [normAwb(m.awbNumber), m]))
+  const ids = new Set()
+  for (const l of (appStore.uldAwbs || [])) {
+    if (!uldIds.has(l.uldId)) continue
+    const m = byAwb.get(normAwb(l.mawbLabel))
+    if (m) ids.add(m.id)
+  }
+  return allMawbs.value.filter(m => ids.has(m.id))
 }
 
 // Commodity payload per flight (sum of per-MAWB dispatched weights)
 function commodityPayload(flightId, commodityType) {
-  const mawbs = flightMawbs(flightId)
+  const mawbs = mawbsDispatchedOnFlight(flightId)
   const totalLbs = mawbs
     .filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
     .reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
@@ -782,13 +819,13 @@ function commodityPayload(flightId, commodityType) {
 }
 
 function commodityTooltip(flightId, commodityType) {
-  const mawbs = flightMawbs(flightId)
+  const mawbs = mawbsDispatchedOnFlight(flightId)
   const items = mawbs.filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
   if (!items.length) return t('dashboard.tooltip.commodityZero', { label: COMMODITY_MAP.value[commodityType]?.label || commodityType })
   const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
   const uldIds = flightUldIdSet(flightId)
   const totalPcs = items.reduce((s, m) => {
-    const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === m.awbNumber && uldIds.has(l.uldId)) || []
+    const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(m.awbNumber) && uldIds.has(l.uldId)) || []
     return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
   }, 0)
   const mawbCount = items.length
@@ -799,7 +836,7 @@ function commodityTooltip(flightId, commodityType) {
 const visibleCommodities = computed(() => {
   const activeTypes = new Set()
   filteredFlights.value.forEach(f => {
-    flightMawbs(f.id).forEach(m => {
+    mawbsDispatchedOnFlight(f.id).forEach(m => {
       const type = m.commodityType || 'DRY_CARGO'
       if (mawbDispatchedWeightLbs(m, f.id) > 0) activeTypes.add(type)
     })
@@ -967,6 +1004,7 @@ onMounted(async () => {
       appStore.loadAllMawbs(),
       appStore.loadUldAwbs(),
       appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
+      appStore.loadReceipts({ silent: true }),
     ])
   }
   loading.value = false
@@ -980,6 +1018,7 @@ useLiveRefresh(() => {
     appStore.loadAllMawbs({ silent: true }),
     appStore.loadUldAwbs(),
     appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
+    appStore.loadReceipts({ silent: true }),
   ]
   if (activeTab.value === 'weight-report') tasks.push(loadWeightReport())
   return Promise.all(tasks)
@@ -991,15 +1030,15 @@ useLiveRefresh(() => {
    natural y solo la cabecera permanece fija (sticky top) al hacer scroll vertical. */
 
 .ds-card {
-  @apply bg-white border border-slate-200 rounded-xl px-3.5 py-3
+  @apply bg-white border border-slate-200 rounded-xl px-3 py-2
          shadow-sm shadow-slate-900/5 border-l-4 border-l-slate-800
          transition hover:shadow-md;
 }
 .ds-card-label {
-  @apply text-[10px] font-mono font-semibold text-slate-500 uppercase tracking-wide mb-0.5;
+  @apply text-[9.5px] font-mono font-semibold text-slate-500 uppercase tracking-wide mb-0.5;
 }
 .ds-card-value {
-  @apply text-[18px] font-mono font-bold text-slate-900 tracking-tight leading-tight;
+  @apply text-[15px] font-mono font-bold text-slate-900 tracking-tight leading-tight;
 }
 .ds-btn-secondary {
   @apply px-3 py-1.5 rounded-lg text-[12px] font-semibold font-mono border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition;

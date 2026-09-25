@@ -1,10 +1,11 @@
 <template>
   <Teleport to="body">
     <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="$emit('close')">
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+        role="dialog" aria-modal="true" :aria-label="t('passwordChange.title')">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h3 class="text-[15px] font-bold text-slate-950 uppercase tracking-wide font-mono">{{ t('passwordChange.title') }}</h3>
-          <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors">
+          <button @click="$emit('close')" class="text-slate-400 hover:text-slate-600 transition-colors" :aria-label="t('common.close')">
             <component :is="icons.X" :size="18" />
           </button>
         </div>

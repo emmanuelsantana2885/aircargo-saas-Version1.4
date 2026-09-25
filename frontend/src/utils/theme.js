@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════
-   Theme engine v4 — 10 themes × 7 tones (Motores de tema de
+   Theme engine v4 — 12 themes × 10 tones (Motores de tema de
    MejoraPropuesta4, adaptado: claves aircargo_theme/aircargo_tone,
    `data-theme` = modo claro/oscuro, aliases de variables del app).
    ══════════════════════════════════════════════════════════════════ */
@@ -12,17 +12,20 @@ const THEMES = {
   rosa:      { mode: 'light', name: 'Rosa',    h: 345, s: 84, bg: '#fbf0f4', surface: '#ffffff', surface2: '#fdf6f9', text: '#2a0f19', muted: '#8a5f6c', border: '#f0dce3', borderS: '#c9a3b0', violet: '#9333ea', cyan: '#0891b2' },
   pizarra:   { mode: 'light', name: 'Gris',    h: 220, s: 10, bg: '#f2f3f6', surface: '#ffffff', surface2: '#f7f7f9', text: '#16181d', muted: '#59606b', border: '#dfe1e6', borderS: '#aab0ba', violet: '#8b5cf6', cyan: '#0891b2' },
   tokyo:     { mode: 'dark',  name: 'Tokio',   h: 223, s: 93, bg: '#0b1220', surface: '#111827', surface2: '#0f1626', text: '#e2e8f0', muted: '#94a3b8', border: '#334155', borderS: '#64748b', violet: '#a78bfa', cyan: '#22d3ee' },
-  medianoche:{ mode: 'dark',  name: 'Medianoche', h: 240, s: 82, bg: '#0a0f22', surface: '#101830', surface2: '#0d1430', text: '#e8eaf6', muted: '#9aa3c7', border: '#2e3756', borderS: '#5a6694', violet: '#a78bfa', cyan: '#22d3ee' },
-  esmernoche:{ mode: 'dark',  name: 'Esmeralda noche', h: 158, s: 88, bg: '#08180f', surface: '#0e2117', surface2: '#0c1c13', text: '#d9f2e4', muted: '#82ad97', border: '#24402f', borderS: '#4b7a60', violet: '#22d3ee', cyan: '#34d399' },
-  lava:      { mode: 'dark',  name: 'Lava',    h: 353, s: 90, bg: '#190a0d', surface: '#221014', surface2: '#1d0c10', text: '#fbe9eb', muted: '#b99299', border: '#462931', borderS: '#80484f', violet: '#f59e0b', cyan: '#f87171' },
+medianoche:{ mode: 'dark',  name: 'Medianoche', h: 240, s: 82, bg: '#0a0f22', surface: '#101830', surface2: '#0d1430', text: '#e8eaf6', muted: '#9aa3c7', border: '#2e3756', borderS: '#5a6694', violet: '#a78bfa', cyan: '#22d3ee' },
+   esmernoche:{ mode: 'dark',  name: 'Esmeralda noche', h: 158, s: 88, bg: '#08180f', surface: '#0e2117', surface2: '#0c1c13', text: '#d9f2e4', muted: '#82ad97', border: '#24402f', borderS: '#4b7a60', violet: '#22d3ee', cyan: '#34d399' },
+   lava:      { mode: 'dark',  name: 'Lava',    h: 353, s: 90, bg: '#190a0d', surface: '#221014', surface2: '#1d0c10', text: '#fbe9eb', muted: '#b99299', border: '#462931', borderS: '#80484f', violet: '#f59e0b', cyan: '#f87171' },
+   grafito:   { mode: 'dark',  name: 'Grafito', h: 220, s: 10, bg: '#0c0e12', surface: '#15181f', surface2: '#101318', text: '#e6e8ee', muted: '#9aa1ac', border: '#2a2e37', borderS: '#4c525e', violet: '#8b5cf6', cyan: '#38bdf8' },
+   marino:    { mode: 'dark',  name: 'Marino',  h: 228, s: 55, bg: '#0a0f1e', surface: '#111830', surface2: '#0d1326', text: '#e2e8f5', muted: '#93a1c2', border: '#212c4a', borderS: '#3d4c78', violet: '#818cf8', cyan: '#22d3ee' },
 }
 
 const KEY = 'aircargo_theme'
 const TONE_KEY = 'aircargo_tone'
 const DEFAULT_THEME = 'azul'
 const DEFAULT_TONE = 3
+const MAX_TONE = 9
 
-const TONE_NAMES = ['Suave', 'Tenue', 'Tímido', 'Vivo', 'Fuerte', 'Saturado', 'Profundo']
+const TONE_NAMES = ['Suave', 'Tenue', 'Tímido', 'Vivo', 'Fuerte', 'Saturado', 'Profundo', 'Nocturno', 'Carbón', 'Abisal']
 const ST_L = { pend: ['#475569', '#eef2f7'], rec: ['#b45309', '#fef3c7'], carg: ['#047857', '#d1fae5'], pro: ['#6d28d9', '#ede9fe'], man: ['#1d4ed8', '#dbeafe'], disp: ['#0e7490', '#cffafe'] }
 const ST_D = { pend: ['#94a3b8', '#1e293b'], rec: ['#fbbf24', '#421500'], carg: ['#6ee7b7', '#053a2a'], pro: ['#c4b5fd', '#2e1065'], man: ['#93c5fd', '#172554'], disp: ['#67e8f9', '#083344'] }
 
@@ -47,7 +50,8 @@ function rgba2(r, g, b, a) { return 'rgba(' + r + ',' + g + ',' + b + ',' + a + 
 function accentFor(t, tn) {
   const th = THEMES[t]
   if (!th) return null
-  const L = th.mode === 'dark' ? (72 - (tn || tone) * 3) : (64 - (tn || tone) * 4)
+  const ti = tn === undefined || tn === null ? tone : Math.max(0, Math.min(MAX_TONE, +tn))
+  const L = th.mode === 'dark' ? Math.max(46, 72 - ti * 3) : Math.max(30, 64 - ti * 4)
   const La = L - 10
   const acc = hsl(th.h, th.s, L)
   const accS = hsl(th.h, th.s, La)
@@ -58,7 +62,7 @@ function accentFor(t, tn) {
 function applyTheme(t, tn, persist) {
   if (!THEMES[t]) return
   current = t
-  tone = Math.max(0, Math.min(6, Number.isFinite(tn) ? Math.round(tn) : DEFAULT_TONE))
+  tone = Math.max(0, Math.min(MAX_TONE, Number.isFinite(tn) ? Math.round(tn) : DEFAULT_TONE))
   const A = accentFor(t, tone)
   const th = A.th
   const st = th.mode === 'dark' ? ST_D : ST_L
@@ -147,7 +151,7 @@ export function initTheme() {
   let t = saved && THEMES[saved] ? saved : DEFAULT_THEME
   let tn = DEFAULT_TONE
   const savedTone = lsGet(TONE_KEY)
-  if (savedTone !== null && !isNaN(+savedTone)) tn = Math.max(0, Math.min(6, +savedTone))
+  if (savedTone !== null && !isNaN(+savedTone)) tn = Math.max(0, Math.min(MAX_TONE, +savedTone))
   applyTheme(t, tn, false)
 }
 

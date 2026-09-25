@@ -50,7 +50,7 @@
     <div v-if="history.length" class="max-h-32 overflow-y-auto space-y-1 mb-2">
       <div v-for="(entry, i) in history" :key="i"
            class="flex items-center gap-2 text-[12px] py-1 px-2 rounded"
-           :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
+           :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
         <span>{{ entry.success ? (entry.warning ? '⚠' : '✓') : '✗' }}</span>
         <span class="font-bold">{{ entry.awbNumber }}</span>
         <span v-if="entry.pieceNumber">Pieza #{{ entry.pieceNumber }}</span>
@@ -75,10 +75,11 @@
 
     <!-- Camera Modal -->
     <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="closeCamera">
-      <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+      <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl"
+        role="dialog" aria-modal="true" aria-label="Escanear con camara">
         <div class="flex items-center justify-between mb-4">
           <span class="text-[14px] font-bold text-slate-900 uppercase">Escanear con Cámara</span>
-          <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold">✕</button>
+          <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold" :aria-label="t('common.close')">✕</button>
         </div>
         <div class="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-black" style="min-height: 280px;">
           <video ref="cameraVideo" autoplay playsinline muted class="w-full h-full object-contain" style="min-height: 280px;"></video>

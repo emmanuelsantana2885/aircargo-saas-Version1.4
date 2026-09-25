@@ -35,7 +35,7 @@
         <div class="ds-section-header px-4 py-2">
           <div>
             <span class="ds-label text-[12px]">{{ svc.description }}</span>
-            <span class="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{{ svc.basePath }}/**</span>
+            <span class="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ svc.basePath }}/**</span>
           </div>
           <span class="ds-stat">{{ svc.endpoints.length }} endpoints</span>
         </div>
@@ -93,7 +93,7 @@
         <div class="ds-modal-panel max-w-3xl max-h-[80vh] flex flex-col">
           <div class="ds-modal-header">
             <h3 class="ds-modal-title">{{ biPreview.label }}</h3>
-            <button @click="biPreview = null" class="text-slate-400 hover:text-slate-600">
+            <button @click="biPreview = null" class="text-slate-400 hover:text-slate-600" :aria-label="t('common.close')">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
@@ -110,8 +110,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { catalogApi } from '../api/catalog'
 import { biApi } from '../api/bi'
+
+const { t } = useI18n()
 
 const search = ref('')
 const catalog = ref([])

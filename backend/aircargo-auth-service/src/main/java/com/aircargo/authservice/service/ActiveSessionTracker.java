@@ -17,20 +17,23 @@ public class ActiveSessionTracker {
      * envía heartbeat en este lapso, se considera que el navegador se cerró
      * y el refresh deja de ser válido (la app pide login de nuevo).
      * El frontend late cada 30s mientras la app está abierta, así que cualquier
-     * pestaña abierta mantiene la sesión viva. Al CERRAR el navegador (todas
-     * las pestañas), los heartbeats se detienen → 120s después el refresh
-     * falla aunque el navegador esté configurado para restaurar cookies.
+     * pestaña abierta mantiene la sesión viva. 25 min (1500s): holgadamente por
+     * encima del timer de inactividad del cliente (20 min) para que el backend
+     * NUNCA preemptee el logout por interacción — el cierre lo gobierna el
+     * frontend, el servidor solo es red de seguridad.
      */
-    private static final long LIVENESS_SECONDS = 120;
+    private static final long LIVENESS_SECONDS = 1500;
 
     /**
      * Umbral de REVOCACIÓN server-side (access + refresh): cuando un usuario
      * supera este lapso sin heartbeat, su tokens_valid_from se adelanta y TODOS
      * sus tokens (incluidas cookies restauradas por el navegador) mueren de
-     * forma central en todos los servicios. 300s (conservador) para no
-     * revocar a pestañas ocultas throttled por el navegador.
+     * forma central en todos los servicios. 30 min (1800s): conservador y
+     * mayor que los 20 min del logout por inactividad del cliente, para tolerar
+     * suspensión del equipo / pestañas ocultas throttled sin cortar la sesión
+     * antes de que el timer de interacción decida el cierre limpiamente.
      */
-    private static final long REVOKE_TIMEOUT_SECONDS = 300;
+    private static final long REVOKE_TIMEOUT_SECONDS = 1800;
 
     private final long livenessSeconds;
     private final long revokeTimeoutSeconds;
@@ -40,7 +43,7 @@ public class ActiveSessionTracker {
         this(LIVENESS_SECONDS, REVOKE_TIMEOUT_SECONDS);
     }
 
-    /** Constructor de tests: permite ventanas cortas sin esperar 120s/300s. */
+    /** Constructor de tests: permite ventanas cortas sin esperar 1500s/1800s. */
     ActiveSessionTracker(long livenessSeconds, long revokeTimeoutSeconds) {
         this.livenessSeconds = livenessSeconds;
         this.revokeTimeoutSeconds = revokeTimeoutSeconds;
