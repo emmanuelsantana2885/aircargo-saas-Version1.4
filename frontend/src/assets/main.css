@@ -1667,4 +1667,4 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   gap: 8px;
   align-items: center;
-}
+}@import "./responsive.css";
