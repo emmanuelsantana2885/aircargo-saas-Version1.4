@@ -1013,7 +1013,7 @@ function descargarReporte() {
     ]
     const commodityVals = visibleCommodities.value.map(c => {
       const val = commodityPayload(f.id, c.type)
-      if (typeof val === 'object' && val.pcs) return val.pcs + ' pcs'
+      if (val && typeof val === 'object' && val.pcs) return val.pcs + ' pcs'
       return val || ''
     })
     return [...fixed, ...commodityVals]
