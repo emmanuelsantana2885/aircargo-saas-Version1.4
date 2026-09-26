@@ -19,14 +19,14 @@
 
         <div v-else-if="qrUrl" class="flex flex-col items-center">
           <!-- QR Code rendered via image URL from otpauth:// -->
-          <div class="bg-white p-4 rounded-lg border border-slate-200 mb-3">
+          <div class="bg-surface p-4 rounded-lg border border-strong mb-3">
             <img :src="qrImage" alt="QR Code" class="w-48 h-48" />
           </div>
 
           <p class="text-xs text-center mb-2" style="color: var(--muted)">
             Si no puedes escanear, ingresa este código manualmente:
           </p>
-          <div class="bg-slate-100 rounded px-3 py-2 text-center">
+          <div class="bg-surface-hover rounded px-3 py-2 text-center">
             <code class="text-xs font-mono break-all" style="color: var(--text)">{{ secret }}</code>
           </div>
 

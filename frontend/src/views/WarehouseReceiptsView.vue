@@ -249,7 +249,7 @@
                         <input v-model="receiptForms[m.id].shipperName" type="text" placeholder="Shipper"
                           class="ds-input flex-1"
                           @blur="syncMawbName(m, 'shipperName')" />
-                        <span class="text-[12px] text-slate-950 font-mono shrink-0">MAWB: {{ m.shipperName || '—' }}</span>
+                        <span class="text-[12px] text-primary font-mono shrink-0">MAWB: {{ m.shipperName || '—' }}</span>
                       </div>
                     </div>
                     <div>
@@ -258,13 +258,13 @@
                         <input v-model="receiptForms[m.id].consigneeName" type="text" placeholder="Consignee"
                           class="ds-input flex-1"
                           @blur="syncMawbName(m, 'consigneeName')" />
-                        <span class="text-[12px] text-slate-950 font-mono shrink-0">MAWB: {{ m.consigneeName || '—' }}</span>
+                        <span class="text-[12px] text-primary font-mono shrink-0">MAWB: {{ m.consigneeName || '—' }}</span>
                       </div>
                     </div>
                     <div>
                       <label class="ds-label">MAWB Number</label>
                       <input :value="m.awbNumber || ''" readonly
-                        class="ds-input bg-slate-100 text-slate-950" />
+                        class="ds-input bg-surface-hover text-primary" />
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                       <div>
@@ -294,7 +294,7 @@
 
                   <!-- Right column: HAWB info + checkboxes -->
                   <div class="space-y-2">
-                    <div class="border-2 border-slate-700 rounded-lg bg-white overflow-hidden shadow-sm">
+                    <div class="border-2 border-slate-700 rounded-lg bg-surface overflow-hidden shadow-sm">
                       <div class="flex items-center justify-between bg-slate-700 px-3 py-1.5 border-b border-slate-800">
                         <span class="text-[12px] font-mono font-bold text-white uppercase tracking-wider">
                           HAWBs
@@ -302,52 +302,52 @@
                         <div class="flex items-center gap-2 text-[13px] font-mono">
                           <span class="text-slate-200">HAWBs: <strong class="text-white">{{ (receiptForms[m.id].hawbEntries || []).length }}</strong></span>
                           <button @click="addHawbEntry(m)"
-                            class="ml-1 w-5 h-5 flex items-center justify-center rounded bg-white text-slate-700 hover:bg-slate-200 transition text-[14px] font-bold leading-none"
+                            class="ml-1 w-5 h-5 flex items-center justify-center rounded bg-surface text-slate-700 hover:bg-slate-200 transition text-[14px] font-bold leading-none"
                             title="Agregar HAWB" aria-label="Agregar HAWB">+</button>
                           <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 0"
-                            class="text-slate-300 ml-1">({{ receiptHawbs[m.id].length }} en DB)</span>
+                            class="text-tertiary ml-1">({{ receiptHawbs[m.id].length }} en DB)</span>
                         </div>
                       </div>
                       <div class="overflow-x-auto p-2">
-                        <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 800px">
+                        <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 800px">
                           <thead>
                             <tr class="text-slate-800 font-bold uppercase tracking-wider">
-                              <th class="px-2 py-1 text-left border-b-2 border-slate-200"># HAWB</th>
-                              <th class="px-2 py-1 text-left border-b-2 border-slate-200">Consignee</th>
-                              <th class="px-2 py-1 text-center border-b-2 border-slate-200">Pcs</th>
-                              <th class="px-2 py-1 text-right border-b-2 border-slate-200">Kg</th>
-                              <th class="px-2 py-1 text-center border-b-2 border-slate-200">Dest</th>
+                              <th class="px-2 py-1 text-left border-b-2 border-strong"># HAWB</th>
+                              <th class="px-2 py-1 text-left border-b-2 border-strong">Consignee</th>
+                              <th class="px-2 py-1 text-center border-b-2 border-strong">Pcs</th>
+                              <th class="px-2 py-1 text-right border-b-2 border-strong">Kg</th>
+                              <th class="px-2 py-1 text-center border-b-2 border-strong">Dest</th>
                               <th v-if="(receiptForms[m.id].hawbEntries || []).length > 1"
-                                class="px-2 py-1 text-center border-b-2 border-slate-200"></th>
+                                class="px-2 py-1 text-center border-b-2 border-strong"></th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr v-for="(entry, ei) in receiptForms[m.id].hawbEntries" :key="ei"
-                              class="hover:bg-slate-50">
-                              <td class="px-2 py-1 border-b border-slate-100">
+                              class="hover:bg-surface-hover">
+                              <td class="px-2 py-1 border-b border-default">
                                 <input v-model="entry.hawbNumber" placeholder="HAWB #"
-                                  class="w-20 border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px] font-bold text-slate-950" />
+                                  class="w-20 border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] font-bold text-primary" />
                               </td>
-                              <td class="px-2 py-1 border-b border-slate-100">
+                              <td class="px-2 py-1 border-b border-default">
                                 <input v-model="entry.consigneeName" placeholder="Consignee"
-                                  class="w-full min-w-[100px] border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
+                                  class="w-full min-w-[100px] border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-slate-100">
+                              <td class="px-2 py-1 border-b border-default">
                                 <input v-model.number="entry.pieces" type="number" min="0" placeholder="0"
-                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
+                                  class="w-14 text-center border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-slate-100">
+                              <td class="px-2 py-1 border-b border-default">
                                 <input v-model.number="entry.weightKg" type="number" step="0.1" min="0" placeholder="0"
-                                  class="w-20 text-right border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px]" />
+                                  class="w-20 text-right border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-slate-100">
+                              <td class="px-2 py-1 border-b border-default">
                                 <input v-model="entry.destination" maxlength="3" placeholder="MIA"
-                                  class="w-14 text-center border border-slate-200 rounded px-2 py-1 outline-none focus:border-slate-700 bg-white text-[13px] uppercase" />
+                                  class="w-14 text-center border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] uppercase" />
                               </td>
                               <td v-if="(receiptForms[m.id].hawbEntries || []).length > 1"
-                                class="px-2 py-1 text-center border-b border-slate-100">
+                                class="px-2 py-1 text-center border-b border-default">
                                 <button @click="removeHawbEntry(m.id, ei)" aria-label="Eliminar HAWB"
-                                  class="text-slate-400 hover:text-slate-600 transition text-[12px] font-bold">✕</button>
+                                  class="text-tertiary hover:text-secondary transition text-[12px] font-bold">✕</button>
                               </td>
                             </tr>
                           </tbody>
@@ -356,26 +356,26 @@
                     </div>
 
                     <!-- Checkboxes group -->
-                    <div class="border-2 border-slate-700 rounded-lg bg-white p-3 shadow-sm">
+                    <div class="border-2 border-slate-700 rounded-lg bg-surface p-3 shadow-sm">
                       <div class="text-[12px] font-mono font-bold text-slate-800 uppercase tracking-wider mb-2">Flags / Marcas</div>
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-primary flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].cashOnly" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Cash Only</span>
                         </label>
-                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-primary flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].bookedInAcoms" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Booked in ACOMS</span>
                         </label>
-                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-primary flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].docsProvided" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Documents Provided</span>
                         </label>
-                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-primary flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].customsCompleted" class="accent-slate-700 rounded w-3 h-3" />
                           <span>Export Customs Completed</span>
                         </label>
-                        <label class="text-[12px] font-mono font-bold text-slate-950 flex items-center gap-1.5 cursor-pointer select-none">
+                        <label class="text-[12px] font-mono font-bold text-primary flex items-center gap-1.5 cursor-pointer select-none">
                           <input type="checkbox" v-model="receiptForms[m.id].preBuilt" class="accent-slate-700 rounded w-3 h-3" />
                           <span>{{ t('warehouse.checkboxes.preBuilt') }}</span>
                         </label>
@@ -387,16 +387,16 @@
 
               <!-- ═══ STEP 2: PIECES ═══ -->
               <div v-if="localStep === 2" class="space-y-1.5">
-                <div class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider flex items-center gap-2">
+                <div class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider flex items-center gap-2">
                   <span>Loose Tender — Dimensiones y Pesos</span>
-                  <span class="text-[12px] font-mono font-normal text-slate-950 normal-case tracking-normal">
+                  <span class="text-[12px] font-mono font-normal text-primary normal-case tracking-normal">
                     ((L x W x H) x #pcs) / 366 = Kg dimensional
                   </span>
                 </div>
 
                 <template v-if="(receiptHawbs[m.id] || []).length <= 1 && (receiptForms[m.id]?.hawbEntries || []).length <= 1">
-                  <div class="overflow-x-auto border border-slate-400 rounded">
-                    <table class="w-full text-[13px] font-mono border-collapse">
+                  <div class="overflow-x-auto border border-strong rounded">
+                    <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse">
                       <thead>
                         <tr class="bg-slate-700 text-white text-[13px] uppercase tracking-wider">
                           <th class="px-2 py-1 border-r border-slate-600 w-5 text-center">#</th>
@@ -416,83 +416,83 @@
                       </thead>
                       <tbody>
                         <tr v-for="(p, pi) in receiptForms[m.id].pieces" :key="pi"
-                          class="border-b border-slate-300 hover:bg-slate-50 transition-colors">
-                          <td class="px-2 py-1 text-center text-slate-950 border-r border-slate-300">{{ pi + 1 }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300">
+                          class="border-b border-strong hover:bg-surface-hover transition-colors">
+                          <td class="px-2 py-1 text-center text-primary border-r border-strong">{{ pi + 1 }}</td>
+                          <td class="px-2 py-1 border-r border-strong">
                             <input v-model.number="p.pieces" type="number" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                              class="w-full text-center border border-strong rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
-                          <td class="px-2 py-1 border-r border-slate-300">
+                          <td class="px-2 py-1 border-r border-strong">
                             <input v-model.number="p.lengthIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                              class="w-full text-center border border-strong rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
-                          <td class="px-2 py-1 border-r border-slate-300">
+                          <td class="px-2 py-1 border-r border-strong">
                             <input v-model.number="p.widthIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                              class="w-full text-center border border-strong rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
-                          <td class="px-2 py-1 border-r border-slate-300">
+                          <td class="px-2 py-1 border-r border-strong">
                             <input v-model.number="p.heightIn" type="number" step="0.01" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                              class="w-full text-center border border-strong rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold text-slate-950">{{ p.dimWeight ? p.dimWeight.toFixed(1) : '—' }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300">
+                          <td class="px-2 py-1 border-r border-strong text-right font-semibold text-primary">{{ p.dimWeight ? p.dimWeight.toFixed(1) : '—' }}</td>
+                          <td class="px-2 py-1 border-r border-strong">
                             <input v-model.number="p.scaleWeightLbs" type="number" step="0.001" min="0"
-                              class="w-full text-center border border-slate-400 rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                              class="w-full text-center border border-strong rounded px-1.5 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                               @input="calcPiece(m.id, pi)" />
                           </td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold text-slate-950">{{ p.dimWeightLbs ? p.dimWeightLbs.toFixed(1) : '—' }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold text-slate-950">{{ (p.scaleWeightKg || 0).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right font-semibold">{{ p.dimWeightKg ? p.dimWeightKg.toFixed(2) : '—' }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableKg ? p.chargeableKg.toFixed(2) : '—' }}</td>
-                          <td class="px-2 py-1 border-r border-slate-300 text-right text-slate-900">{{ p.chargeableLbs ? p.chargeableLbs.toFixed(2) : '—' }}</td>
+                          <td class="px-2 py-1 border-r border-strong text-right font-semibold text-primary">{{ p.dimWeightLbs ? p.dimWeightLbs.toFixed(1) : '—' }}</td>
+                          <td class="px-2 py-1 border-r border-strong text-right font-semibold text-primary">{{ (p.scaleWeightKg || 0).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-r border-strong text-right font-semibold">{{ p.dimWeightKg ? p.dimWeightKg.toFixed(2) : '—' }}</td>
+                          <td class="px-2 py-1 border-r border-strong text-right text-primary">{{ p.chargeableKg ? p.chargeableKg.toFixed(2) : '—' }}</td>
+                          <td class="px-2 py-1 border-r border-strong text-right text-primary">{{ p.chargeableLbs ? p.chargeableLbs.toFixed(2) : '—' }}</td>
                           <td class="px-2 py-1 text-center">
-                            <button @click="removePiece(m.id, pi)" aria-label="Eliminar pieza" class="text-slate-400 hover:text-slate-600 transition text-[12px]">✕</button>
+                            <button @click="removePiece(m.id, pi)" aria-label="Eliminar pieza" class="text-tertiary hover:text-secondary transition text-[12px]">✕</button>
                           </td>
                         </tr>
                       </tbody>
                       <tfoot>
-                        <tr class="bg-slate-100 text-slate-950 text-[13px]">
-                          <td class="px-2 py-1 border-t border-slate-300 text-slate-950 text-center"></td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-center">{{ totalPieces(m.id, null) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-slate-950 text-[13px]" colspan="3">TOTAL</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalScaleLbs(m.id, null).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalDimLbs(m.id, null).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalScaleKg(m.id, null).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right">{{ totalDimKg(m.id, null).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right text-slate-950">{{ totalChargeableKg(m.id).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300 text-right text-slate-950">{{ totalChargeableLbs(m.id).toFixed(2) }}</td>
-                          <td class="px-2 py-1 border-t border-slate-300"></td>
+                        <tr class="bg-surface-hover text-primary text-[13px]">
+                          <td class="px-2 py-1 border-t border-strong text-primary text-center"></td>
+                          <td class="px-2 py-1 border-t border-strong text-center">{{ totalPieces(m.id, null) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-primary text-[13px]" colspan="3">TOTAL</td>
+                          <td class="px-2 py-1 border-t border-strong text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right">{{ totalScaleLbs(m.id, null).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right">{{ totalDimLbs(m.id, null).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right">{{ totalScaleKg(m.id, null).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right">{{ totalDimKg(m.id, null).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right text-primary">{{ totalChargeableKg(m.id).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong text-right text-primary">{{ totalChargeableLbs(m.id).toFixed(2) }}</td>
+                          <td class="px-2 py-1 border-t border-strong"></td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
                     <div class="flex justify-between items-center">
-                      <button @click="addPiece(m.id)" class="text-[12px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza</button>
-                      <div class="flex gap-3 text-[12px] font-mono text-slate-950">
-                      <span>Piece Count: <strong class="text-slate-900">{{ totalPieces(m.id, null) }}</strong></span>
-                      <span>Actual: <strong class="text-slate-900">{{ totalScaleKg(m.id, null).toFixed(0) }} KGS / {{ totalScaleLbs(m.id, null).toFixed(0) }} LBS</strong></span>
-                      <span>Chargeable: <strong class="text-slate-900">{{ totalChargeableKg(m.id).toFixed(0) }} KGS / {{ totalChargeableLbs(m.id).toFixed(0) }} LBS</strong></span>
+                      <button @click="addPiece(m.id)" class="text-[12px] text-primary font-mono uppercase tracking-wider hover:text-primary transition">+ Agregar pieza</button>
+                      <div class="flex gap-3 text-[12px] font-mono text-primary">
+                      <span>Piece Count: <strong class="text-primary">{{ totalPieces(m.id, null) }}</strong></span>
+                      <span>Actual: <strong class="text-primary">{{ totalScaleKg(m.id, null).toFixed(0) }} KGS / {{ totalScaleLbs(m.id, null).toFixed(0) }} LBS</strong></span>
+                      <span>Chargeable: <strong class="text-primary">{{ totalChargeableKg(m.id).toFixed(0) }} KGS / {{ totalChargeableLbs(m.id).toFixed(0) }} LBS</strong></span>
                     </div>
                   </div>
-                  <div class="text-[11px] text-slate-400 font-mono mt-1 text-right">* S.KGS = LBS ÷ 2.20462 (auto)</div>
+                  <div class="text-[11px] text-tertiary font-mono mt-1 text-right">* S.KGS = LBS ÷ 2.20462 (auto)</div>
                 </template>
 
                 <template v-else>
-                  <div v-for="(h, hi) in hawbsForDisplay(m.id)" :key="h._hawbId || h.id" class="border border-slate-400 rounded overflow-hidden bg-white">
-                    <div class="flex items-center justify-between bg-slate-100 px-3 py-1.5 border-b border-slate-400">
-                      <span class="text-[12px] font-mono font-bold text-slate-950">
+                  <div v-for="(h, hi) in hawbsForDisplay(m.id)" :key="h._hawbId || h.id" class="border border-strong rounded overflow-hidden bg-surface">
+                    <div class="flex items-center justify-between bg-surface-hover px-3 py-1.5 border-b border-strong">
+                      <span class="text-[12px] font-mono font-bold text-primary">
                         HAWB {{ hi + 1 }}: {{ h.hawbNumber || h.hawbNumber || '—' }} &mdash; {{ h.consigneeName || h.consigneeName || '—' }}
-                        <span class="text-slate-950 font-normal ml-2">({{ piecesByHawb(m.id, h._hawbId || h.id).length }} pieza(s))</span>
+                        <span class="text-primary font-normal ml-2">({{ piecesByHawb(m.id, h._hawbId || h.id).length }} pieza(s))</span>
                       </span>
-                      <span class="text-[12px] font-mono text-slate-950 font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
+                      <span class="text-[12px] font-mono text-primary font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 850px">
+                      <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 850px">
                         <thead>
                           <tr class="bg-slate-600 text-white text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-slate-500 w-5 text-center">#</th>
@@ -512,118 +512,118 @@
                         </thead>
                         <tbody>
                           <tr v-for="(entry, pi) in piecesByHawbIndexed(m.id, (h._hawbId || h.id))" :key="pi"
-                            class="border-b border-slate-300 hover:bg-slate-50">
-                            <td class="px-1 py-0.5 text-center text-slate-950 border-r border-slate-300">{{ pi + 1 }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300">
+                            class="border-b border-strong hover:bg-surface-hover">
+                            <td class="px-1 py-0.5 text-center text-primary border-r border-strong">{{ pi + 1 }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong">
                               <input v-model.number="entry.piece.pieces" type="number" min="0"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                                class="w-full text-center border border-strong rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
-                            <td class="px-1 py-0.5 border-r border-slate-300">
+                            <td class="px-1 py-0.5 border-r border-strong">
                               <input v-model.number="entry.piece.lengthIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                                class="w-full text-center border border-strong rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
-                            <td class="px-1 py-0.5 border-r border-slate-300">
+                            <td class="px-1 py-0.5 border-r border-strong">
                               <input v-model.number="entry.piece.widthIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                                class="w-full text-center border border-strong rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
-                            <td class="px-1 py-0.5 border-r border-slate-300">
+                            <td class="px-1 py-0.5 border-r border-strong">
                               <input v-model.number="entry.piece.heightIn" type="number" step="0.01"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                                class="w-full text-center border border-strong rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right text-slate-950">{{ entry.piece.dimWeight ? entry.piece.dimWeight.toFixed(1) : '—' }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300">
+                            <td class="px-1 py-0.5 border-r border-strong text-right text-primary">{{ entry.piece.dimWeight ? entry.piece.dimWeight.toFixed(1) : '—' }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong">
                               <input v-model.number="entry.piece.scaleWeightLbs" type="number" step="0.001"
-                                class="w-full text-center border border-slate-400 rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-white text-[13px]"
+                                class="w-full text-center border border-strong rounded px-1 py-0.5 outline-none focus:border-slate-500 bg-surface text-[13px]"
                                 @input="calcPiece(m.id, entry.idx)" />
                             </td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right text-slate-950">{{ entry.piece.dimWeightLbs ? entry.piece.dimWeightLbs.toFixed(1) : '—' }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right text-slate-950">{{ (entry.piece.scaleWeightKg || 0).toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.dimWeightKg ? entry.piece.dimWeightKg.toFixed(2) : '—' }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableKg ? entry.piece.chargeableKg.toFixed(2) : '—' }}</td>
-                            <td class="px-1 py-0.5 border-r border-slate-300 text-right">{{ entry.piece.chargeableLbs ? entry.piece.chargeableLbs.toFixed(2) : '—' }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong text-right text-primary">{{ entry.piece.dimWeightLbs ? entry.piece.dimWeightLbs.toFixed(1) : '—' }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong text-right text-primary">{{ (entry.piece.scaleWeightKg || 0).toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong text-right">{{ entry.piece.dimWeightKg ? entry.piece.dimWeightKg.toFixed(2) : '—' }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong text-right">{{ entry.piece.chargeableKg ? entry.piece.chargeableKg.toFixed(2) : '—' }}</td>
+                            <td class="px-1 py-0.5 border-r border-strong text-right">{{ entry.piece.chargeableLbs ? entry.piece.chargeableLbs.toFixed(2) : '—' }}</td>
                             <td class="px-1 py-0.5 text-center">
-                              <button @click="removePiece(m.id, entry.idx)" aria-label="Eliminar pieza" class="text-slate-400 hover:text-slate-600 text-[12px]">✕</button>
+                              <button @click="removePiece(m.id, entry.idx)" aria-label="Eliminar pieza" class="text-tertiary hover:text-secondary text-[12px]">✕</button>
                             </td>
                           </tr>
                         </tbody>
                         <tfoot>
-                          <tr class="bg-slate-100 text-slate-950 text-[13px]">
-                            <td class="px-1 py-0.5 border-t border-slate-400"></td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-center">{{ hawbTotalPieces(m.id, (h._hawbId || h.id)) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400" colspan="3">TOTAL</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbDimWeight(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbScaleLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbDimLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbScaleKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbDimKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbChargeableKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400 text-right">{{ hawbChargeableLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t border-slate-400"></td>
+                          <tr class="bg-surface-hover text-primary text-[13px]">
+                            <td class="px-1 py-0.5 border-t border-strong"></td>
+                            <td class="px-1 py-0.5 border-t border-strong text-center">{{ hawbTotalPieces(m.id, (h._hawbId || h.id)) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong" colspan="3">TOTAL</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbDimWeight(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbScaleLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbDimLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbScaleKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbDimKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbChargeableKg(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong text-right">{{ hawbChargeableLbs(m.id, (h._hawbId || h.id)).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t border-strong"></td>
                           </tr>
                         </tfoot>
                       </table>
                     </div>
-                    <div class="px-2 py-1 border-t border-slate-300">
-                      <button @click="addPiece(m.id, (h._hawbId || h.id))" class="text-[12px] text-slate-950 font-mono uppercase tracking-wider hover:text-slate-950 transition">+ Agregar pieza a este HAWB</button>
-                      <span class="text-[11px] text-slate-400 font-mono ml-4">* S.KGS = LBS ÷ 2.20462 (auto)</span>
+                    <div class="px-2 py-1 border-t border-strong">
+                      <button @click="addPiece(m.id, (h._hawbId || h.id))" class="text-[12px] text-primary font-mono uppercase tracking-wider hover:text-primary transition">+ Agregar pieza a este HAWB</button>
+                      <span class="text-[11px] text-tertiary font-mono ml-4">* S.KGS = LBS ÷ 2.20462 (auto)</span>
                     </div>
                   </div>
                   <!-- Resumen General: agrupado por dimensión única LxWxH -->
-                  <div class="border-2 border-slate-600 rounded overflow-hidden bg-white mt-2">
+                  <div class="border-2 border-slate-600 rounded overflow-hidden bg-surface mt-2">
                     <div class="flex items-center justify-between bg-slate-600 px-3 py-1.5 border-b border-slate-700">
                       <span class="text-[12px] font-mono font-bold text-white uppercase tracking-wider">Resumen General — Todas las HAWBs</span>
                       <span class="text-[12px] font-mono text-slate-200">{{ totalPieces(m.id, null) }} piezas · {{ groupedSummary(m.id).length }} dim</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="w-full text-[13px] font-mono border-collapse" style="min-width: 900px">
+                      <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 900px">
                         <thead>
                           <tr class="bg-slate-200 text-slate-800 text-[13px] uppercase tracking-wider">
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-5 text-center">#</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-center">L</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-center">W</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-center">H</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-10 text-center">Pcs</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-12 text-right">DimWt</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-16 text-right">S.LBS</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-right">DLBS</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-16 text-right">S.KGS</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-right">DKGS</th>
-                            <th class="px-1 py-0.5 border-r border-slate-300 w-14 text-right">CKGS</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-5 text-center">#</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-center">L</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-center">W</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-center">H</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-10 text-center">Pcs</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-12 text-right">DimWt</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-16 text-right">S.LBS</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-right">DLBS</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-16 text-right">S.KGS</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-right">DKGS</th>
+                            <th class="px-1 py-0.5 border-r border-strong w-14 text-right">CKGS</th>
                             <th class="px-1 py-0.5 w-14 text-right">CLBS</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr v-for="(g, gi) in groupedSummary(m.id)" :key="gi"
-                            class="border-b border-slate-200 hover:bg-slate-50">
-                            <td class="px-1 py-0.5 text-center text-slate-500 border-r border-slate-200">{{ gi + 1 }}</td>
-                            <td class="px-1 py-0.5 text-center border-r border-slate-200">{{ g.lengthIn || '—' }}</td>
-                            <td class="px-1 py-0.5 text-center border-r border-slate-200">{{ g.widthIn || '—' }}</td>
-                            <td class="px-1 py-0.5 text-center border-r border-slate-200">{{ g.heightIn || '—' }}</td>
-                            <td class="px-1 py-0.5 text-center border-r border-slate-200 font-bold">{{ g.totalPieces }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalDimWeight.toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalScaleLbs.toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalDimLbs.toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalScaleKg.toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalDimKg.toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 text-right border-r border-slate-200">{{ g.totalChargeableKg.toFixed(2) }}</td>
+                            class="border-b border-strong hover:bg-surface-hover">
+                            <td class="px-1 py-0.5 text-center text-secondary border-r border-strong">{{ gi + 1 }}</td>
+                            <td class="px-1 py-0.5 text-center border-r border-strong">{{ g.lengthIn || '—' }}</td>
+                            <td class="px-1 py-0.5 text-center border-r border-strong">{{ g.widthIn || '—' }}</td>
+                            <td class="px-1 py-0.5 text-center border-r border-strong">{{ g.heightIn || '—' }}</td>
+                            <td class="px-1 py-0.5 text-center border-r border-strong font-bold">{{ g.totalPieces }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalDimWeight.toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalScaleLbs.toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalDimLbs.toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalScaleKg.toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalDimKg.toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 text-right border-r border-strong">{{ g.totalChargeableKg.toFixed(2) }}</td>
                             <td class="px-1 py-0.5 text-right">{{ g.totalChargeableLbs.toFixed(2) }}</td>
                           </tr>
                         </tbody>
                         <tfoot>
-                          <tr class="bg-slate-100 text-slate-950 text-[13px] font-bold">
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400" colspan="4">TOTAL</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-center">{{ totalPieces(m.id, null) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalScaleLbs(m.id, null).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalDimLbs(m.id, null).toFixed(1) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalScaleKg(m.id, null).toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalDimKg(m.id, null).toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalChargeableKg(m.id, null).toFixed(2) }}</td>
-                            <td class="px-1 py-0.5 border-t-2 border-slate-400 text-right">{{ totalChargeableLbs(m.id, null).toFixed(2) }}</td>
+                          <tr class="bg-surface-hover text-primary text-[13px] font-bold">
+                            <td class="px-1 py-0.5 border-t-2 border-strong" colspan="4">TOTAL</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-center">{{ totalPieces(m.id, null) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalDimWeight(m.id, null).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalScaleLbs(m.id, null).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalDimLbs(m.id, null).toFixed(1) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalScaleKg(m.id, null).toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalDimKg(m.id, null).toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalChargeableKg(m.id, null).toFixed(2) }}</td>
+                            <td class="px-1 py-0.5 border-t-2 border-strong text-right">{{ totalChargeableLbs(m.id, null).toFixed(2) }}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -641,49 +641,49 @@
 
               <!-- ═══ STEP 4: EVIDENCE ═══ -->
               <div v-if="localStep === 4" class="space-y-1.5">
-                <p class="text-[12px] font-mono text-slate-950">Adjuntar fotos, documentos u otras evidencias</p>
+                <p class="text-[12px] font-mono text-primary">Adjuntar fotos, documentos u otras evidencias</p>
 
                 <!-- Evidencias del MAWB (desde base de datos) -->
                 <div v-if="(receiptForms[m.id].mawbEvidence || []).length > 0">
-                  <span class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">{{ t('warehouse.evidence.mawbEvidence') }}</span>
+                  <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider mb-1 block">{{ t('warehouse.evidence.mawbEvidence') }}</span>
                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
                     <div v-for="(ev, ei) in receiptForms[m.id].mawbEvidence" :key="'mawb-' + ei"
-                      class="relative border border-slate-200 rounded bg-slate-50/30 overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
+                      class="relative border border-strong rounded bg-surface-hover/30 overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
                       <img v-if="ev.type === 'image' && ev.url" :src="ev.url" class="w-full h-20 object-cover" />
-                      <div v-else-if="ev.type === 'text'" class="w-full h-20 flex items-center justify-center bg-slate-50 text-slate-950 text-[12px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
-                      <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[12px] font-mono">
+                      <div v-else-if="ev.type === 'text'" class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
+                      <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-surface-hover text-slate-700 text-[12px] font-mono">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                         <span class="text-[10px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                       </div>
-                      <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[12px] font-mono">{{ ev.name }}</div>
-                      <span class="block text-[12px] font-mono text-slate-950 px-1.5 py-0.5 leading-tight">{{ ev.name }}</span>
+                      <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono">{{ ev.name }}</div>
+                      <span class="block text-[12px] font-mono text-primary px-1.5 py-0.5 leading-tight">{{ ev.name }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Nuevas evidencias (subidas en este formulario) -->
-                <span class="text-[12px] font-mono font-bold text-slate-950 uppercase tracking-wider mb-1 block">Nuevas evidencias (este recibo)</span>
+                <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider mb-1 block">Nuevas evidencias (este recibo)</span>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div v-for="(ev, ei) in receiptForms[m.id].evidence" :key="'rec-' + ei"
-                    class="relative border border-slate-400 rounded bg-white overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
+                    class="relative border border-strong rounded bg-surface overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
                     <img v-if="ev.type === 'image'" :src="ev.url" class="w-full h-20 object-cover" />
-                    <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 text-[12px] font-mono">
+                    <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-surface-hover text-slate-700 text-[12px] font-mono">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                       <span class="text-[11px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                     </div>
-                    <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[12px] font-mono">{{ ev.name }}</div>
-                    <button @click.stop="removeEvidence(m.id, ei)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-                    <span class="block text-[12px] font-mono text-slate-950 px-1.5 py-0.5 truncate">{{ ev.name }}</span>
+                    <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono">{{ ev.name }}</div>
+                    <button @click.stop="removeEvidence(m.id, ei)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-surface-hover0 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                    <span class="block text-[12px] font-mono text-primary px-1.5 py-0.5 truncate">{{ ev.name }}</span>
                   </div>
-                  <div class="border-2 border-dashed border-slate-400 rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
+                  <div class="border-2 border-dashed border-strong rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
                     @click="addEvidence(m.id)">
-                    <span class="text-[14px] text-slate-300 font-mono group-hover:text-slate-950 transition leading-none">+</span>
-                    <span class="text-[12px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Subir</span>
+                    <span class="text-[14px] text-tertiary font-mono group-hover:text-primary transition leading-none">+</span>
+                    <span class="text-[12px] font-mono text-primary mt-0.5 uppercase tracking-wider">Subir</span>
                   </div>
-                  <div class="border-2 border-dashed border-slate-400 rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
+                  <div class="border-2 border-dashed border-strong rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
                     @click="openCamera(m.id)">
-                    <component :is="icons.Camera" :size="16" class="text-slate-300 group-hover:text-slate-950 transition" />
-                    <span class="text-[12px] font-mono text-slate-950 mt-0.5 uppercase tracking-wider">Cámara</span>
+                    <component :is="icons.Camera" :size="16" class="text-tertiary group-hover:text-primary transition" />
+                    <span class="text-[12px] font-mono text-primary mt-0.5 uppercase tracking-wider">Cámara</span>
                   </div>
                 </div>
                 <CameraCapture :show="showCamera" @close="showCamera = false" @captured="onCameraCapture" />
@@ -702,7 +702,7 @@
                           class="ds-input" />
                   </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-400 pt-2">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-strong pt-2">
                   <div>
                     <label class="ds-label">Delivered By</label>
                     <div class="grid grid-cols-2 gap-1.5 mb-1">
@@ -772,26 +772,26 @@
             <span class="ds-modal-title">
               {{ t('warehouse.evidence.title') }} — {{ mawbEvidenceMgr.mawb?.awbNumber || 'MAWB' }}
             </span>
-            <button @click="closeMawbEvidenceMgr" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="closeMawbEvidenceMgr" aria-label="Cerrar" class="text-primary hover:text-primary transition text-base">✕</button>
           </div>
           <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 120px);">
-            <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[14px] font-mono text-slate-950 text-center py-6 uppercase tracking-widest">
+            <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[14px] font-mono text-primary text-center py-6 uppercase tracking-widest">
               Sin evidencias documentales
             </div>
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-4">
               <div v-for="(doc, di) in mawbEvidenceMgr.docs" :key="di"
-                class="relative border border-slate-400 rounded overflow-hidden bg-white group cursor-pointer" @click="previewEvidence(doc)">
+                class="relative border border-strong rounded overflow-hidden bg-surface group cursor-pointer" @click="previewEvidence(doc)">
                 <img v-if="doc.type === 'image' && doc.url" :src="doc.url" class="w-full h-20 object-cover" />
-                <div v-else-if="isPdfUrl(doc.url)" class="w-full h-20 flex flex-col items-center justify-center bg-slate-100 text-slate-700 font-mono">
+                <div v-else-if="isPdfUrl(doc.url)" class="w-full h-20 flex flex-col items-center justify-center bg-surface-hover text-slate-700 font-mono">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-7 h-7 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
                   <span class="text-[12px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                 </div>
-                <div v-else class="w-full h-20 flex items-center justify-center bg-slate-100 text-slate-950 text-[13px] font-mono">{{ doc.name }}</div>
-                <button @click.stop="removeMawbEvidence(di)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-slate-500 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-                <span class="block text-[13px] font-mono text-slate-950 px-2 py-1 truncate">{{ doc.name }}</span>
+                <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[13px] font-mono">{{ doc.name }}</div>
+                <button @click.stop="removeMawbEvidence(di)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-surface-hover0 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                <span class="block text-[13px] font-mono text-primary px-2 py-1 truncate">{{ doc.name }}</span>
               </div>
             </div>
-            <div class="flex items-center gap-2 border-t border-slate-300 pt-3">
+            <div class="flex items-center gap-2 border-t border-strong pt-3">
               <button @click="mawbEvidenceInput.click()"
                 class="ds-btn-secondary text-[11px] px-2.5 py-1">
                 + Subir archivo
@@ -808,7 +808,7 @@
             <input type="file" ref="mawbEvidenceInput" @change="handleMawbEvidenceUpload" accept="image/*,.pdf" class="hidden" />
             <CameraCapture :show="mawbCameraOpen" @close="mawbCameraOpen = false" @captured="onMawbCameraCapture" />
           </div>
-          <div class="flex justify-end px-4 py-2.5 border-t border-slate-200 bg-slate-50">
+          <div class="flex justify-end px-4 py-2.5 border-t border-strong bg-surface-hover">
             <button @click="saveMawbEvidence()"
               class="ds-btn-primary text-[11px] px-3 py-1.5">
               Guardar cambios
@@ -824,42 +824,42 @@
         <div class="ds-modal-panel max-w-lg p-0" style="max-height: 80vh;">
           <div class="ds-modal-header px-4 py-2.5">
             <span class="ds-modal-title">Confirmar Recibo</span>
-            <button @click="showConfirmModal = false" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="showConfirmModal = false" aria-label="Cerrar" class="text-primary hover:text-primary transition text-base">✕</button>
           </div>
           <div class="overflow-y-auto" style="max-height: calc(80vh - 110px);">
             <template v-if="pendingSubmitMawb">
-              <div class="px-4 py-3 space-y-2 text-[13px] font-mono text-slate-950">
+              <div class="px-4 py-3 space-y-2 text-[13px] font-mono text-primary">
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                  <span class="text-slate-500 uppercase tracking-wider">MAWB</span>
+                  <span class="text-secondary uppercase tracking-wider">MAWB</span>
                   <span class="font-bold text-right">{{ pendingSubmitMawb.awbNumber }}</span>
-                  <span class="text-slate-500 uppercase tracking-wider">{{ t('warehouse.form.destination') }}</span>
+                  <span class="text-secondary uppercase tracking-wider">{{ t('warehouse.form.destination') }}</span>
                   <span class="font-bold text-right">{{ receiptForms[pendingSubmitMawb.id]?.destination || pendingSubmitMawb.destination || '—' }}</span>
-                  <span class="text-slate-500 uppercase tracking-wider">{{ t('common.pieces') }}</span>
+                  <span class="text-secondary uppercase tracking-wider">{{ t('common.pieces') }}</span>
                   <span class="font-bold text-right">{{ (receiptForms[pendingSubmitMawb.id]?.pieces || []).reduce((s, p) => s + (p.pieces || 1), 0) }}</span>
-                  <span class="text-slate-500 uppercase tracking-wider">Peso (Kg)</span>
+                  <span class="text-secondary uppercase tracking-wider">Peso (Kg)</span>
                   <span class="font-bold text-right">{{ (receiptForms[pendingSubmitMawb.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0).toFixed(1) }}</span>
-                  <span class="text-slate-500 uppercase tracking-wider">{{ t('warehouse.form.shipperName') }}</span>
+                  <span class="text-secondary uppercase tracking-wider">{{ t('warehouse.form.shipperName') }}</span>
                   <span class="font-bold text-right truncate">{{ receiptForms[pendingSubmitMawb.id]?.shipperName || pendingSubmitMawb.shipperName || '—' }}</span>
-                  <span class="text-slate-500 uppercase tracking-wider">Consignee</span>
+                  <span class="text-secondary uppercase tracking-wider">Consignee</span>
                   <span class="font-bold text-right truncate">{{ receiptForms[pendingSubmitMawb.id]?.consigneeName || pendingSubmitMawb.consigneeName || '—' }}</span>
                 </div>
-                <div class="border-t border-slate-300 pt-2 mt-2">
+                <div class="border-t border-strong pt-2 mt-2">
                   <div class="flex flex-wrap gap-2">
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.cashOnly" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Cash Only</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.bookedInAcoms" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Booked in ACOMS</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.docsProvided" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Docs Provided</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.customsCompleted" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Customs Done</span>
-                    <span v-if="receiptForms[pendingSubmitMawb.id]?.preBuilt" class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Pre-built</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.cashOnly" class="bg-surface-hover text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Cash Only</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.bookedInAcoms" class="bg-surface-hover text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Booked in ACOMS</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.docsProvided" class="bg-surface-hover text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Docs Provided</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.customsCompleted" class="bg-surface-hover text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Customs Done</span>
+                    <span v-if="receiptForms[pendingSubmitMawb.id]?.preBuilt" class="bg-surface-hover text-slate-700 px-1.5 py-0.5 rounded text-[12px] uppercase tracking-wider">Pre-built</span>
                   </div>
                 </div>
-                <div class="border-t border-slate-300 pt-2 mt-2 flex justify-between text-[12px] text-slate-500">
+                <div class="border-t border-strong pt-2 mt-2 flex justify-between text-[12px] text-secondary">
                   <span>{{ (receiptForms[pendingSubmitMawb.id]?.evidence || []).length }} evidencias</span>
                   <span>{{ (receiptForms[pendingSubmitMawb.id]?.pieces || []).filter(p => p.lengthIn).length }} piezas con dimensiones</span>
                 </div>
               </div>
             </template>
           </div>
-          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-200 bg-slate-50">
+          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-strong bg-surface-hover">
             <button @click="showConfirmModal = false"
               class="ds-btn-secondary text-[11px] px-3 py-1.5">
               Cancelar
@@ -884,14 +884,14 @@
             </div>
           </div>
           <div class="px-5 py-4 space-y-3">
-            <p class="text-[14px] font-mono text-slate-600">
+            <p class="text-[14px] font-mono text-secondary">
               Las piezas recibidas superan las reservadas en el Booking. El sistema corregira automaticamente:
             </p>
             <div v-for="(c, idx) in pendingBookingCorrections" :key="idx"
               class="bg-amber-50 border border-amber-200 rounded-md px-3 py-2.5">
               <div class="text-[13px] font-mono text-amber-900" v-html="formatCorrection(c)"></div>
             </div>
-            <p class="text-[13px] font-mono text-slate-500 italic">
+            <p class="text-[13px] font-mono text-secondary italic">
               Al aceptar, el Booking se actualizara y el recibo se guardara.
             </p>
           </div>
@@ -917,7 +917,7 @@
             <span class="ds-modal-title truncate max-w-[70%]">
               {{ evidencePreview.item?.name || 'Vista previa' }}
             </span>
-            <button @click="closeEvidencePreview" aria-label="Cerrar" class="text-slate-950 hover:text-slate-950 transition text-base">✕</button>
+            <button @click="closeEvidencePreview" aria-label="Cerrar" class="text-primary hover:text-primary transition text-base">✕</button>
           </div>
           <div class="overflow-auto bg-slate-900 flex items-center justify-center" style="max-height: calc(90vh - 110px); min-height: 200px;">
             <img v-if="evidencePreview.item?.type === 'image' && evidencePreview.item?.url" :src="evidencePreview.item.url"
@@ -928,7 +928,7 @@
               {{ evidencePreview.item?.name || 'Sin vista previa disponible' }}
             </div>
           </div>
-          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-slate-200 bg-slate-50">
+          <div class="flex items-center justify-end gap-2 px-4 py-2 border-t border-strong bg-surface-hover">
             <button @click="closeEvidencePreview"
               class="ds-btn-secondary text-[11px] px-3 py-1.5">
               Cerrar

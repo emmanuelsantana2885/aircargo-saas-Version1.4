@@ -52,9 +52,47 @@ export function useCommodities() {
     return { label: code, short: code.slice(0, 4), color: '#9ca3af', description: 'Unknown commodity type', isLegacy: true }
   }
 
+  // ── Texto visible de un commodity (fuente única) ────────────────────────────
+  // `label` es el texto que se muestra; `description` va al tooltip. Editar la
+  // descripción en Settings se percibe al pasar el cursor, sin reventar el
+  // ancho de tablas ni selects. Ningún consumidor debe inventar su propio texto.
+  function labelOf(code) {
+    if (!code) return ''
+    const c = commodities.value.find(x => x.code === code)
+    return c?.label || String(code)
+  }
+
+  function descriptionOf(code) {
+    if (!code) return ''
+    const c = commodities.value.find(x => x.code === code)
+    return c?.description || ''
+  }
+
+  // Texto completo para <select>/dropdowns, donde no existe tooltip por opción.
+  function fullLabelOf(code) {
+    if (!code) return ''
+    const label = labelOf(code)
+    const desc = descriptionOf(code)
+    return desc && desc !== label ? `${label} — ${desc}` : label
+  }
+
+  function tooltipOf(code) {
+    if (!code) return ''
+    const c = commodities.value.find(x => x.code === code)
+    if (!c) return labelOf(code)
+    return c.description || c.label || c.code
+  }
+
+  function isKnown(code) {
+    return !!code && commodities.value.some(x => x.code === code)
+  }
+
   function invalidate() {
     loaded = false
   }
 
-  return { commodities, loading, loadCommodities, getCodeList, getMap, resolveCommodity, invalidate }
+  return {
+    commodities, loading, loadCommodities, getCodeList, getMap, resolveCommodity,
+    labelOf, descriptionOf, fullLabelOf, tooltipOf, isKnown, invalidate,
+  }
 }

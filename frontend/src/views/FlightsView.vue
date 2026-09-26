@@ -8,7 +8,7 @@
         <p class="ds-subtitle">{{ t('flights.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-2 md:gap-3 flex-wrap">
-        <div v-if="store.error" class="text-[14px] font-mono text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+        <div v-if="store.error" class="text-[14px] font-mono text-secondary bg-surface-hover border border-strong px-3 py-1.5 rounded-lg">
           {{ store.error }}
         </div>
         <span class="ds-chip">{{ t('flights.countFlights', { n: filteredFlights.length }) }}</span>
@@ -58,23 +58,23 @@
         </button>
       </EmptyState>
 
-      <div v-else class="divide-y divide-slate-100 text-[13px] text-slate-900 overflow-y-auto flex-1 min-h-0 scrollbar-none" style="min-width: 960px">
+      <div v-else class="divide-y divide-slate-100 text-[13px] text-primary overflow-y-auto flex-1 min-h-0 scrollbar-none" style="min-width: 960px">
         <div v-for="f in filteredFlights" :key="f.id"
           class="ds-table-row group"
           @click="selectFlight(f)">
 
-          <div class="col-span-2 font-mono font-bold text-slate-900 relative z-10 flex items-center gap-2">
+          <div class="col-span-2 font-mono font-bold text-primary relative z-10 flex items-center gap-2">
             <span class="text-[13px] font-bold text-white bg-slate-800 rounded-md px-2 py-0.5 uppercase tracking-wider">{{ airlineCode(f) }}</span>
             <span>{{ f.flightNumber }}</span>
           </div>
-          <div class="col-span-2 font-semibold text-slate-900 relative z-10">
-            {{ f.origin }} <span class="text-slate-400 mx-1">→</span> {{ f.destination }}
+          <div class="col-span-2 font-semibold text-primary relative z-10">
+            {{ f.origin }} <span class="text-tertiary mx-1">→</span> {{ f.destination }}
           </div>
-          <div class="col-span-1 font-mono text-[13px] text-slate-900 relative z-10">{{ f.aircraftType }}</div>
-          <div class="col-span-1 font-mono text-[13px] text-slate-900 relative z-10">{{ f.aircraftReg || 'TMP-' + f.flightNumber }}</div>
-          <div class="col-span-1 text-center font-mono text-[13px] text-slate-900 relative z-10">{{ f.flightDate }}</div>
-          <div class="col-span-1 text-center font-mono font-bold text-slate-900 relative z-10">{{ f.totalPositions || '—' }}</div>
-          <div class="col-span-1 text-center font-mono font-bold text-slate-900 relative z-10">
+          <div class="col-span-1 font-mono text-[13px] text-primary relative z-10">{{ f.aircraftType }}</div>
+          <div class="col-span-1 font-mono text-[13px] text-primary relative z-10">{{ f.aircraftReg || 'TMP-' + f.flightNumber }}</div>
+          <div class="col-span-1 text-center font-mono text-[13px] text-primary relative z-10">{{ f.flightDate }}</div>
+          <div class="col-span-1 text-center font-mono font-bold text-primary relative z-10">{{ f.totalPositions || '—' }}</div>
+          <div class="col-span-1 text-center font-mono font-bold text-primary relative z-10">
             {{ f.maxPayloadKg ? Number(f.maxPayloadKg).toLocaleString() : '—' }}
           </div>
           <div class="col-span-1 text-center font-mono font-bold text-[13px] relative z-10">
@@ -82,7 +82,7 @@
               :class="flightAvailable(f) >= 0 ? 'text-emerald-700' : 'text-red-600'">
               {{ flightAvailable(f).toLocaleString() }} lbs
             </span>
-            <span v-else class="text-slate-400">—</span>
+            <span v-else class="text-tertiary">—</span>
           </div>
 
           <!-- Status flow -->
@@ -91,10 +91,10 @@
               <div v-for="step in statusSteps" :key="step.key"
                 class="flex flex-col items-center">
                 <span class="h-2.5 w-2.5 rounded-full border-2 transition-all"
-                  :class="f.status === step.key ? step.active : (statusOrder.indexOf(f.status) > statusOrder.indexOf(step.key) ? 'bg-slate-400 border-slate-500' : 'bg-slate-100 border-slate-300')">
+                  :class="f.status === step.key ? step.active : (statusOrder.indexOf(f.status) > statusOrder.indexOf(step.key) ? 'bg-surface-hover border-strong' : 'bg-surface-hover border-strong')">
                 </span>
                 <span class="text-[12px] font-mono mt-0.5 font-bold uppercase"
-                  :class="f.status === step.key ? step.labelClass : 'text-slate-400'">
+                  :class="f.status === step.key ? step.labelClass : 'text-tertiary'">
                   {{ step.label }}
                 </span>
               </div>
@@ -103,11 +103,11 @@
 
           <div class="col-span-1 flex justify-center gap-1.5 relative z-10 ds-row-actions">
             <button @click.stop="openEdit(f)"
-              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:border-slate-950 hover:text-slate-950 transition" :aria-label="t('common.edit')">
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-strong text-secondary hover:border-slate-950 hover:text-slate-950 transition" :aria-label="t('common.edit')">
               <component :is="icons.Pencil" :size="13" :stroke-width="2" />
             </button>
             <button @click.stop="confirmDelete(f)"
-              class="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:border-red-300 hover:text-red-500 transition" :aria-label="t('common.delete')">
+              class="w-7 h-7 flex items-center justify-center rounded-lg border border-default text-tertiary hover:border-red-300 hover:text-red-500 transition" :aria-label="t('common.delete')">
               <component :is="icons.Trash" :size="13" :stroke-width="2" />
             </button>
           </div>
@@ -124,7 +124,7 @@
           <h2 class="ds-modal-title">
             {{ editingFlight ? t('flights.editFlight') : t('flights.newFlight') }}
           </h2>
-          <button @click="closeModal" class="text-slate-400 hover:text-slate-950 transition" :aria-label="t('common.close')">
+          <button @click="closeModal" class="text-tertiary hover:text-slate-950 transition" :aria-label="t('common.close')">
             <component :is="icons.X" :size="18" :stroke-width="2" />
           </button>
         </div>
@@ -162,7 +162,7 @@
               <option value="" disabled>{{ t('flights.form.selectAirline') }}</option>
               <option v-for="a in airlines" :key="a.id" :value="a.id">{{ a.code }} — {{ a.name }}</option>
             </select>
-            <p v-if="airlinesError" class="text-[12px] font-mono text-slate-400 mt-1">{{ t('flights.form.airlinesLoadError') }}</p>
+            <p v-if="airlinesError" class="text-[12px] font-mono text-tertiary mt-1">{{ t('flights.form.airlinesLoadError') }}</p>
           </div>
           <div>
             <label class="ds-label">{{ t('flights.form.uldPositions') }}</label>
@@ -180,7 +180,7 @@
           </div>
         </div>
 
-        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-slate-200">
+        <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-strong">
           <button @click="closeModal" class="ds-btn-secondary">
             {{ t('common.cancel') }}
           </button>
@@ -313,10 +313,10 @@ useLiveRefresh(() => {
 const aircraftTypes  = ['B767','B757','B737','B747','B777','A300','A310','A330','MD11','DC8','OTHER']
 const flightStatuses = ['SCHEDULED','BOARDING','DEPARTED','ARRIVED','CANCELLED','DELAYED']
 const statusSteps    = [
-  { key: 'SCHEDULED', label: 'SCHED', active: 'bg-slate-500 border-slate-600', labelClass: 'text-slate-700' },
-  { key: 'BOARDING',  label: 'BOARD', active: 'bg-slate-500 border-slate-600',  labelClass: 'text-slate-700' },
-  { key: 'DEPARTED',  label: 'DEP',   active: 'bg-slate-500 border-slate-600', labelClass: 'text-slate-700' },
-  { key: 'ARRIVED',   label: 'ARR',   active: 'bg-slate-500 border-slate-600', labelClass: 'text-slate-700' },
+  { key: 'SCHEDULED', label: 'SCHED', active: 'bg-surface-hover0 border-strong', labelClass: 'text-slate-700' },
+  { key: 'BOARDING',  label: 'BOARD', active: 'bg-surface-hover0 border-strong',  labelClass: 'text-slate-700' },
+  { key: 'DEPARTED',  label: 'DEP',   active: 'bg-surface-hover0 border-strong', labelClass: 'text-slate-700' },
+  { key: 'ARRIVED',   label: 'ARR',   active: 'bg-surface-hover0 border-strong', labelClass: 'text-slate-700' },
 ]
 const statusOrder = ['SCHEDULED','BOARDING','DEPARTED','ARRIVED','CANCELLED','DELAYED']
 

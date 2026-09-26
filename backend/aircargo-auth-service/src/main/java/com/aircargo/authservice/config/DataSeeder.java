@@ -1,17 +1,16 @@
 package com.aircargo.authservice.config;
 
 import com.aircargo.authservice.entity.AppUser;
-import com.aircargo.authservice.entity.CommodityTypeEntity;
 import com.aircargo.authservice.entity.RolePermission;
 import com.aircargo.authservice.entity.Site;
 import com.aircargo.authservice.entity.UserRole;
 import com.aircargo.authservice.entity.ViewPermission;
 import com.aircargo.authservice.repository.AppUserRepository;
 import com.aircargo.authservice.repository.AirlineRepository;
-import com.aircargo.authservice.repository.CommodityTypeRepository;
 import com.aircargo.authservice.repository.RolePermissionRepository;
 import com.aircargo.authservice.repository.SiteRepository;
 import com.aircargo.authservice.repository.ViewPermissionRepository;
+import com.aircargo.authservice.service.CommodityTypeService;
 import com.aircargo.common.entity.Airline;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,20 +62,20 @@ public class DataSeeder implements ApplicationRunner {
     private final AppUserRepository appUserRepository;
     private final ViewPermissionRepository viewPermissionRepository;
     private final RolePermissionRepository rolePermissionRepository;
-    private final CommodityTypeRepository commodityTypeRepository;
+    private final CommodityTypeService commodityTypeService;
 
     public DataSeeder(AirlineRepository airlineRepository,
                       SiteRepository siteRepository,
                       AppUserRepository appUserRepository,
                       ViewPermissionRepository viewPermissionRepository,
                       RolePermissionRepository rolePermissionRepository,
-                      CommodityTypeRepository commodityTypeRepository) {
+                      CommodityTypeService commodityTypeService) {
         this.airlineRepository = airlineRepository;
         this.siteRepository = siteRepository;
         this.appUserRepository = appUserRepository;
         this.viewPermissionRepository = viewPermissionRepository;
         this.rolePermissionRepository = rolePermissionRepository;
-        this.commodityTypeRepository = commodityTypeRepository;
+        this.commodityTypeService = commodityTypeService;
     }
 
     @Override
@@ -294,41 +293,21 @@ public class DataSeeder implements ApplicationRunner {
         return map;
     }
 
+    /**
+     * El catálogo de commodities tiene UNA sola definición de defaults: la de
+     * CommodityTypeService (label + description + color canónicos). Antes este
+     * seeder mantenía una lista duplicada de 18 códigos SIN description —el
+     * texto que la UI muestra como tooltip—, y con otro formato de label
+     * ("PERISHABLE" vs "Perishable", "SDQ-SDF" vs "SDQ\u2192SDF").
+     * Delegar además en resetToDefaults() garantiza que un catálogo vacío se
+     * rellene con los mismos textos que "Restaurar defaults" en Settings, y que
+     * nunca se borre un código ajeno (upsert, no deleteAll).
+     */
     private void seedCommodityTypes() {
-        if (commodityTypeRepository.count() > 0) {
-            return;
+        int restored = commodityTypeService.resetToDefaults();
+        if (restored > 0) {
+            log.info("DataSeeder: seeded {} commodity types desde los defaults canónicos", restored);
         }
-        record CommoditySeed(String code, String label, String color, int order) {}
-        List<CommoditySeed> seeds = List.of(
-            new CommoditySeed("PERISHABLE", "PERISHABLE", "#ef4444", 1),
-            new CommoditySeed("DRY_CARGO", "DRY CARGO", "#64748b", 2),
-            new CommoditySeed("ELECTRONICS", "ELECTRONICS", "#8b5cf6", 3),
-            new CommoditySeed("HIGH_VALUES", "HIGH VALUES", "#f59e0b", 4),
-            new CommoditySeed("CIGARETTES", "CIGARETTES", "#78716c", 5),
-            new CommoditySeed("SMALL_PACKAGES", "SMALL PACKAGES", "#06b6d4", 6),
-            new CommoditySeed("WWEF", "WWEF", "#ec4899", 7),
-            new CommoditySeed("LIVE_PLANTS", "LIVE PLANTS", "#22c55e", 8),
-            new CommoditySeed("GENERAL", "GENERAL", "#94a3b8", 9),
-            new CommoditySeed("COMAT", "COMAT", "#a3a3a3", 10),
-            new CommoditySeed("FCC", "FCC", "#78716c", 11),
-            new CommoditySeed("EMPTY_ULD", "EMPTY ULD", "#d1d5db", 12),
-            new CommoditySeed("EMPTY_PALLET", "EMPTY PALLET", "#d1d5db", 13),
-            new CommoditySeed("RED_TAG", "RED TAG", "#dc2626", 14),
-            new CommoditySeed("EMPTY_BAGS", "EMPTY BAGS", "#a3a3a3", 15),
-            new CommoditySeed("NETS", "NETS", "#52525b", 16),
-            new CommoditySeed("SDQ_SDF", "SDQ-SDF", "#2563eb", 17),
-            new CommoditySeed("SDQ_MIA", "SDQ-MIA", "#2563eb", 18)
-        );
-        seeds.forEach(s -> {
-            CommodityTypeEntity entity = CommodityTypeEntity.builder()
-                .code(s.code())
-                .label(s.label())
-                .color(s.color())
-                .sortOrder(s.order())
-                .isActive(true)
-                .build();
-            commodityTypeRepository.save(entity);
-        });
-        log.info("DataSeeder: seeded {} commodity types", seeds.size());
     }
+
 }

@@ -113,80 +113,12 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* El estilo de .data-table / .data-card / .card-* vive ahora en el design
+   system (assets/main.css → @layer components) para que las <table> sueltas
+   de las vistas compartan exactamente el mismo aspecto. Aquí sólo queda el
+   layout propio del componente: el switch tabla↔cards por breakpoint. */
 .responsive-table {
   width: 100%;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.data-table th {
-  background: var(--surface-2);
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 12px;
-  text-align: left;
-  border-bottom: 2px solid var(--border);
-  white-space: nowrap;
-  font-family: var(--font-family-mono);
-}
-
-.data-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-}
-
-.data-table tbody tr:hover {
-  background: var(--accent-soft);
-}
-
-.cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.data-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-  box-shadow: var(--shadow-xs);
-  transition: all 0.15s ease;
-}
-
-.data-card:hover {
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-.card-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 0;
-}
-
-.card-label {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-  font-family: var(--font-family-mono);
-}
-
-.card-value {
-  font-size: 13px;
-  color: var(--text);
-  font-family: var(--font-family);
 }
 
 @media (max-width: 767px) {

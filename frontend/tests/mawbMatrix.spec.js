@@ -3,8 +3,10 @@ import {
   DEFAULT_COL_WIDTHS, colStyle, clampColWidth, stickyOffsetsFor,
   indexMatrixData, selectFlightScope, buildMatrixRows,
   getPieces, cellClasses, arcOffsetFor, ARC_CIRCUM,
-  mawbStatusClass, mawbStatusClassRaw,
+  mawbStatusClass, mawbStatusChalkClass, mawbStatusClassRaw,
+  MATRIX_COLUMNS, normalizeHidden, visibleMatrixColumns, frozenEndKey, matrixMinWidth,
 } from '@/utils/mawbMatrix'
+import { readFileSync } from 'node:fs'
 
 /* ── fixtures ────────────────────────────────────────────────── */
 const ulds = [
@@ -284,22 +286,205 @@ describe('presentation helpers', () => {
     expect(Number.isFinite(arcOffsetFor(3, 0))).toBe(true)
   })
 
-  it('status dot classes map the four MAWB states', () => {
-    expect(mawbStatusClassRaw('BOOKED')).toBe('bg-slate-500')
-    expect(mawbStatusClassRaw('RECEIVED')).toBe('bg-slate-600')
-    expect(mawbStatusClassRaw('DEPARTED')).toBe('bg-slate-700')
-    expect(mawbStatusClassRaw(null)).toBe('bg-slate-500')
-    expect(mawbStatusClassRaw('WAT')).toBe('bg-slate-400')
+  it('status dot classes follow the canonical MAWB palette', () => {
+    expect(mawbStatusClassRaw('BOOKED')).toBe('bg-slate-400')
+    expect(mawbStatusClassRaw('RECEIVED')).toBe('bg-amber-400')
+    expect(mawbStatusClassRaw('MANIFESTED')).toBe('bg-emerald-500')
+    expect(mawbStatusClassRaw('DEPARTED')).toBe('bg-blue-500')
+    expect(mawbStatusClassRaw('ARRIVED')).toBe('bg-blue-500')
+    expect(mawbStatusClassRaw(null)).toBe('bg-slate-400')
+    expect(mawbStatusClassRaw('WAT')).toBe('bg-slate-300')
+  })
+
+  it('every MAWB state is visually distinct from the others', () => {
+    /* Regresión: la paleta era toda gris pizarra y BOOKED y MANIFESTED
+     * compartían `border-l-slate-400`, así que el operador no podía
+     * distinguirlos al vistazo. Cada estado debe tener color propio. */
+    const barOf = (status) => mawbStatusClass({ status }).split(/\s+/)
+      .filter((c) => c.startsWith('border-l-') && c !== 'border-l-4')
+      .join('')
+    const states = ['BOOKED', 'RECEIVED', 'MANIFESTED', 'DEPARTED']
+    const bars = states.map(barOf)
+    expect(bars.every(Boolean)).toBe(true)
+    expect(new Set(bars).size).toBe(states.length)
   })
 
   it('excess always wins over the status colouring', () => {
     expect(mawbStatusClass({ hasDispatchedExcess: true, status: 'DEPARTED' }))
-      .toContain('border-l-slate-500')
+      .toContain('border-l-rose-500')
     expect(mawbStatusClass({ hasDispatchedExcess: false, status: 'DEPARTED' }))
-      .toContain('border-l-slate-600')
+      .toContain('border-l-blue-500')
   })
 
   it('unknown status falls back to a neutral cell', () => {
     expect(mawbStatusClass({ status: 'WAT' })).toBe('bg-white hover:bg-slate-50')
+  })
+
+  /* ── Variante pizarra (matriz) ────────────────────────────── */
+  it('chalk status cell keeps every state distinct on the dark board', () => {
+    const barOf = (status) => mawbStatusChalkClass({ status }).split(/\s+/)
+      .filter((c) => c.startsWith('border-l-') && c !== 'border-l-4')
+      .join('')
+    const states = ['BOOKED', 'RECEIVED', 'MANIFESTED', 'DEPARTED']
+    const bars = states.map(barOf)
+    expect(bars.every(Boolean)).toBe(true)
+    expect(new Set(bars).size).toBe(states.length)
+  })
+
+  it('chalk status cell paints ink and bar, never a background', () => {
+    /* Regresión: la variante clara devolvía `bg-slate-50 text-slate-600`, que
+     * sobre el verde de la pizarra quedaba ilegible y además anulada por
+     * `.chalk td`. Aquí el fondo es de la pizarra, la clase solo fija tinta y
+     * barra (y sin `bg-*` para no competir con el `!important` de `.fz`). */
+    const cls = mawbStatusChalkClass({ status: 'RECEIVED' })
+    expect(cls).toContain('text-amber-300')
+    expect(cls).toContain('border-l-amber-400')
+    expect(cls).not.toMatch(/\bbg-/)
+  })
+
+  it('chalk excess still wins over the status colour', () => {
+    expect(mawbStatusChalkClass({ hasDispatchedExcess: true, status: 'DEPARTED' }))
+      .toContain('border-l-rose-400')
+    expect(mawbStatusChalkClass({ hasDispatchedExcess: false, status: 'DEPARTED' }))
+      .toContain('border-l-sky-400')
+  })
+
+  it('chalk unknown status is neutral but not empty', () => {
+    expect(mawbStatusChalkClass({ status: 'WAT' })).toBe('text-slate-300')
+  })
+})
+
+/* ── columnas configurables ─────────────────────────────────────
+ * La matriz es muy densa: en pantallas angostas las columnas de peso y
+ * piezas son las primeras que estorban. Se pueden ocultar, pero el MAWB es
+ * la identidad de la fila y no se oculta nunca. Los offsets sticky siguen
+ * indexándose por columna LÓGICA: si `kg` es el índice 4, `stickyOffsets[4]`
+ * es `kg` aunque haya columnas ocultas delante. */
+describe('columnas configurables de la matriz', () => {
+  const view = () => readFileSync('src/views/MawbsView.vue', 'utf8')
+  const keys = () => MATRIX_COLUMNS.map(c => c.key)
+
+  it('el catálogo cubre las 7 columnas fijas en orden estable', () => {
+    expect(keys()).toEqual(['mawb', 'parties', 'reserved', 'received', 'kg', 'lbs', 'dispatched'])
+    for (const c of MATRIX_COLUMNS) {
+      expect(c.key, c.key).toMatch(/^[a-z]+$/)
+      expect(c.labelKey, c.key).toMatch(/^mawbs\.columns\.[A-Za-z]+$/)
+    }
+  })
+
+  it('solo MAWB es obligatoria y congelada; las demas se pueden ocultar', () => {
+    expect(MATRIX_COLUMNS.filter(c => c.required).map(c => c.key)).toEqual(['mawb'])
+    expect(MATRIX_COLUMNS.filter(c => c.frozen).map(c => c.key)).toEqual(['mawb', 'parties'])
+  })
+
+  it('normalizeHidden descarta claves desconocidas y nunca oculta el MAWB', () => {
+    expect([...normalizeHidden([])]).toEqual([])
+    expect([...normalizeHidden(['kg', 'lbs'])]).toEqual(['kg', 'lbs'])
+    expect([...normalizeHidden(['kg', 'inventada', 'mawb'])]).toEqual(['kg'])
+    expect([...normalizeHidden(new Set(['dispatched']))]).toEqual(['dispatched'])
+  })
+
+  it('normalizeHidden tolera basura de localStorage sin lanzar', () => {
+    expect([...normalizeHidden(null)]).toEqual([])
+    expect([...normalizeHidden('')]).toEqual([])
+    expect([...normalizeHidden('{no es json')]).toEqual([])
+    expect([...normalizeHidden('[]')]).toEqual([])
+    expect([...normalizeHidden('["kg"]')]).toEqual(['kg'])
+  })
+
+  it('visibleMatrixColumns conserva el orden del catalogo', () => {
+    const vis = visibleMatrixColumns(new Set(['kg', 'parties'])).map(c => c.key)
+    expect(vis).toEqual(['mawb', 'reserved', 'received', 'lbs', 'dispatched'])
+  })
+
+  it('visibleMatrixColumns con todo oculto deja al menos el MAWB', () => {
+    const vis = visibleMatrixColumns(new Set(['parties', 'reserved', 'received', 'kg', 'lbs', 'dispatched']))
+    expect(vis.map(c => c.key)).toEqual(['mawb'])
+  })
+
+  it('frozenEndKey es la ultima congelada visible', () => {
+    expect(frozenEndKey(new Set())).toBe('parties')
+    expect(frozenEndKey(new Set(['parties']))).toBe('mawb')
+  })
+
+  it('ocultar columnas mueve los offsets pero respeta el indice logico', () => {
+    const todas = stickyOffsetsFor({}, DEFAULT_COL_WIDTHS, 7)
+    const sinKg = stickyOffsetsFor({}, DEFAULT_COL_WIDTHS, 7, new Set(['kg']))
+    const sinLbs = stickyOffsetsFor({}, DEFAULT_COL_WIDTHS, 7, new Set(['lbs']))
+
+    expect(todas).toHaveLength(8)
+    expect(sinKg).toHaveLength(8)
+    // `dispatched` (6) arranca antes porque `kg` (4) ya no ocupa ancho
+    expect(sinKg[6]).toBe(todas[6] - 90)
+    expect(sinLbs[6]).toBe(todas[6] - 90)
+    // lo anterior a la oculta no se mueve
+    expect(sinKg[0]).toBe(todas[0])
+    expect(sinKg[3]).toBe(todas[3])
+    // el borde inicial de los vuelos tambien se adelanta
+    expect(sinKg[7]).toBe(todas[7] - 90)
+  })
+
+  it('sin cambios de ancho, ocultar varias columnas suma sus anchos', () => {
+    const todas = stickyOffsetsFor({}, DEFAULT_COL_WIDTHS, 7)
+    const ocultas = stickyOffsetsFor({}, DEFAULT_COL_WIDTHS, 7, new Set(['reserved', 'received']))
+    // reserved(90) + received(90) = 180
+    expect(ocultas[7]).toBe(todas[7] - 180)
+    expect(ocultas[2]).toBe(todas[2])
+  })
+
+  it('la vista oculta cada columna de forma pareja en th y td', () => {
+    const v = view()
+    for (const key of keys()) {
+      const enTh = v.split(`v-if="colVisible('${key}')"`).length - 1
+      expect(enTh, `${key} debe aparecer en un th`).toBeGreaterThanOrEqual(1)
+    }
+    // 7 th + 7 td = 14 usos exactos
+    const total = (v.match(/v-if="colVisible\('/g) || []).length
+    expect(total).toBe(14)
+  })
+
+  it('la vista guarda la preferencia y ofrece volver a mostrarlas', () => {
+    const v = view()
+    expect(v).toMatch(/localStorage\.setItem\(HIDDEN_COLS_KEY/)
+    expect(v).toMatch(/function showAllCols\(\)/)
+    // la lectura inicial pasa por normalizeHidden
+    expect(v).toMatch(/ref\(normalizeHidden\(readHiddenCols\(\)\)\)/)
+  })
+
+  it('la vista calcula los offsets con las columnas ocultas', () => {
+    const v = view()
+    expect(v).toMatch(/stickyOffsetsFor\(colWidths, defaultColWidths, MATRIX_COLUMNS\.length, hiddenCols\.value\)/)
+  })
+
+  it('el ancho minimo reserva solo las columnas que se pintan', () => {
+    // 7 fijas = 820; con 3 vuelos de 100 = 1120
+    expect(matrixMinWidth([], {}, DEFAULT_COL_WIDTHS, 3)).toBe(1120)
+    // kg (90) oculta -> 820 - 90 + 300
+    expect(matrixMinWidth(['kg'], {}, DEFAULT_COL_WIDTHS, 3)).toBe(1030)
+    // las seis conmutables ocultas -> solo el MAWB (180) + 300
+    expect(matrixMinWidth(
+      ['parties', 'reserved', 'received', 'kg', 'lbs', 'dispatched'],
+      {}, DEFAULT_COL_WIDTHS, 3)).toBe(480)
+  })
+
+  it('el ancho minimo respeta las columnas redimensionadas', () => {
+    expect(matrixMinWidth([], { 0: 300 }, DEFAULT_COL_WIDTHS, 0)).toBe(300 + 640)
+  })
+
+  it('el ancho minimo nunca queda por debajo del MAWB', () => {
+    const w = matrixMinWidth(['parties', 'reserved', 'received', 'kg', 'lbs', 'dispatched'], {}, DEFAULT_COL_WIDTHS, 0)
+    expect(w).toBe(180)
+  })
+
+  it('la vista no deja un min-width fijo que anule la preferencia', () => {
+    const v = view()
+    expect(v).not.toMatch(/style="min-width: 820px"/)
+    expect(v).toMatch(/:style="\{ minWidth: matrixMinWidth \+ 'px' \}"/)
+  })
+
+  it('la sombra de scroll la lleva la ultima congelada, no una clase fija', () => {
+    const v = view()
+    expect(v).toMatch(/frozenEnd === 'mawb'/)
+    expect(v).toMatch(/frozenEnd === 'parties'/)
   })
 })

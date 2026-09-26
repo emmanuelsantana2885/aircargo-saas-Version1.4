@@ -23,7 +23,7 @@
       <button @click="toggleMode" class="h-chip" :title="mode === 'light' ? t('header.themeLight') : t('header.themeDark')"
         :aria-label="mode === 'light' ? t('header.themeLight') : t('header.themeDark')">
         <component :is="icons.Moon" v-if="mode === 'light'" :size="14" :stroke-width="2" />
-        <component :is="icons.Sun" v-else :size="14" :stroke-width="2" style="color: #ffd700" />
+        <component :is="icons.Sun" v-else :size="14" :stroke-width="2" style="color: var(--accent-ink, #ffd700)" />
       </button>
       <button ref="appearanceBtnRef" @click.stop="toggleAppearance" class="h-chip h-chip-swatch" :title="t('header.appearanceHint')"
         :aria-label="t('header.appearanceHint')">
@@ -343,13 +343,17 @@ onUnmounted(() => {
 <style scoped>
 .shell-header {
   height: 56px;
-  background: #0d9488;
+  /* Antes fijo en teal #0d9488 con texto blanco: 3.74:1 en la barra y 3.08:1
+   * dentro de .h-chip, por debajo de AA para 11.5px. Ahora la banda y su tinta
+   * las resuelve el motor (>= 4.5:1 en las 120 combinaciones tema x tono) y la
+   * barra sigue al accent elegido en Apariencia. */
+  background: var(--accent-band, #0d9488);
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 0 20px;
-  color: #fff;
-  box-shadow: 0 1px 6px rgba(2,44,34,.2);
+  color: var(--accent-ink, #fff);
+  box-shadow: 0 1px 6px var(--accent-ink-soft, rgba(2,44,34,.2));
   position: sticky;
   top: 0;
   z-index: 50;
@@ -358,9 +362,9 @@ onUnmounted(() => {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(255,255,255,.16);
-  border: 1px solid rgba(255,255,255,.28);
-  color: #fff;
+  background: var(--accent-ink-soft, rgba(255,255,255,.16));
+  border: 1px solid var(--accent-ink-soft-2, rgba(255,255,255,.28));
+  color: var(--accent-ink, #fff);
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -369,8 +373,8 @@ onUnmounted(() => {
   transition: transform 0.3s ease, background 0.15s, border-color 0.15s;
 }
 .sidebar-toggle:hover {
-  background: rgba(255,255,255,.3);
-  border-color: rgba(255,255,255,.45);
+  background: var(--accent-ink-soft-2, rgba(255,255,255,.3));
+  border-color: var(--accent-ink-soft-2, rgba(255,255,255,.45));
 }
 .sidebar-toggle.rotated {
   transform: rotate(180deg);
@@ -390,7 +394,10 @@ onUnmounted(() => {
   display: block;
   font-weight: 500;
   font-size: 10.5px;
-  opacity: .85;
+  /* Sin `opacity: .85`: mezclar la tinta un 15% hacia la barra dejaba el
+   * codigo de sitio en 3.71-4.38:1 en 37 combinaciones. La jerarquia la dan
+   * el tamano (10.5px vs 16px) y el espaciado, no una perdida de contraste. */
+  color: var(--accent-ink, #fff);
   letter-spacing: .5px;
 }
 .spacer {
@@ -403,8 +410,8 @@ onUnmounted(() => {
   min-width: 0;
 }
 .h-chip {
-  background: rgba(255,255,255,.14);
-  border: 1px solid rgba(255,255,255,.2);
+  background: var(--accent-ink-soft, rgba(255,255,255,.14));
+  border: 1px solid var(--accent-ink-soft-2, rgba(255,255,255,.2));
   height: 26px;
   padding: 0 11px;
   border-radius: 999px;
@@ -414,23 +421,24 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  color: #fff;
+  color: var(--accent-ink, #fff);
   white-space: nowrap;
   cursor: pointer;
   box-sizing: border-box;
   transition: background 0.15s;
 }
 .h-chip:hover {
-  background: rgba(255,255,255,.22);
+  background: var(--accent-ink-soft-2, rgba(255,255,255,.22));
 }
 .ctrl-chip {
   height: 26px;
   min-width: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  background: #ffffff;
-  border: 1px solid rgba(2,44,34,.18);
-  color: #0d9488;
+  /* Invierte el par barra/tinta, asi que hereda el mismo contraste validado. */
+  background: var(--accent-ink, #fff);
+  border: 1px solid var(--accent-ink-soft, rgba(2,44,34,.18));
+  color: var(--accent-band, #0d9488);
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: .4px;
@@ -439,13 +447,15 @@ onUnmounted(() => {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(2,44,34,.3);
+  box-shadow: 0 1px 4px var(--accent-ink-soft, rgba(2,44,34,.3));
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 .ctrl-chip:hover {
-  background: #f0fdfa;
+  /* El fondo se queda en la tinta: oscurecerlo (o aclararlo) lo acercaba al
+   * color del texto y en bandas a medio tono caia a ~3:1. El hover se marca con
+   * el desplazamiento y una sombra mas marcada, sin tocar el par de colores. */
   transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(2,44,34,.35);
+  box-shadow: 0 2px 6px var(--accent-ink-soft-2, rgba(2,44,34,.35));
 }
 .h-chip-swatch {
   padding: 0 9px;
@@ -455,7 +465,9 @@ onUnmounted(() => {
   height: 16px;
   border-radius: 50%;
   background: var(--accent, #0d9488);
-  box-shadow: 0 0 0 2px rgba(255,255,255,.25);
+  /* Anillo del color opuesto a la tinta: sobre una banda clara un anillo
+   * blanco se perdia, sobre una oscura un anillo negro desaparecia. */
+  box-shadow: 0 0 0 2px var(--accent-ink-soft, rgba(255,255,255,.25));
   display: block;
 }
 .h-chip-bell {
@@ -470,13 +482,14 @@ onUnmounted(() => {
   height: 15px;
   padding: 0 3px;
   border-radius: 999px;
-  background: #ef4444;
+  /* Antes #ef4444: 3.76:1 con el texto blanco de 9px (por debajo de AA). */
+  background: #dc2626;
   color: #fff;
   font-size: 9px;
   font-weight: 800;
   line-height: 15px;
   text-align: center;
-  border: 1px solid rgba(0,0,0,.25);
+  border: 1px solid var(--accent-ink-soft, rgba(0,0,0,.25));
 }
 @media (max-width: 900px) {
   .hide-sm {

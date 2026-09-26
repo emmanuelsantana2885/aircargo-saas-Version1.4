@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 md:p-5 bg-white text-slate-900 font-sans antialiased select-none min-h-screen">
+  <div class="ds-page-flow">
     <header class="ds-section-header">
       <div>
         <h1 class="ds-title">{{ t('security.title') }}</h1>
@@ -7,10 +7,10 @@
       </div>
       <div class="flex items-center gap-2">
         <span class="ds-stat">
-          <span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+          <span class="h-2 w-2 rounded-full bg-ok animate-pulse"></span>
           {{ t('security.activeSessions', { n: sessions.length }) }}
         </span>
-        <span v-if="updatedLabel" class="text-[11px] font-mono text-slate-400">{{ updatedLabel }}</span>
+        <span v-if="updatedLabel" class="text-[11px] font-mono text-tertiary">{{ updatedLabel }}</span>
         <button @click="loadAll" class="ds-btn-secondary">
           <component :is="icons.Refresh" :size="14" /> {{ t('common.refresh') }}
         </button>
@@ -21,28 +21,28 @@
       <h2 class="text-[13px] font-bold uppercase tracking-wider text-slate-700 mb-2 font-mono">{{ t('security.activeSessionsTitle') }}</h2>
       <div class="ds-table-section">
         <div class="overflow-auto">
-          <table class="w-full text-[12px] font-mono">
-            <thead><tr class="bg-slate-100 border-b border-slate-200">
-              <th class="text-left px-3 py-2">{{ t('security.table.user') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.role') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.lastHeartbeat') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.lastLogin') }}</th>
+          <table class="data-table data-table--light w-full">
+            <thead><tr>
+              <th>{{ t('security.table.user') }}</th>
+              <th>{{ t('security.table.role') }}</th>
+              <th>{{ t('security.table.lastHeartbeat') }}</th>
+              <th>{{ t('security.table.lastLogin') }}</th>
               <th class="text-center px-3 py-2">{{ t('security.table.status') }}</th>
             </tr></thead>
             <tbody>
-              <tr v-for="s in sessions" :key="s.userId" class="border-b border-slate-100 hover:bg-slate-50"
+              <tr v-for="s in sessions" :key="s.userId" class="border-b border-default hover:bg-surface-hover"
                 :class="{ 'row-flash': isFlashing('s:' + s.userId) }">
                 <td class="px-3 py-2 font-semibold">{{ s.fullName || s.email }}</td>
-                <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">{{ s.role }}</span></td>
-                <td class="px-3 py-2 text-slate-500" :title="formatTime(s.lastHeartbeat)">{{ formatRel(s.lastHeartbeat) }}</td>
-                <td class="px-3 py-2 text-slate-500" :title="formatTime(s.lastLogin)">{{ formatRel(s.lastLogin) }}</td>
+                <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-hover text-secondary">{{ s.role }}</span></td>
+                <td class="px-3 py-2 text-secondary" :title="formatTime(s.lastHeartbeat)">{{ formatRel(s.lastHeartbeat) }}</td>
+                <td class="px-3 py-2 text-secondary" :title="formatTime(s.lastLogin)">{{ formatRel(s.lastLogin) }}</td>
                 <td class="px-3 py-2 text-center">
                   <span class="w-2 h-2 rounded-full inline-block"
-                    :class="isFresh(s) ? 'bg-green-500 animate-pulse' : 'bg-amber-400'"
+                    :class="isFresh(s) ? 'bg-ok animate-pulse' : 'bg-warn'"
                     :title="formatTime(s.lastHeartbeat)"></span>
                 </td>
               </tr>
-              <tr v-if="!sessions.length"><td colspan="5" class="text-center py-6 text-slate-400">{{ t('security.noSessions') }}</td></tr>
+              <tr v-if="!sessions.length"><td colspan="5" class="text-center py-6 text-tertiary">{{ t('security.noSessions') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -59,26 +59,26 @@
       </div>
       <div class="ds-table-section">
         <div class="overflow-auto" style="max-height: 400px">
-          <table class="w-full text-[12px] font-mono">
-            <thead class="sticky top-0"><tr class="bg-slate-100 border-b border-slate-200">
-              <th class="text-left px-3 py-2">{{ t('security.table.timestamp') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.user') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.action') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.entity') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.ipAddress') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.details') }}</th>
+          <table class="data-table data-table--light w-full">
+            <thead class="sticky top-0"><tr>
+              <th>{{ t('security.table.timestamp') }}</th>
+              <th>{{ t('security.table.user') }}</th>
+              <th>{{ t('security.table.action') }}</th>
+              <th>{{ t('security.table.entity') }}</th>
+              <th>{{ t('security.table.ipAddress') }}</th>
+              <th>{{ t('security.table.details') }}</th>
             </tr></thead>
             <tbody>
-              <tr v-for="log in filteredAuditLogs" :key="log.id" class="border-b border-slate-100 hover:bg-slate-50"
+              <tr v-for="log in filteredAuditLogs" :key="log.id" class="border-b border-default hover:bg-surface-hover"
                 :class="{ 'row-flash': isFlashing('l:' + log.id) }">
-                <td class="px-3 py-2 text-slate-500 whitespace-nowrap">{{ formatTime(log.createdAt) }}</td>
+                <td class="px-3 py-2 text-secondary whitespace-nowrap">{{ formatTime(log.createdAt) }}</td>
                 <td class="px-3 py-2 font-semibold">{{ log.fullName || log.email }}</td>
                 <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="actionBadgeClass(log.action)">{{ log.action }}</span></td>
-                <td class="px-3 py-2 text-slate-500">{{ log.entityType }}</td>
-                <td class="px-3 py-2 text-slate-500 font-mono">{{ log.ipAddress || '—' }}</td>
-                <td class="px-3 py-2 text-slate-500 max-w-[200px] truncate">{{ log.details || '—' }}</td>
+                <td class="px-3 py-2 text-secondary">{{ log.entityType }}</td>
+                <td class="px-3 py-2 text-secondary font-mono">{{ log.ipAddress || '—' }}</td>
+                <td class="px-3 py-2 text-secondary max-w-[200px] truncate">{{ log.details || '—' }}</td>
               </tr>
-              <tr v-if="!filteredAuditLogs.length"><td colspan="6" class="text-center py-6 text-slate-400">{{ t('security.noAuditLogs') }}</td></tr>
+              <tr v-if="!filteredAuditLogs.length"><td colspan="6" class="text-center py-6 text-tertiary">{{ t('security.noAuditLogs') }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -89,24 +89,24 @@
       <h2 class="text-[13px] font-bold uppercase tracking-wider text-slate-700 mb-2 font-mono">{{ t('security.userBlockTitle') }}</h2>
       <div class="ds-table-section">
         <div class="overflow-auto">
-          <table class="w-full text-[12px] font-mono">
-            <thead><tr class="bg-slate-100 border-b border-slate-200">
-              <th class="text-left px-3 py-2">{{ t('security.table.user') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.role') }}</th>
-              <th class="text-left px-3 py-2">{{ t('security.table.email') }}</th>
+          <table class="data-table data-table--light w-full">
+            <thead><tr>
+              <th>{{ t('security.table.user') }}</th>
+              <th>{{ t('security.table.role') }}</th>
+              <th>{{ t('security.table.email') }}</th>
               <th class="text-center px-3 py-2">{{ t('security.table.status') }}</th>
               <th class="text-center px-3 py-2">{{ t('security.table.actions') }}</th>
             </tr></thead>
             <tbody>
-              <tr v-for="u in allUsers" :key="u.id" class="border-b border-slate-100 hover:bg-slate-50"
+              <tr v-for="u in allUsers" :key="u.id" class="border-b border-default hover:bg-surface-hover"
                 :class="{ 'row-flash': isFlashing('u:' + u.id) }">
                 <td class="px-3 py-2 font-semibold">{{ u.fullName || '—' }}</td>
-                <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">{{ u.role }}</span></td>
-                <td class="px-3 py-2 text-slate-500">{{ u.email }}</td>
+                <td class="px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-hover text-secondary">{{ u.role }}</span></td>
+                <td class="px-3 py-2 text-secondary">{{ u.email }}</td>
                 <td class="px-3 py-2 text-center">
                   <span v-if="u.blocked" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">{{ t('security.blocked') }}</span>
                   <span v-else-if="u.isActive" class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">{{ t('security.active') }}</span>
-                  <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">{{ t('security.inactive') }}</span>
+                  <span v-else class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-hover text-secondary">{{ t('security.inactive') }}</span>
                 </td>
                 <td class="px-3 py-2 text-center">
                   <button v-if="u.id !== auth.userId" @click="toggleBlock(u)"
@@ -186,14 +186,14 @@ function actionBadgeClass(action) {
   if (action === 'LOGIN_SUCCEEDED' || action === 'LOGIN') return 'bg-blue-100 text-blue-700'
   if (action === 'LOGIN_FAILED') return 'bg-orange-100 text-orange-700'
   if (action === 'ACCOUNT_LOCKED') return 'bg-red-100 text-red-700'
-  if (['LOGOUT'].includes(action)) return 'bg-slate-100 text-slate-600'
+  if (['LOGOUT'].includes(action)) return 'bg-surface-hover text-secondary'
   if (['PASSWORD_SET', 'PASSWORD_CHANGED', 'PASSWORD_RESET', 'TEMP_PASSWORD_GENERATED'].includes(action)) return 'bg-amber-100 text-amber-700'
   if (['USER_BLOCKED', 'MFA_LOCKED'].includes(action)) return 'bg-red-100 text-red-700'
   if (['USER_UNBLOCKED', 'MFA_UNLOCKED'].includes(action)) return 'bg-green-100 text-green-700'
   if (['CREATE', 'USER_CREATED'].includes(action)) return 'bg-purple-100 text-purple-700'
   if (['UPDATE', 'USER_UPDATED'].includes(action)) return 'bg-purple-100 text-purple-700'
   if (['DELETE', 'USER_DELETED'].includes(action)) return 'bg-red-100 text-red-700'
-  return 'bg-slate-100 text-slate-600'
+  return 'bg-surface-hover text-secondary'
 }
 
 function markFlash(keys) {

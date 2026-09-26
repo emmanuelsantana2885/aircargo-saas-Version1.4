@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '../api/auth'
+import { canAccessView } from '../utils/rbac'
 
 
 const STORAGE_KEY = 'aircargo_auth'
@@ -123,19 +124,10 @@ export const useAuthStore = defineStore('auth', () => {
     return permissions.value.includes(code)
   }
 
+  /* La tabla rol->vistas vive en utils/rbac.js (fuente única compartida con el
+   * router y el Sidebar). No duplicar el switch aquí: se desincronizaba. */
   function canView(viewName) {
-    if (!role.value) return false
-    switch (role.value) {
-      case 'SUPER_USER': return true
-      case 'ADMIN': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS', 'BOOKINGS', 'RECEIPTS', 'USERS', 'SETTINGS', 'SECURITY', 'EXPORTS'].includes(viewName)
-      case 'READ_ONLY': return true
-      case 'WAREHOUSE_ASSISTANT': return viewName === 'RECEIPTS' || viewName === 'DASHBOARD'
-      case 'OPERATIONS': return ['DASHBOARD', 'FLIGHTS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
-      case 'TRAFFIC': return ['DASHBOARD', 'BOOKINGS', 'MAWBS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
-      case 'LOAD_PLANNER': return ['DASHBOARD', 'FLIGHTS', 'LOAD_PLANNING', 'ULDS'].includes(viewName)
-      case 'BI_USER': return ['DASHBOARD', 'BI', 'API_CATALOG', 'SETTINGS'].includes(viewName)
-      default: return false
-    }
+    return canAccessView(role.value, viewName)
   }
 
   return {

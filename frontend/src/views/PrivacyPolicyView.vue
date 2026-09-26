@@ -1,20 +1,20 @@
 <template>
-  <div class="min-h-screen bg-white text-slate-900 font-sans">
+  <div class="min-h-screen bg-surface text-primary font-sans">
     <div class="max-w-3xl mx-auto px-5 py-10">
       <div class="flex items-center justify-between mb-8">
         <h1 class="text-2xl font-bold">{{ t('privacy.title') }}</h1>
-        <router-link to="/login" class="text-[13px] text-slate-500 hover:text-slate-900 hover:underline">&larr; {{ t('common.back') }}</router-link>
+        <router-link to="/login" class="text-[13px] text-secondary hover:text-primary hover:underline">&larr; {{ t('common.back') }}</router-link>
       </div>
-      <p class="text-[12px] text-slate-400 mb-6">{{ t('privacy.version') }} · v1.0 · 2026</p>
+      <p class="text-[12px] text-tertiary mb-6">{{ t('privacy.version') }} · v1.0 · 2026</p>
 
       <div class="space-y-6 text-[14px] leading-relaxed text-slate-700">
         <section v-for="s in sections" :key="s.n">
-          <h2 class="text-[15px] font-bold text-slate-900 mb-2">{{ s.n }}. {{ s.title }}</h2>
+          <h2 class="text-[15px] font-bold text-primary mb-2">{{ s.n }}. {{ s.title }}</h2>
           <div v-for="(p, i) in s.paragraphs" :key="i" class="mb-1.5" v-html="p"></div>
-          <table v-if="s.table" class="w-full my-2 border border-slate-200 rounded overflow-hidden text-[13px]">
+          <table v-if="s.table" class="w-full my-2 border border-strong rounded overflow-hidden text-[13px]">
             <tbody>
-              <tr v-for="row in s.table" :key="row[0]" class="border-b border-slate-100">
-                <td class="px-3 py-1.5 font-semibold w-1/3 bg-slate-50 align-top">{{ row[0] }}</td>
+              <tr v-for="row in s.table" :key="row[0]" class="border-b border-default">
+                <td class="px-3 py-1.5 font-semibold w-1/3 bg-surface-hover align-top">{{ row[0] }}</td>
                 <td class="px-3 py-1.5" v-html="row[1]"></td>
               </tr>
             </tbody>

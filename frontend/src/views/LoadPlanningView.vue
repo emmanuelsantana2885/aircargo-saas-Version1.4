@@ -74,23 +74,23 @@
 
     <!-- ULD Position Summary -->
     <section v-if="activeManifest.length > 0"
-      class="flex items-center gap-3 py-1.5 px-3 bg-white border border-slate-400 rounded-lg mb-1 shrink-0 overflow-x-auto lp-scroll-x text-[13px] font-mono">
+      class="flex items-center gap-3 py-1.5 px-3 bg-surface border border-strong rounded-lg mb-1 shrink-0 overflow-x-auto lp-scroll-x text-[13px] font-mono">
       <span class="ds-label mb-0 shrink-0">{{ t('loadPlanning.positions') }}</span>
       <div v-for="p in positionSummary" :key="p.pos"
         class="flex items-center gap-1.5 px-2 py-0.5 rounded whitespace-nowrap"
-        :class="[p.isBelly ? 'bg-slate-50 border border-slate-300' : 'bg-slate-100 border border-slate-300']">
-        <span class="font-bold text-slate-900">{{ p.pos }}</span>
-        <span class="text-slate-900">{{ p.count }} ULD</span>
-        <span class="text-slate-900 text-[13px]">({{ p.pcs }} pcs)</span>
-        <span v-if="p.isBelly" class="text-[13px] font-bold text-slate-600 bg-slate-100 px-1 rounded">BELLY</span>
+        :class="[p.isBelly ? 'bg-surface-hover border border-strong' : 'bg-surface-hover border border-strong']">
+        <span class="font-bold text-primary">{{ p.pos }}</span>
+        <span class="text-primary">{{ p.count }} ULD</span>
+        <span class="text-primary text-[13px]">({{ p.pcs }} pcs)</span>
+        <span v-if="p.isBelly" class="text-[13px] font-bold text-secondary bg-surface-hover px-1 rounded">BELLY</span>
       </div>
-      <span class="text-slate-300 mx-1">|</span>
-      <span class="text-slate-900 font-bold whitespace-nowrap">A/C: {{ aircraftType }}</span>
-      <span class="text-slate-900 font-bold whitespace-nowrap">{{ t('loadPlanning.lblTotalUlds') }} {{ activeManifest.length }}</span>
-      <span class="text-slate-300 mx-1">|</span>
-      <span class="text-slate-900 font-bold whitespace-nowrap">{{ t('loadPlanning.lblGross') }} {{ calculatedTotals.gross.toLocaleString() }} lbs</span>
-      <span class="text-slate-900 font-bold whitespace-nowrap">{{ t('loadPlanning.lblPayload') }} {{ calculatedTotals.payloadLbs.toLocaleString() }} lbs</span>
-      <span class="text-slate-300 mx-1">|</span>
+      <span class="text-tertiary mx-1">|</span>
+      <span class="text-primary font-bold whitespace-nowrap">A/C: {{ aircraftType }}</span>
+      <span class="text-primary font-bold whitespace-nowrap">{{ t('loadPlanning.lblTotalUlds') }} {{ activeManifest.length }}</span>
+      <span class="text-tertiary mx-1">|</span>
+      <span class="text-primary font-bold whitespace-nowrap">{{ t('loadPlanning.lblGross') }} {{ calculatedTotals.gross.toLocaleString() }} lbs</span>
+      <span class="text-primary font-bold whitespace-nowrap">{{ t('loadPlanning.lblPayload') }} {{ calculatedTotals.payloadLbs.toLocaleString() }} lbs</span>
+      <span class="text-tertiary mx-1">|</span>
       <span class="font-bold whitespace-nowrap px-2 py-0.5 rounded"
         :class="calculatedTotals.availableLbs >= 0 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-red-100 text-red-800 border border-red-300'">
         {{ t('loadPlanning.lblAvailable') }} {{ calculatedTotals.availableLbs.toLocaleString() }} lbs
@@ -103,13 +103,13 @@
       @dragover.prevent="dragOverFloating = true"
       @dragleave="onDragLeaveFloating"
       @drop.prevent="onDropFloating"
-      :class="dragOverFloating ? 'ring-2 ring-slate-400 ring-offset-2 rounded-lg bg-slate-100' : ''">
-      <div class="shrink-0 flex items-center gap-2 pl-1 pr-2 border-r border-slate-300">
+      :class="dragOverFloating ? 'ring-2 ring-slate-400 ring-offset-2 rounded-lg bg-surface-hover' : ''">
+      <div class="shrink-0 flex items-center gap-2 pl-1 pr-2 border-r border-strong">
         <input type="checkbox" :checked="allSelectedForBulk" @change="toggleSelectAllBulk"
           class="w-4 h-4 accent-slate-900 cursor-pointer shrink-0" :title="t('loadPlanning.bulkSelectAll')" />
         <template v-if="selectedForBulk.size > 0">
           <select v-model="bulkTargetFlight"
-            class="bg-white border border-slate-400 rounded px-2 py-1 text-[13px] font-bold text-slate-900 focus:outline-none cursor-pointer">
+            class="bg-surface border border-strong rounded px-2 py-1 text-[13px] font-bold text-primary focus:outline-none cursor-pointer">
             <option value="" disabled>{{ t('loadPlanning.bulkTarget') }}</option>
             <option v-for="f in assignableFlights" :key="f.id" :value="f.id">{{ flightOptionLabel(f) }}</option>
           </select>
@@ -118,7 +118,7 @@
             {{ selectedForBulk.size }} → {{ t('loadPlanning.bulkTransfer') }}
           </button>
           <button @click="cancelBulkSelection"
-            class="text-slate-500 hover:text-slate-800 font-bold text-[12px] cursor-pointer">
+            class="text-secondary hover:text-slate-800 font-bold text-[12px] cursor-pointer">
             ✕ {{ t('common.clear') }}
           </button>
         </template>
@@ -126,42 +126,42 @@
       <div v-for="(uldGroup, uIdx) in activeManifest" :key="uIdx"
         draggable="true"
         @dragstart="onDragStart(uldGroup.uldId, $event)"
-        class="flex-shrink-0 bg-white border rounded-lg px-3 py-2 flex items-center gap-3 text-[13px]"
+        class="flex-shrink-0 bg-surface border rounded-lg px-3 py-2 flex items-center gap-3 text-[13px]"
         :class="getCardBorderStyle(uldGroup.status)">
         <input type="checkbox"
           :checked="selectedForBulk.has(uldGroup.uldId)"
           @change="toggleSelectUld(uldGroup.uldId)"
           class="w-3.5 h-3.5 accent-slate-900 cursor-pointer shrink-0" :title="t('loadPlanning.bulkSelectUld')" />
-        <span class="font-bold text-slate-900 uppercase tracking-tight">{{ uldGroup.uld }}</span>
+        <span class="font-bold text-primary uppercase tracking-tight">{{ uldGroup.uld }}</span>
         <span class="h-2 w-2 rounded-full" :class="getStatusDotColor(uldGroup.status)"></span>
-        <span class="text-slate-900 font-bold uppercase text-[13px]">{{ lpStatus(uldGroup.status) }}</span>
-        <span class="text-slate-900 font-bold">{{ uldGroup.items.length }} MAWB</span>
-        <span class="text-slate-900">{{ (uldGroup.weight || 0).toLocaleString() }} lb</span>
+        <span class="text-primary font-bold uppercase text-[13px]">{{ lpStatus(uldGroup.status) }}</span>
+        <span class="text-primary font-bold">{{ uldGroup.items.length }} MAWB</span>
+        <span class="text-primary">{{ (uldGroup.weight || 0).toLocaleString() }} lb</span>
         <select :value="uldGroup.flightId" @change="onTransferRequest(uldGroup.uldId, uldGroup.uld, uldGroup.flightId, $event.target.value)"
           :disabled="!isLiveUld(uldGroup.uldId)"
-          class="ml-1 bg-slate-100 border border-slate-400 rounded px-2 py-1 text-[13px] font-bold text-slate-900 focus:outline-none cursor-pointer"
+          class="ml-1 bg-surface-hover border border-strong rounded px-2 py-1 text-[13px] font-bold text-primary focus:outline-none cursor-pointer"
           :class="{ 'opacity-50 cursor-not-allowed': !isLiveUld(uldGroup.uldId) }">
           <option v-for="f in flightOptionsFor(uldGroup.flightId)" :key="f.id" :value="f.id">
             {{ flightOptionLabel(f) }}
           </option>
         </select>
       </div>
-      <div v-if="floatingUlds.length > 0" class="border-l border-slate-400 pl-2 flex gap-2">
+      <div v-if="floatingUlds.length > 0" class="border-l border-strong pl-2 flex gap-2">
         <div v-for="uld in floatingUlds" :key="uld.id"
           draggable="true"
           @dragstart="onDragStart(uld.id, $event)"
-          class="flex-shrink-0 bg-white border border-slate-300 border-dashed rounded-lg px-3 py-2 flex items-center gap-2 text-[13px] cursor-grab active:cursor-grabbing select-none">
+          class="flex-shrink-0 bg-surface border border-strong border-dashed rounded-lg px-3 py-2 flex items-center gap-2 text-[13px] cursor-grab active:cursor-grabbing select-none">
           <span class="font-bold text-slate-700 uppercase tracking-tight">{{ uld.uldNumber || 'SIN-ULD' }}</span>
-          <span class="text-slate-500 text-[13px] font-bold">{{ t('ulds.noFlight') }}</span>
+          <span class="text-secondary text-[13px] font-bold">{{ t('ulds.noFlight') }}</span>
           <select :value="uld.flightId" @change="onTransferRequest(uld.id, uld.uldNumber, null, $event.target.value)"
-            class="bg-white border border-slate-300 rounded px-2 py-1 text-[13px] font-bold text-slate-950 focus:outline-none cursor-pointer">
+            class="bg-surface border border-strong rounded px-2 py-1 text-[13px] font-bold text-primary focus:outline-none cursor-pointer">
             <option value="" disabled>{{ t('ulds.actions.assignFlight') }}</option>
             <option v-for="f in assignableFlights" :key="f.id" :value="f.id">
               {{ flightOptionLabel(f) }}
             </option>
           </select>
           <button @click.stop="deleteUld(uld)" :title="t('ulds.actions.delete')"
-            class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+            class="p-1 rounded hover:bg-surface-hover text-tertiary hover:text-secondary transition-colors">
             <component :is="icons.Trash" size="16" />
           </button>
         </div>
@@ -169,13 +169,13 @@
     </section>
 
     <section @dragover.prevent="dragOver = true" @dragleave="onDragLeave" @drop="onDrop"
-      class="flex-1 min-h-0 border border-slate-300 rounded-lg overflow-hidden shadow-pencil-marine bg-white flex flex-col mb-1 transition-shadow duration-150"
+      class="flex-1 min-h-0 border border-strong rounded-lg overflow-hidden shadow-pencil-marine bg-surface flex flex-col mb-1 transition-shadow duration-150"
       :class="dragOver ? 'ring-2 ring-slate-400 ring-offset-2' : ''">
       <div class="overflow-x-auto flex flex-col flex-1 min-h-0 lp-scroll-x">
       <div class="bg-slate-700 text-white text-[13px] font-bold uppercase tracking-wider lp-grid py-3.5 px-5 items-center shrink-0 border-b border-slate-500 whitespace-nowrap shadow-sm">
         <span class="text-center">{{ t('loadPlanning.colPos') }}</span>
         <span class="flex items-center gap-1">
-          <svg class="w-2.5 h-2.5 text-slate-950" viewBox="0 0 8 8" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor" /><circle cx="6" cy="2" r="1" fill="currentColor" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="6" cy="6" r="1" fill="currentColor" /></svg>
+          <svg class="w-2.5 h-2.5 text-primary" viewBox="0 0 8 8" fill="none"><circle cx="2" cy="2" r="1" fill="currentColor" /><circle cx="6" cy="2" r="1" fill="currentColor" /><circle cx="2" cy="6" r="1" fill="currentColor" /><circle cx="6" cy="6" r="1" fill="currentColor" /></svg>
           ULD
         </span>
         <span class="text-center">PCS</span>
@@ -201,37 +201,37 @@
           draggable="true"
           @dragstart="onRowDragStart(uldGroup.uldId, $event)"
           @dragenter="onRowDragEnter(uIdx)"
-          class="bg-white lp-container-block transition-all duration-150"
+          class="bg-surface lp-container-block transition-all duration-150"
           :class="[getRowBgStyle(uldGroup.status), { 'opacity-40': rowDragging === uldGroup.uldId, 'ring-2 ring-slate-400': rowDropIndex === uIdx }]">
-          <div v-if="uldGroup.items.length === 0" class="lp-grid py-2 px-5 items-center text-slate-900">
+          <div v-if="uldGroup.items.length === 0" class="lp-grid py-2 px-5 items-center text-primary">
             <span class="text-center" :class="posCellClass(uldGroup.pos)">
               <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
                 @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-strong text-center text-[13px] font-mono" />
             </span>
             <span
               @pointerdown="onTableUldPointerDown(uldGroup.uldId, $event)"
-              class="font-semibold text-slate-900 truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
+              class="font-semibold text-primary truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
             <span class="text-center">0</span>
             <span class="text-center">-</span>
             <span class="text-center">{{ (uldGroup.weight || 0).toLocaleString() }}</span>
             <span class="text-center">{{ (uldGroup.tara || 0).toLocaleString() }}</span>
             <span class="text-center">{{ uldGroup.config }}</span>
             <span class="text-center truncate">{{ uldGroup.sello || '-' }}</span>
-            <span class="text-center text-slate-900 italic">—</span>
-            <span class="text-center text-slate-900 italic">{{ t('loadPlanning.emptyUld') }}</span>
+            <span class="text-center text-primary italic">—</span>
+            <span class="text-center text-primary italic">{{ t('loadPlanning.emptyUld') }}</span>
             <span class="text-center">-</span>
           </div>
-          <div v-for="(item, iIdx) in uldGroup.items" :key="iIdx" class="lp-grid py-2 px-5 items-center border-b border-slate-300 last:border-b-0">
+          <div v-for="(item, iIdx) in uldGroup.items" :key="iIdx" class="lp-grid py-2 px-5 items-center border-b border-strong last:border-b-0">
             <span v-if="iIdx === 0" class="text-center" :class="posCellClass(uldGroup.pos)">
               <input :value="uldGroup.pos || ''" @blur="e => updatePosition(uldGroup.uldId, e.target.value)"
                 @keydown.enter="e => { e.target.blur(); updatePosition(uldGroup.uldId, e.target.value) }"
-                class="w-full bg-transparent outline-none border-b border-transparent focus:border-slate-400 text-center text-[13px] font-mono" />
+                class="w-full bg-transparent outline-none border-b border-transparent focus:border-strong text-center text-[13px] font-mono" />
             </span>
             <span v-else class="text-slate-200 text-center">—</span>
             <span v-if="iIdx === 0"
               @pointerdown="onTableUldPointerDown(uldGroup.uldId, $event)"
-              class="font-semibold text-slate-900 truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
+              class="font-semibold text-primary truncate cursor-grab active:cursor-grabbing select-none">{{ uldGroup.uld }}</span>
             <span v-else class="text-slate-200 text-center">—</span>
             <span class="text-center">{{ item.pcs }}</span>
             <span class="text-center">{{ item.volumePct ? item.volumePct + '%' : '-' }}</span>
@@ -243,7 +243,7 @@
             <span v-else class="text-slate-200 text-center">—</span>
             <span v-if="iIdx === 0" class="text-center truncate">{{ uldGroup.sello || '-' }}</span>
             <span v-else class="text-slate-200 text-center">—</span>
-            <span class="text-center font-mono truncate">{{ item.description }}</span>
+            <span class="text-center font-mono truncate" :title="tooltipOf(item.commodityCode)">{{ item.description }}</span>
             <span class="text-center flex items-center justify-center gap-1 min-w-0">
               <span class="font-mono truncate">{{ item.mawb }}</span>
               <span v-if="item.status" class="shrink-0 text-[9px] font-bold px-1 py-0.5 rounded"
@@ -256,7 +256,7 @@
       </div>
     </section>
 
-    <footer class="p-3 border border-slate-300 bg-white rounded-b-lg shrink-0 flex flex-col gap-1 text-[13px]">
+    <footer class="p-3 border border-strong bg-surface rounded-b-lg shrink-0 flex flex-col gap-1 text-[13px]">
       <!-- Undo toast -->
       <div class="flex justify-between items-center">
         <div class="flex gap-4">
@@ -269,7 +269,7 @@
         <div class="flex gap-2">
           <span class="inline-block w-2.5 h-2.5 rounded-sm bg-slate-300"></span> Left Behind
           <span class="inline-block w-2.5 h-2.5 rounded-sm bg-slate-400"></span> Incomplete
-          <span class="inline-block w-2.5 h-2.5 rounded-sm bg-slate-500"></span> In Ramp
+          <span class="inline-block w-2.5 h-2.5 rounded-sm bg-surface-hover0"></span> In Ramp
         </div>
       </div>
     </footer>
@@ -277,8 +277,8 @@
 
     <!-- Flight picker for ULDs without reassignment history -->
     <div v-if="pendingFlightPick"
-      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
-      <span class="text-slate-900">
+      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-surface border border-strong shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
+      <span class="text-primary">
         ULD <strong>{{ pendingFlightPick.uldNumber }}</strong>
       </span>
       <template v-if="!showFlightPicker">
@@ -287,15 +287,15 @@
           Asignar a otro vuelo
         </button>
         <button @click="detachToFloating"
-          class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-950 font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all whitespace-nowrap">
+          class="bg-surface-hover hover:bg-surface-hover border border-strong text-primary font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all whitespace-nowrap">
           Dejar flotante
         </button>
         <button @click="cancelFlightPick"
-          class="text-slate-950 hover:text-slate-950 font-bold text-[12px] leading-none ml-1">&times;</button>
+          class="text-primary hover:text-primary font-bold text-[12px] leading-none ml-1">&times;</button>
       </template>
       <template v-else>
         <select v-model="flightPickValue"
-          class="bg-slate-100 border border-slate-400 rounded px-3 py-1.5 text-[14px] font-bold text-slate-950 focus:outline-none cursor-pointer">
+          class="bg-surface-hover border border-strong rounded px-3 py-1.5 text-[14px] font-bold text-primary focus:outline-none cursor-pointer">
           <option value="" selected disabled>Vuelo destino</option>
           <option v-for="f in assignableFlights" :key="f.id" :value="f.id">
             {{ flightOptionLabel(f) }} ({{ f.origin }}→{{ f.destination }})
@@ -306,20 +306,20 @@
           Reasignar
         </button>
         <button @click="showFlightPicker = false"
-          class="text-slate-950 hover:text-slate-950 font-bold text-[12px] leading-none ml-1">&times;</button>
+          class="text-primary hover:text-primary font-bold text-[12px] leading-none ml-1">&times;</button>
       </template>
     </div>
     <div v-if="showUndoToast && undoAction"
-      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-slate-300 shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
-      <span class="text-slate-900">
+      class="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-surface border border-strong shadow-lg rounded-lg px-4 py-2.5 text-[13px]">
+      <span class="text-primary">
         ULD <strong>{{ undoAction.uldNumber }}</strong> reasignado
       </span>
       <button @click="undoLastReassign"
-        class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all">
+        class="bg-surface-hover hover:bg-surface-hover text-primary font-bold px-3 py-1 rounded text-[13px] uppercase tracking-wider transition-all">
         Deshacer
       </button>
       <button @click="showUndoToast = false"
-        class="text-slate-400 hover:text-slate-600 font-bold text-[12px] leading-none ml-1">&times;</button>
+        class="text-tertiary hover:text-secondary font-bold text-[12px] leading-none ml-1">&times;</button>
     </div>
 
     <!-- Transfer reason dialog -->
@@ -330,7 +330,7 @@
         <h3 class="ds-modal-title mb-3">
           Transferir ULD
         </h3>
-        <div class="text-[14px] text-slate-900 mb-3">
+        <div class="text-[14px] text-primary mb-3">
           ULD <strong>{{ pendingTransfer.uldNumber }}</strong>
           <span v-if="fromFlightLabel" class="mx-1">→ {{ fromFlightLabel }}</span>
           <span class="mx-1">→</span>
@@ -371,6 +371,7 @@ import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 import { useIcons } from '../composables/useIcons'
 import { useConfirm } from '../composables/useConfirm'
+import { useCommodities } from '../composables/useCommodities'
 
 const icons = useIcons()
 const uldsStore = useUldsStore()
@@ -378,6 +379,7 @@ const appStore = useAppStore()
 const route = useRoute()
 const toast = useToastStore()
 const { confirm } = useConfirm()
+const { loadCommodities, labelOf, tooltipOf, fullLabelOf } = useCommodities()
 const { t, te, locale } = useI18n()
 
 function lpStatus(status) {
@@ -649,7 +651,8 @@ const activeManifest = computed(() => {
       mawb: m.mawbLabel || m.awbNumber || m.id || '',
       pcs: m.pieces || 0,
       volumePct: m.piecesPct || m.percentage || null,
-      description: m.description || m.commodityType || 'DRY CARGO',
+      description: labelOf(m.commodityType) || m.description || m.commodityType || 'DRY CARGO',
+      commodityCode: m.commodityType || '',
       destino: m.destination || '-',
       status: m.status || ''
     }))
@@ -721,29 +724,29 @@ const lpSummary = computed(() => {
 
 function getRowBgStyle(status) {
   switch (status) {
-    case 'LEFT_BEHIND': return 'bg-slate-50'
-    case 'INCOMPLETE': return 'bg-slate-100'
-    case 'IN_RAMP': return 'bg-white'
+    case 'LEFT_BEHIND': return 'bg-surface-hover'
+    case 'INCOMPLETE': return 'bg-surface-hover'
+    case 'IN_RAMP': return 'bg-surface'
     case 'COMPLETED':
-    default: return 'bg-white'
+    default: return 'bg-surface'
   }
 }
 
 function getCardBorderStyle(status) {
   switch (status) {
-    case 'LEFT_BEHIND': return 'border-slate-300'
-    case 'BUILT': return 'border-slate-400'
+    case 'LEFT_BEHIND': return 'border-strong'
+    case 'BUILT': return 'border-strong'
     case 'SEALED': return 'border-slate-500'
     case 'LOADED': return 'border-slate-950/30'
     case 'OPEN':
-    default: return 'border-slate-400'
+    default: return 'border-strong'
   }
 }
 
 function getStatusDotColor(status) {
   switch (status) {
     case 'LEFT_BEHIND': return 'bg-slate-400'
-    case 'BUILT': return 'bg-slate-500'
+    case 'BUILT': return 'bg-surface-hover0'
     case 'SEALED': return 'bg-slate-600'
     case 'LOADED': return 'bg-slate-950'
     case 'OPEN':
@@ -753,6 +756,8 @@ function getStatusDotColor(status) {
 
 onMounted(async () => {
   if (!appStore.airlines.length) await appStore.loadAirlines()
+  // El texto del commodity se resuelve contra el catálogo compartido.
+  loadCommodities()
   await uldsStore.loadFlights()
   if (uldsStore.flights.length) {
     const flightIdFromQuery = route.query.flightId
@@ -1358,7 +1363,7 @@ function exportToXLSX() {
           i === 0 ? uldGroup.config : '',
           i === 0 ? (uldGroup.sello || '-') : '',
           i === 0 ? (uldGroup.pos || '-') : '',
-          item.description || '',
+          fullLabelOf(item.commodityCode) || item.description || '',
           item.mawb + (item.status ? ' [' + item.status + ']' : ''),
           item.destino || '-'
         ])

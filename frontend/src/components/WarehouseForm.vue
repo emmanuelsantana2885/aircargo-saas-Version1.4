@@ -220,8 +220,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useIcons } from '../composables/useIcons'
 
+const { t } = useI18n()
 const icons = useIcons()
 
 const props = defineProps({

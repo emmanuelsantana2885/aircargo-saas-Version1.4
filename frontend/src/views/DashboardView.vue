@@ -37,7 +37,7 @@
       container-class="shrink-0"
     />
     <div class="flex items-center gap-2 shrink-0">
-      <label for="dashboard-flight-select" class="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 shrink-0">{{ t('dashboard.flightSelector') }}</label>
+      <label for="dashboard-flight-select" class="text-[11px] font-mono font-bold uppercase tracking-wider text-secondary shrink-0">{{ t('dashboard.flightSelector') }}</label>
       <select id="dashboard-flight-select" v-model="dashboardFlightId" @change="onFlightSelect" class="ds-input cursor-pointer min-w-[220px] max-w-full text-[12px] font-mono font-semibold">
         <option value="">{{ t('dashboard.allFlights') }}</option>
         <option v-for="f in flightOptions" :key="f.id" :value="f.id">{{ flightOptionLabel(f) }}</option>
@@ -48,21 +48,21 @@
         <span class="shrink-0 w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center"><component :is="icons.Scale" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalNet') }}</div>
-          <div class="ds-card-value text-emerald-700 truncate">{{ totalNetAll }} <span class="text-[12px] font-semibold text-slate-400">{{ t('common.lbs') }}</span></div>
+          <div class="ds-card-value text-emerald-700 truncate">{{ totalNetAll }} <span class="text-[12px] font-semibold text-tertiary">{{ t('common.lbs') }}</span></div>
         </div>
       </div>
       <div class="ds-card border-l-blue-500 flex items-center gap-3">
         <span class="shrink-0 w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center"><component :is="icons.Package" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalUlds') }}</div>
-          <div class="ds-card-value text-blue-700">{{ totalUldsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.uldShort') }}</span></div>
+          <div class="ds-card-value text-blue-700">{{ totalUldsCount }} <span class="text-[12px] font-semibold text-tertiary">{{ t('dashboard.uldShort') }}</span></div>
         </div>
       </div>
       <div class="ds-card border-l-slate-800 flex items-center gap-3">
-        <span class="shrink-0 w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-surface-hover text-primary flex items-center justify-center"><component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.totalMawbs') }}</div>
-          <div class="ds-card-value text-slate-900">{{ reservedMawbsCount }} <span class="text-[12px] font-semibold text-slate-400">{{ t('dashboard.mawbShort') }}</span></div>
+          <div class="ds-card-value text-primary">{{ reservedMawbsCount }} <span class="text-[12px] font-semibold text-tertiary">{{ t('dashboard.mawbShort') }}</span></div>
         </div>
       </div>
     </section>
@@ -72,114 +72,114 @@
       <EmptyState v-else-if="filteredFlights.length === 0" :title="t('dashboard.noFlightsInRange')" :hint="t('dashboard.emptyHint')" :icon="icons.PlaneDeparture" />
       <div v-else ref="tableWrapper" class="overflow-auto flex-1 min-h-0 scrollbar-none">
         <div class="table-scroll-wrapper h-full">
-        <table class="w-full border-collapse text-[13px] font-mono flight-table" :style="{ minWidth: tableMinWidth + 'px' }">
+        <table class="data-table data-table--light w-full border-collapse text-[13px] font-mono flight-table" :style="{ minWidth: tableMinWidth + 'px' }">
           <thead class="sticky top-0 z-20">
-            <tr class="bg-slate-100 text-slate-700 text-[13px] font-bold uppercase tracking-wider border-b-2 border-slate-300 font-mono [&>th]:px-2 [&>th]:py-3 [&>th]:whitespace-nowrap">
-              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-slate-100 text-slate-600">#</th>
-              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-slate-100">
+            <tr class="bg-surface-hover text-primary text-[13px] font-bold uppercase tracking-wider border-b-2 border-strong font-mono [&>th]:px-2 [&>th]:py-3 [&>th]:whitespace-nowrap">
+              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-surface-hover text-secondary">#</th>
+              <th class="text-center px-2 py-3 whitespace-nowrap w-8 bg-surface-hover">
                 <button @click="toggleAllExpanded" class="flex items-center justify-center gap-1 hover:opacity-70 transition"
                   :title="allExpanded ? t('dashboard.collapseAll') : t('dashboard.expandAll')">
                   <span class="text-[14px]">{{ allExpanded ? '▲' : '▼' }}</span>
                 </button>
               </th>
-              <th class="text-left px-2 py-3 whitespace-nowrap bg-slate-100 relative">
-                <span @click="hf.toggleHeaderFilter('flight')" class="cursor-pointer select-none" :class="hf.columnFilters.flight ? 'text-indigo-600' : 'hover:text-slate-900'">
+              <th class="text-left px-2 py-3 whitespace-nowrap bg-surface-hover relative">
+                <span @click="hf.toggleHeaderFilter('flight')" class="cursor-pointer select-none" :class="hf.columnFilters.flight ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.flight') }} <span class="text-[10px]" :class="hf.columnFilters.flight ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'flight'" class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('flight', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.flight ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'flight'" class="absolute top-full left-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('flight', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.flight ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.flight" :key="v" @click="hf.setColumnFilter('flight', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.flight === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.flight === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-2 py-3 whitespace-nowrap bg-slate-100 relative">
-                <span @click="hf.toggleHeaderFilter('route')" class="cursor-pointer select-none" :class="hf.columnFilters.route ? 'text-indigo-600' : 'hover:text-slate-900'">
+              <th class="text-center px-2 py-3 whitespace-nowrap bg-surface-hover relative">
+                <span @click="hf.toggleHeaderFilter('route')" class="cursor-pointer select-none" :class="hf.columnFilters.route ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.route') }} <span class="text-[10px]" :class="hf.columnFilters.route ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'route'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('route', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.route ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'route'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('route', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.route ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.route" :key="v" @click="hf.setColumnFilter('route', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.route === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.route === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-2 py-3 whitespace-nowrap bg-slate-100 relative">
-                <span @click="hf.toggleHeaderFilter('date')" class="cursor-pointer select-none" :class="hf.columnFilters.date ? 'text-indigo-600' : 'hover:text-slate-900'">
+              <th class="text-center px-2 py-3 whitespace-nowrap bg-surface-hover relative">
+                <span @click="hf.toggleHeaderFilter('date')" class="cursor-pointer select-none" :class="hf.columnFilters.date ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.date') }} <span class="text-[10px]" :class="hf.columnFilters.date ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'date'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('date', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.date ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'date'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('date', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.date ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.date" :key="v" @click="hf.setColumnFilter('date', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.date === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.date === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap relative">
-                <span @click="hf.toggleHeaderFilter('status')" class="cursor-pointer select-none" :class="hf.columnFilters.status ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('status')" class="cursor-pointer select-none" :class="hf.columnFilters.status ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.status') }} <span class="text-[10px]" :class="hf.columnFilters.status ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'status'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[140px] text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('status', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.status ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'status'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[140px] text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('status', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.status ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.status" :key="v" @click="hf.setColumnFilter('status', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.status === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.status === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-16 relative">
-                <span @click="hf.toggleHeaderFilter('ulds')" class="cursor-pointer select-none" :class="hf.columnFilters.ulds ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('ulds')" class="cursor-pointer select-none" :class="hf.columnFilters.ulds ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.ulds') }} <span class="text-[10px]" :class="hf.columnFilters.ulds ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'ulds'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('ulds', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.ulds ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'ulds'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('ulds', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.ulds ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.ulds" :key="v" @click="hf.setColumnFilter('ulds', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.ulds === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.ulds === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-center px-2 py-2.5 whitespace-nowrap w-14 relative">
-                <span @click="hf.toggleHeaderFilter('pos')" class="cursor-pointer select-none" :class="hf.columnFilters.pos ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('pos')" class="cursor-pointer select-none" :class="hf.columnFilters.pos ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.pos') }} <span class="text-[10px]" :class="hf.columnFilters.pos ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'pos'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('pos', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.pos ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'pos'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('pos', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.pos ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.pos" :key="v" @click="hf.setColumnFilter('pos', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.pos === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.pos === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 relative">
-                <span @click="hf.toggleHeaderFilter('gross')" class="cursor-pointer select-none" :class="hf.columnFilters.gross ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('gross')" class="cursor-pointer select-none" :class="hf.columnFilters.gross ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.gross') }} <span class="text-[10px]" :class="hf.columnFilters.gross ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'gross'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('gross', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.gross ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'gross'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('gross', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.gross ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.gross" :key="v" @click="hf.setColumnFilter('gross', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.gross === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.gross === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 relative">
-                <span @click="hf.toggleHeaderFilter('tare')" class="cursor-pointer select-none" :class="hf.columnFilters.tare ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('tare')" class="cursor-pointer select-none" :class="hf.columnFilters.tare ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.tare') }} <span class="text-[10px]" :class="hf.columnFilters.tare ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'tare'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('tare', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.tare ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'tare'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('tare', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.tare ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.tare" :key="v" @click="hf.setColumnFilter('tare', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.tare === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.tare === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 relative">
-                <span @click="hf.toggleHeaderFilter('net')" class="cursor-pointer select-none" :class="hf.columnFilters.net ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('net')" class="cursor-pointer select-none" :class="hf.columnFilters.net ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.net') }} <span class="text-[10px]" :class="hf.columnFilters.net ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'net'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('net', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.net ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'net'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('net', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.net ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.net" :key="v" @click="hf.setColumnFilter('net', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.net === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.net === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <th class="text-right px-2 py-2.5 whitespace-nowrap w-24 text-emerald-600 relative">
-                <span @click="hf.toggleHeaderFilter('payload')" class="cursor-pointer select-none" :class="hf.columnFilters.payload ? 'text-indigo-600' : 'hover:text-slate-900'">
+                <span @click="hf.toggleHeaderFilter('payload')" class="cursor-pointer select-none" :class="hf.columnFilters.payload ? 'text-indigo-600' : 'hover:text-primary'">
                   {{ t('dashboard.table.payload') }} <span class="text-[10px]" :class="hf.columnFilters.payload ? 'opacity-100' : 'opacity-40'">&#9660;</span>
                 </span>
-                <div v-if="hf.headerFilterOpen === 'payload'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('payload', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.payload ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
+                <div v-if="hf.headerFilterOpen === 'payload'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('payload', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.payload ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
                   <div v-for="v in flightUniq.payload" :key="v" @click="hf.setColumnFilter('payload', v)"
-                    class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.payload === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+                    class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.payload === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
               <!-- Commodity columns - dynamic based on filtered flights -->
@@ -196,45 +196,50 @@
           </thead>
           <tbody>
             <template v-for="(f, fi) in filteredFlights" :key="f.id">
-              <tr class="border-b border-slate-100 transition-colors duration-150 hover:bg-slate-50/80"
-                :class="{ 'bg-slate-50/50': isExpanded(f.id) }">
-                <td class="text-center px-2 py-2 text-slate-400">{{ fi + 1 }}</td>
+              <tr class="border-b border-default transition-colors duration-150 hover:bg-surface-hover/80"
+                :class="{ 'bg-surface-hover/50': isExpanded(f.id) }">
+                <td class="text-center px-2 py-2 text-tertiary">{{ fi + 1 }}</td>
                 <td class="text-center px-2 py-2">
                   <button @click="toggleExpand(f.id)"
-                    class="flex items-center justify-center w-6 h-6 rounded hover:bg-slate-200 transition text-slate-500 hover:text-slate-900"
+                    class="flex items-center justify-center w-6 h-6 rounded hover:bg-surface-hover transition text-secondary hover:text-primary"
                     :aria-expanded="isExpanded(f.id)"
                     :title="isExpanded(f.id) ? t('dashboard.collapseDetail') : t('dashboard.expandDetail')" :aria-label="isExpanded(f.id) ? t('dashboard.collapseDetail') : t('dashboard.expandDetail')">
                     <span class="text-[12px] transition-transform duration-200" :style="{ transform: isExpanded(f.id) ? 'rotate(180deg)' : '' }">▼</span>
                   </button>
                 </td>
-                <td class="px-2 py-2 font-mono text-slate-900">UPS-{{ f.flightNumber }}</td>
-                <td class="text-center px-2 py-2 text-slate-700">{{ f.origin }}→{{ f.destination }}</td>
-                <td class="text-center px-2 py-2 text-slate-500">{{ f.flightDate }}</td>
+                <td class="px-2 py-2 font-mono text-primary">UPS-{{ f.flightNumber }}</td>
+                <td class="text-center px-2 py-2 text-primary">{{ f.origin }}→{{ f.destination }}</td>
+                <td class="text-center px-2 py-2 text-secondary">{{ f.flightDate }}</td>
                 <td class="text-center px-2 py-2">
                   <span class="inline-flex items-center gap-1">
                     <span :class="getStatusDot(f.status)" class="inline-block w-2 h-2 rounded-full"></span>
                     <span class="px-1.5 py-0.5 rounded text-[12px] font-medium" :style="statusStyle(f.status)">{{ statusLabel(f.status) }}</span>
                   </span>
                 </td>
-                <td class="text-center px-2 py-2 font-mono text-slate-900">{{ flightUlds(f.id).length }}</td>
-                <td class="text-center px-2 py-2 font-mono text-slate-600">{{ flightPositions(f.id) }}<span class="text-slate-300">/</span>{{ f.totalPositions || '—' }}</td>
-                <td class="text-right px-2 py-2 font-mono text-slate-900">{{ grossLbs(f.id) }}</td>
-                <td class="text-right px-2 py-2 font-mono text-slate-600">{{ totalTareLbs(f.id) }}</td>
-                <td class="text-right px-2 py-2 font-mono text-slate-900">{{ netLbs(f.id) }}</td>
+                <td class="text-center px-2 py-2 font-mono text-primary">{{ flightUlds(f.id).length }}</td>
+                <td class="text-center px-2 py-2 font-mono text-secondary">{{ flightPositions(f.id) }}<span class="text-tertiary">/</span>{{ f.totalPositions || '—' }}</td>
+                <td class="text-right px-2 py-2 font-mono text-primary">{{ grossLbs(f.id) }}</td>
+                <td class="text-right px-2 py-2 font-mono text-secondary">{{ totalTareLbs(f.id) }}</td>
+                <td class="text-right px-2 py-2 font-mono text-primary">{{ netLbs(f.id) }}</td>
                 <td class="text-right px-2 py-2 font-bold text-emerald-700" style="font-family: 'SF Mono', 'Fira Code', monospace;">{{ payloadLbs(f.id) }}</td>
                 <!-- Commodity payload columns -->
                 <td v-for="c in visibleCommodities" :key="c.type"
-                  class="text-right px-2 py-2 font-mono text-slate-900 tabular-nums"
+                  class="text-right px-2 py-2 font-mono text-primary tabular-nums"
                   :style="{ background: c.color + '08' }"
                   :title="commodityTooltip(f.id, c.type)">
-                  {{ commodityPayload(f.id, c.type) || '—' }}
+                  <template v-if="commodityPayload(f.id, c.type) && typeof commodityPayload(f.id, c.type) === 'object' && commodityPayload(f.id, c.type).pcs">
+                    <span class="text-accent">{{ commodityPayload(f.id, c.type).pcs }} pcs</span>
+                  </template>
+                  <template v-else>
+                    {{ commodityPayload(f.id, c.type) || '—' }}
+                  </template>
                 </td>
               </tr>
 
               <!-- Drill-down row -->
-              <tr v-show="isExpanded(f.id)" class="bg-slate-50/30 border-t border-slate-200">
+              <tr v-show="isExpanded(f.id)" class="bg-surface-hover/30 border-t border-strong">
                 <td :colspan="13 + visibleCommodities.length" class="p-0">
-                  <div class="p-3 md:p-4 border-t border-slate-200" style="animation: slideDown 0.2s ease-out;">
+                  <div class="p-3 md:p-4 border-t border-strong" style="animation: slideDown 0.2s ease-out;">
                     <FlightDetail :flight="f" :flight-id="f.id" />
                   </div>
                 </td>
@@ -242,23 +247,28 @@
             </template>
 
             <!-- Totals row -->
-            <tr class="bg-slate-50 border-t-2 border-slate-300 font-bold hover:bg-slate-100 transition-colors">
-              <td class="text-center px-2 py-2 text-slate-400">Σ</td>
+            <tr class="bg-surface-hover border-t-2 border-strong font-bold hover:bg-surface-hover transition-colors">
+              <td class="text-center px-2 py-2 text-tertiary">Σ</td>
               <td class="text-center px-2 py-2"></td>
-              <td class="px-2 py-2 text-slate-500 bg-slate-50">{{ t('dashboard.table.total') }}</td>
-              <td class="text-center px-2 py-2 bg-slate-50"></td>
-              <td class="text-center px-2 py-2 bg-slate-50"></td>
+              <td class="px-2 py-2 text-secondary bg-surface-hover">{{ t('dashboard.table.total') }}</td>
+              <td class="text-center px-2 py-2 bg-surface-hover"></td>
+              <td class="text-center px-2 py-2 bg-surface-hover"></td>
               <td class="text-center px-2 py-2"></td>
               <td class="text-center px-2 py-2">{{ totalUldsCount }}</td>
-              <td class="text-center px-2 py-2">{{ totalPositionsAll }}<span class="text-slate-300">/</span>{{ totalMaxPositionsAll }}</td>
+              <td class="text-center px-2 py-2">{{ totalPositionsAll }}<span class="text-tertiary">/</span>{{ totalMaxPositionsAll }}</td>
               <td class="text-right px-2 py-2">{{ totalGrossAll }}</td>
               <td class="text-right px-2 py-2">{{ totalTareAll }}</td>
               <td class="text-right px-2 py-2">{{ totalNetAll }}</td>
               <td class="text-right px-2 py-2 text-emerald-700">{{ totalNetPayload }}</td>
               <td v-for="c in visibleCommodities" :key="c.type"
-                class="text-right px-2 py-2 text-slate-900 tabular-nums"
+                class="text-right px-2 py-2 text-primary tabular-nums"
                 :style="{ background: c.color + '15' }">
-                {{ totalCommodityPayload(c.type) }}
+                <template v-if="LEGACY_COMMODITY_CODES.includes(c.type)">
+                  {{ totalCommodityPieces(c.type) }} pcs
+                </template>
+                <template v-else>
+                  {{ totalCommodityPayload(c.type) }}
+                </template>
               </td>
             </tr>
           </tbody>
@@ -297,10 +307,10 @@
     <!-- Summary Cards -->
     <div v-if="wrSummary" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
       <div class="ds-card flex items-center gap-3">
-        <span class="shrink-0 w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center"><component :is="icons.LayoutGrid" :size="16" :stroke-width="2.2" /></span>
+        <span class="shrink-0 w-8 h-8 rounded-lg bg-surface-hover text-primary flex items-center justify-center"><component :is="icons.LayoutGrid" :size="16" :stroke-width="2.2" /></span>
         <div class="min-w-0">
           <div class="ds-card-label">{{ t('dashboard.wr.summary.totalRows') }}</div>
-          <div class="ds-card-value text-slate-900">{{ wrSummary.totalRows }}</div>
+          <div class="ds-card-value text-primary">{{ wrSummary.totalRows }}</div>
         </div>
       </div>
       <div class="ds-card border-l-blue-500 flex items-center gap-3">
@@ -328,21 +338,21 @@
 
     <!-- Per-Commodity Breakdown -->
     <div v-if="wrSummary?.byCommodity && Object.keys(wrSummary.byCommodity).length > 1" class="mb-4">
-      <div class="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2">{{ t('dashboard.wr.byCommodity') }}</div>
+      <div class="text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">{{ t('dashboard.wr.byCommodity') }}</div>
       <div class="flex flex-wrap gap-2">
         <div v-for="(data, code) in wrSummary.byCommodity" :key="code"
-          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[12px] shadow-sm">
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-strong bg-surface text-[12px] shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ background: commodityColor(code) }"></span>
           <span class="font-bold text-slate-800">{{ code }}</span>
-          <span class="text-slate-400">|</span>
-          <span class="text-slate-600">{{ t('dashboard.wr.piecesUnit', { n: data.totalReceivedPieces }) }}</span>
-          <span class="text-slate-400">|</span>
+          <span class="text-tertiary">|</span>
+          <span class="text-secondary">{{ t('dashboard.wr.piecesUnit', { n: data.totalReceivedPieces }) }}</span>
+          <span class="text-tertiary">|</span>
           <span class="font-semibold text-emerald-700">{{ formatNum(data.totalPhysicalWeightLbs) }} {{ t('common.lbs') }}</span>
-          <span class="text-slate-400">→</span>
+          <span class="text-tertiary">→</span>
           <span class="font-semibold text-amber-700">{{ formatNum(data.totalDispatchedWeightLbs) }} {{ t('common.lbs') }}</span>
-          <span class="text-slate-300">·</span>
+          <span class="text-tertiary">·</span>
           <span class="w-px h-3 bg-slate-200"></span>
-          <span class="text-[11px] text-slate-500">{{ data.totalDispatchedPieces }} {{ t('common.pcs') }}</span>
+          <span class="text-[11px] text-secondary">{{ data.totalDispatchedPieces }} {{ t('common.pcs') }}</span>
         </div>
       </div>
     </div>
@@ -352,116 +362,117 @@
       <EmptyState v-if="wrLoading && !wrRows.length" :title="t('common.loading')" loading />
       <EmptyState v-else-if="!wrRows.length" :title="t('dashboard.wr.noData')" :icon="icons.Gauge" />
       <div v-else class="overflow-auto flex-1 min-h-0 scrollbar-none">
-        <table class="w-full border-collapse text-[12px] font-mono" style="min-width: 1100px">
-          <thead class="bg-slate-100 text-slate-700 sticky top-0 z-10">
+        <table class="data-table data-table--light w-full border-collapse text-[12px] font-mono" style="min-width: 1100px">
+          <thead class="bg-surface-hover text-primary sticky top-0 z-10">
             <tr>
-              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_awb')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_awb ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.awb') }} <span class="text-[10px]" :class="hf.columnFilters.wr_awb ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_awb'" class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_awb', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.wr_awb ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.awb" :key="v" @click="hf.setColumnFilter('wr_awb', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.wr_awb === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_awb')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_awb ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.awb') }} <span class="text-[10px]" :class="hf.columnFilters.wr_awb ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_awb'" class="absolute top-full left-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[160px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_awb', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.wr_awb ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.awb" :key="v" @click="hf.setColumnFilter('wr_awb', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.wr_awb === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_shipper')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_shipper ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.shipper') }} <span class="text-[10px]" :class="hf.columnFilters.wr_shipper ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_shipper'" class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_shipper', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.wr_shipper ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.shipper" :key="v" @click="hf.setColumnFilter('wr_shipper', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.wr_shipper === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_shipper')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_shipper ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.shipper') }} <span class="text-[10px]" :class="hf.columnFilters.wr_shipper ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_shipper'" class="absolute top-full left-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_shipper', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.wr_shipper ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.shipper" :key="v" @click="hf.setColumnFilter('wr_shipper', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.wr_shipper === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_consignee')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_consignee ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.consignee') }} <span class="text-[10px]" :class="hf.columnFilters.wr_consignee ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_consignee'" class="absolute top-full left-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_consignee', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold" :class="!hf.columnFilters.wr_consignee ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.consignee" :key="v" @click="hf.setColumnFilter('wr_consignee', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 truncate" :class="hf.columnFilters.wr_consignee === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-left px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_consignee')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_consignee ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.consignee') }} <span class="text-[10px]" :class="hf.columnFilters.wr_consignee ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_consignee'" class="absolute top-full left-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[180px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_consignee', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold" :class="!hf.columnFilters.wr_consignee ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.consignee" :key="v" @click="hf.setColumnFilter('wr_consignee', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover truncate" :class="hf.columnFilters.wr_consignee === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_dest')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_dest ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.dest') }} <span class="text-[10px]" :class="hf.columnFilters.wr_dest ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_dest'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_dest', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_dest ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.dest" :key="v" @click="hf.setColumnFilter('wr_dest', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_dest === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_dest')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_dest ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.dest') }} <span class="text-[10px]" :class="hf.columnFilters.wr_dest ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_dest'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_dest', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_dest ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.dest" :key="v" @click="hf.setColumnFilter('wr_dest', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_dest === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_commodity')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_commodity ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.commodity') }} <span class="text-[10px]" :class="hf.columnFilters.wr_commodity ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_commodity'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[140px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_commodity', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_commodity ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.commodity" :key="v" @click="hf.setColumnFilter('wr_commodity', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_commodity === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_commodity')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_commodity ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.commodity') }} <span class="text-[10px]" :class="hf.columnFilters.wr_commodity ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_commodity'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[140px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_commodity', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_commodity ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.commodity" :key="v" @click="hf.setColumnFilter('wr_commodity', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_commodity === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_flight')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_flight ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.flight') }} <span class="text-[10px]" :class="hf.columnFilters.wr_flight ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_flight'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_flight', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_flight ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.flight" :key="v" @click="hf.setColumnFilter('wr_flight', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_flight === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_flight')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_flight ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.flight') }} <span class="text-[10px]" :class="hf.columnFilters.wr_flight ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_flight'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_flight', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_flight ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.flight" :key="v" @click="hf.setColumnFilter('wr_flight', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_flight === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_date')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_date ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.date') }} <span class="text-[10px]" :class="hf.columnFilters.wr_date ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_date'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[140px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_date', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_date ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.date" :key="v" @click="hf.setColumnFilter('wr_date', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_date === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-center px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_date')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_date ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.date') }} <span class="text-[10px]" :class="hf.columnFilters.wr_date ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_date'" class="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[140px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_date', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_date ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.date" :key="v" @click="hf.setColumnFilter('wr_date', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_date === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_pcsRec')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_pcsRec ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.pcsRec') }} <span class="text-[10px]" :class="hf.columnFilters.wr_pcsRec ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_pcsRec'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_pcsRec', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_pcsRec ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.pcsRec" :key="v" @click="hf.setColumnFilter('wr_pcsRec', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_pcsRec === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_pcsRec')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_pcsRec ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.pcsRec') }} <span class="text-[10px]" :class="hf.columnFilters.wr_pcsRec ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_pcsRec'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_pcsRec', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_pcsRec ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.pcsRec" :key="v" @click="hf.setColumnFilter('wr_pcsRec', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_pcsRec === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_physical')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_physical ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.physicalLbs') }} <span class="text-[10px]" :class="hf.columnFilters.wr_physical ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_physical'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_physical', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_physical ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.physical" :key="v" @click="hf.setColumnFilter('wr_physical', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_physical === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_physical')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_physical ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.physicalLbs') }} <span class="text-[10px]" :class="hf.columnFilters.wr_physical ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_physical'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_physical', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_physical ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.physical" :key="v" @click="hf.setColumnFilter('wr_physical', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_physical === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_dispatched')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_dispatched ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.dispatchedLbs') }} <span class="text-[10px]" :class="hf.columnFilters.wr_dispatched ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_dispatched'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_dispatched', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_dispatched ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.dispatched" :key="v" @click="hf.setColumnFilter('wr_dispatched', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_dispatched === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_dispatched')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_dispatched ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.dispatchedLbs') }} <span class="text-[10px]" :class="hf.columnFilters.wr_dispatched ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_dispatched'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_dispatched', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_dispatched ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.dispatched" :key="v" @click="hf.setColumnFilter('wr_dispatched', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_dispatched === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
-              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-slate-700 border-b border-slate-300 uppercase tracking-wider relative">
-                <span @click="hf.toggleHeaderFilter('wr_pcsDisp')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_pcsDisp ? 'text-indigo-600' : 'hover:text-slate-900'">{{ t('dashboard.wr.table.pcsDisp') }} <span class="text-[10px]" :class="hf.columnFilters.wr_pcsDisp ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
-                <div v-if="hf.headerFilterOpen === 'wr_pcsDisp'" class="absolute top-full right-0 mt-1 bg-white border border-slate-300 rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-slate-900 font-normal normal-case font-sans">
-                  <div @click="hf.setColumnFilter('wr_pcsDisp', null)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 font-bold text-center" :class="!hf.columnFilters.wr_pcsDisp ? 'bg-slate-100' : ''">{{ t('common.all') }}</div>
-                  <div v-for="v in wrUniq.pcsDisp" :key="v" @click="hf.setColumnFilter('wr_pcsDisp', v)" class="px-3 py-1.5 cursor-pointer hover:bg-slate-100 text-center" :class="hf.columnFilters.wr_pcsDisp === v ? 'bg-slate-50 text-slate-700 font-bold' : ''">{{ v }}</div>
+              <th class="text-right px-3 py-2.5 text-[12px] font-bold text-primary border-b border-strong uppercase tracking-wider relative">
+                <span @click="hf.toggleHeaderFilter('wr_pcsDisp')" class="cursor-pointer select-none" :class="hf.columnFilters.wr_pcsDisp ? 'text-indigo-600' : 'hover:text-primary'">{{ t('dashboard.wr.table.pcsDisp') }} <span class="text-[10px]" :class="hf.columnFilters.wr_pcsDisp ? 'opacity-100' : 'opacity-40'">&#9660;</span></span>
+                <div v-if="hf.headerFilterOpen === 'wr_pcsDisp'" class="absolute top-full right-0 mt-1 bg-surface border border-strong rounded shadow-lg z-50 min-w-[120px] max-h-[220px] overflow-y-auto text-[13px] text-primary font-normal normal-case font-sans">
+                  <div @click="hf.setColumnFilter('wr_pcsDisp', null)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover font-bold text-center" :class="!hf.columnFilters.wr_pcsDisp ? 'bg-surface-hover' : ''">{{ t('common.all') }}</div>
+                  <div v-for="v in wrUniq.pcsDisp" :key="v" @click="hf.setColumnFilter('wr_pcsDisp', v)" class="px-3 py-1.5 cursor-pointer hover:bg-surface-hover text-center" :class="hf.columnFilters.wr_pcsDisp === v ? 'bg-surface-hover text-primary font-bold' : ''">{{ v }}</div>
                 </div>
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, idx) in wrVisibleRows" :key="idx"
-              :class="idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'"
-              class="hover:bg-slate-50/80 border-b border-slate-100 transition-colors">
-              <td class="px-3 py-2 font-bold text-slate-900">{{ row.awbNumber }}</td>
-              <td class="px-3 py-2 text-slate-600">{{ row.shipperName }}</td>
-              <td class="px-3 py-2 text-slate-600">{{ row.consigneeName }}</td>
-              <td class="text-center px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">{{ row.destination }}</span></td>
+              :class="idx % 2 === 1 ? 'bg-surface-hover/60' : 'bg-surface'"
+              class="hover:bg-surface-hover/80 border-b border-default transition-colors">
+              <td class="px-3 py-2 font-bold text-primary">{{ row.awbNumber }}</td>
+              <td class="px-3 py-2 text-secondary">{{ row.shipperName }}</td>
+              <td class="px-3 py-2 text-secondary">{{ row.consigneeName }}</td>
+              <td class="text-center px-3 py-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-surface-hover text-primary">{{ row.destination }}</span></td>
               <td class="text-center px-3 py-2">
                 <span v-if="row.commodityType"
                   class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold"
-                  :style="{ background: commodityColor(row.commodityType) + '18', color: commodityColor(row.commodityType) }">
-                  {{ row.commodityType }}
+                  :style="{ background: commodityColor(row.commodityType) + '18', color: commodityColor(row.commodityType) }"
+                  :title="tooltipOf(row.commodityType)">
+                  {{ labelOf(row.commodityType) }}
                 </span>
               </td>
               <td class="text-center px-3 py-2 font-semibold text-slate-800">{{ row.flightNumber }}</td>
-              <td class="text-center px-3 py-2 text-slate-500">{{ row.flightDate }}</td>
+              <td class="text-center px-3 py-2 text-secondary">{{ row.flightDate }}</td>
               <td class="text-right px-3 py-2 tabular-nums">{{ row.receivedPieces }}</td>
               <td class="text-right px-3 py-2 tabular-nums font-semibold text-emerald-700">{{ formatNum(row.physicalWeightLbs) }}</td>
               <td class="text-right px-3 py-2 tabular-nums font-semibold text-amber-700">{{ formatNum(row.dispatchedWeightLbs) }}</td>
               <td class="text-right px-3 py-2 tabular-nums">{{ row.dispatchedPieces }}</td>
             </tr>
-            <tr v-if="wrVisibleRows.length" class="bg-slate-100/80 border-t-2 border-slate-300 font-bold hover:bg-slate-100 transition-colors">
-              <td class="px-3 py-2.5 text-slate-600" colspan="7">{{ t('dashboard.table.total') }}</td>
-              <td class="text-right px-3 py-2.5 tabular-nums text-slate-900">{{ formatNum(wrTotals.receivedPieces) }}</td>
+            <tr v-if="wrVisibleRows.length" class="bg-surface-hover/80 border-t-2 border-strong font-bold hover:bg-surface-hover transition-colors">
+              <td class="px-3 py-2.5 text-secondary" colspan="7">{{ t('dashboard.table.total') }}</td>
+              <td class="text-right px-3 py-2.5 tabular-nums text-primary">{{ formatNum(wrTotals.receivedPieces) }}</td>
               <td class="text-right px-3 py-2.5 tabular-nums text-emerald-800">{{ formatNum(wrTotals.physicalWeightLbs) }}</td>
               <td class="text-right px-3 py-2.5 tabular-nums text-amber-800">{{ formatNum(wrTotals.dispatchedWeightLbs) }}</td>
-              <td class="text-right px-3 py-2.5 tabular-nums text-slate-900">{{ formatNum(wrTotals.dispatchedPieces) }}</td>
+              <td class="text-right px-3 py-2.5 tabular-nums text-primary">{{ formatNum(wrTotals.dispatchedPieces) }}</td>
             </tr>
           </tbody>
         </table>
@@ -487,10 +498,13 @@ import { useHeaderFilters } from '../composables/useHeaderFilters'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
 import QuickActionsPanel from '../components/QuickActionsPanel.vue'
 
+
+// Legacy commodity types that may not be in DB but exist in historical data (FCC, EMPTY_BAGS, etc.)
+
 const { t } = useI18n()
 const icons = useIcons()
 const appStore = useAppStore()
-const { commodities: dbCommodities, loadCommodities } = useCommodities()
+const { commodities: dbCommodities, loadCommodities, labelOf, tooltipOf } = useCommodities()
 const hf = useHeaderFilters({ containerSelector: '.ds-table-section' })
 
 const dateFrom = ref('')
@@ -625,10 +639,11 @@ function exportWeightCSV() {
 }
 
 const filteredFlights = computed(() => {
+  const flights = Array.isArray(appStore.flights) ? appStore.flights : []
   if (dashboardFlightId.value) {
-    return appStore.flights.filter(f => f.id === dashboardFlightId.value)
+    return flights.filter(f => f.id === dashboardFlightId.value)
   }
-  let list = appStore.flights
+  let list = flights
   if (dateFrom.value) {
     list = list.filter(f => f.flightDate >= dateFrom.value)
   }
@@ -723,14 +738,32 @@ function payloadLbs(flightId) {
   return grossLbs(flightId) - bellyTareLbs(flightId)
 }
 
-// ── Commodity definitions & ordering (dynamic from DB) ──────────────────────────
-const COMMODITY_ORDER = computed(() => dbCommodities.value.map(c => c.code))
+// ── Commodity definitions & ordering (dynamic from DB + legacy) ──────────────────────────
+// Legacy commodity types that may not be in DB but exist in historical data
+
+
+const COMMODITY_ORDER = computed(() => {
+  const dbCodes = dbCommodities.value.map(c => c.code)
+  // Merge DB codes with legacy codes, preserving DB order and appending missing legacy
+  const seen = new Set(dbCodes)
+  const merged = [...dbCodes]
+  for (const code of LEGACY_COMMODITY_CODES) {
+    if (!seen.has(code)) merged.push(code)
+  }
+  return merged
+})
 
 const COMMODITY_MAP = computed(() => {
   const map = {}
   for (const c of dbCommodities.value) {
     const shortLen = Math.min(c.code.length, 4)
     map[c.code] = { label: c.label, short: c.code.slice(0, shortLen), color: c.color || '#94a3b8' }
+  }
+  // Add legacy commodities not in DB
+  for (const code of LEGACY_COMMODITY_CODES) {
+    if (!map[code]) {
+      map[code] = { label: code, short: code.slice(0, 4), color: '#9ca3af' }
+    }
   }
   return map
 })
@@ -810,11 +843,21 @@ function mawbsDispatchedOnFlight(flightId) {
 }
 
 // Commodity payload per flight (sum of per-MAWB dispatched weights)
+const LEGACY_COMMODITY_CODES = ['FCC', 'EMPTY_BAGS', 'EMPTY_NETS', 'NETS', 'EMPTY_ULD', 'SDQ_SDF', 'SDQ_MIA', 'WWEF']
+
 function commodityPayload(flightId, commodityType) {
   const mawbs = mawbsDispatchedOnFlight(flightId)
-  const totalLbs = mawbs
-    .filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
-    .reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
+  const items = mawbs.filter(m => (m.commodityType || 'DRY_CARGO') === commodityType)
+  const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
+  // For legacy/empty commodities (FCC, EMPTY_BAGS, NETS, etc.), weight is 0 but pieces exist
+  if (totalLbs === 0 && LEGACY_COMMODITY_CODES.includes(commodityType)) {
+    const uldIds = flightUldIdSet(flightId)
+    const totalPcs = items.reduce((s, m) => {
+      const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(m.awbNumber) && uldIds.has(l.uldId)) || []
+      return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
+    }, 0)
+    return totalPcs > 0 ? { pcs: totalPcs } : null
+  }
   return totalLbs > 0 ? Math.round(totalLbs) : null
 }
 
@@ -836,9 +879,10 @@ function commodityTooltip(flightId, commodityType) {
 const visibleCommodities = computed(() => {
   const activeTypes = new Set()
   filteredFlights.value.forEach(f => {
+    // mawbsDispatchedOnFlight ya devuelve MAWBs que tienen piezas en los ULDs del vuelo
     mawbsDispatchedOnFlight(f.id).forEach(m => {
       const type = m.commodityType || 'DRY_CARGO'
-      if (mawbDispatchedWeightLbs(m, f.id) > 0) activeTypes.add(type)
+      activeTypes.add(type)
     })
   })
   return COMMODITY_ORDER.value
@@ -895,7 +939,20 @@ const totalNetAll = computed(() => {
 })
 
 function totalCommodityPayload(commodityType) {
-  const total = filteredFlights.value.reduce((s, f) => s + (commodityPayload(f.id, commodityType) || 0), 0)
+  const totalLbs = filteredFlights.value.reduce((s, f) => {
+    const val = commodityPayload(f.id, commodityType)
+    if (val && typeof val === 'object' && val.pcs) return s // pieces don't add to weight total
+    return s + (val || 0)
+  }, 0)
+  return totalLbs > 0 ? totalLbs : '—'
+}
+
+function totalCommodityPieces(commodityType) {
+  const total = filteredFlights.value.reduce((s, f) => {
+    const val = commodityPayload(f.id, commodityType)
+    if (val && typeof val === 'object' && val.pcs) return s + val.pcs
+    return s
+  }, 0)
   return total > 0 ? total : '—'
 }
 
@@ -954,7 +1011,11 @@ function descargarReporte() {
       netLbs(f.id),
       payloadLbs(f.id),
     ]
-    const commodityVals = visibleCommodities.value.map(c => commodityPayload(f.id, c.type) || '')
+    const commodityVals = visibleCommodities.value.map(c => {
+      const val = commodityPayload(f.id, c.type)
+      if (typeof val === 'object' && val.pcs) return val.pcs + ' pcs'
+      return val || ''
+    })
     return [...fixed, ...commodityVals]
   })
   downloadCSV(headers, rows, `${t('dashboard.csvFilename')}-${new Date().toISOString().slice(0, 10)}.csv`)
@@ -996,18 +1057,23 @@ function statusLabel(status) {
 
 onMounted(async () => {
   loading.value = true
-  await loadCommodities()
-  await appStore.loadFlights()
-  if (appStore.flights.length) {
-    await Promise.all([
-      appStore.loadUlds(),
-      appStore.loadAllMawbs(),
-      appStore.loadUldAwbs(),
-      appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
-      appStore.loadReceipts({ silent: true }),
-    ])
+  try {
+    await loadCommodities()
+    await appStore.loadFlights()
+    if (appStore.flights?.length) {
+      await Promise.all([
+        appStore.loadUlds(),
+        appStore.loadAllMawbs(),
+        appStore.loadUldAwbs(),
+        appStore.loadBookings(null, { page: 0, size: 500, silent: true }),
+        appStore.loadReceipts({ silent: true }),
+      ])
+    }
+  } catch (e) {
+    console.error('Dashboard load error:', e)
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 })
 
 useLiveRefresh(() => {
@@ -1030,17 +1096,46 @@ useLiveRefresh(() => {
    natural y solo la cabecera permanece fija (sticky top) al hacer scroll vertical. */
 
 .ds-card {
-  @apply bg-white border border-slate-200 rounded-xl px-3 py-2
-         shadow-sm shadow-slate-900/5 border-l-4 border-l-slate-800
-         transition hover:shadow-md;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 0.75rem; /* rounded-xl */
+  padding: 0.5rem 0.75rem; /* py-2 px-3 */
+  box-shadow: 0 1px 2px 0 rgb(15 23 42 / 0.05), 0 0 0 1px rgb(15 23 42 / 0.05);
+  border-left: 4px solid #1e293b; /* border-l-4 border-l-slate-800 */
+  transition: box-shadow 0.15s ease;
+}
+.ds-card:hover {
+  box-shadow: 0 4px 6px -1px rgb(15 23 42 / 0.1), 0 2px 4px -2px rgb(15 23 42 / 0.1);
 }
 .ds-card-label {
-  @apply text-[9.5px] font-mono font-semibold text-slate-500 uppercase tracking-wide mb-0.5;
+  font-size: 9.5px;
+  font-family: var(--font-family-mono);
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.125rem;
 }
 .ds-card-value {
-  @apply text-[15px] font-mono font-bold text-slate-900 tracking-tight leading-tight;
+  font-size: 15px;
+  font-family: var(--font-family-mono);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 .ds-btn-secondary {
-  @apply px-3 py-1.5 rounded-lg text-[12px] font-semibold font-mono border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition;
+  padding: 0.375rem 0.75rem; /* py-1.5 px-3 */
+  border-radius: 0.5rem; /* rounded-lg */
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-family-mono);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
+  transition: background 0.15s ease;
+}
+.ds-btn-secondary:hover {
+  background: var(--surface-hover);
 }
 </style>

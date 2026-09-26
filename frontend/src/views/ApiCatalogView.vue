@@ -1,5 +1,5 @@
 <template>
-  <div class="p-3 md:p-5 bg-white text-slate-900 font-sans antialiased select-none min-h-screen">
+  <div class="ds-page-flow">
     <div class="max-w-7xl mx-auto">
 
       <!-- Header -->
@@ -35,43 +35,31 @@
         <div class="ds-section-header px-4 py-2">
           <div>
             <span class="ds-label text-[12px]">{{ svc.description }}</span>
-            <span class="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{{ svc.basePath }}/**</span>
+            <span class="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-hover text-secondary">{{ svc.basePath }}/**</span>
           </div>
           <span class="ds-stat">{{ svc.endpoints.length }} endpoints</span>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-xs">
-            <thead>
-              <tr class="bg-slate-50 text-[11px] font-semibold text-slate-600">
-                <th class="px-4 py-2 text-left w-20">Method</th>
-                <th class="px-4 py-2 text-left w-48">Path</th>
-                <th class="px-4 py-2 text-left">Description</th>
-                <th class="px-4 py-2 text-left w-40">Parameters</th>
-                <th class="px-4 py-2 text-left w-56">Auth</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(ep, idx) in filteredEndpoints(svc)" :key="idx"
-                class="border-b border-slate-100 hover:bg-slate-50/80">
-                <td class="px-4 py-2">
-                  <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                    :class="methodClass(ep.method)">{{ ep.method }}</span>
-                </td>
-                <td class="px-4 py-2 font-mono text-[11px] text-slate-700">{{ svc.basePath }}{{ ep.path }}</td>
-                <td class="px-4 py-2 text-slate-600">{{ ep.description }}</td>
-                <td class="px-4 py-2">
-                  <span v-if="ep.parameters && ep.parameters.length" class="text-[10px] text-slate-500">
-                    {{ ep.parameters.join(', ') }}
-                  </span>
-                  <span v-else class="text-[10px] text-slate-300">&mdash;</span>
-                </td>
-                <td class="px-4 py-2">
-                  <span class="text-[10px] text-slate-500">{{ ep.auth }}</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveTable
+          :columns="epColumns"
+          :rows="endpointRows(svc)"
+          :hidden-on-mobile="['auth']">
+          <template #cell-method="{ row }">
+            <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+              :class="methodClass(row.method)">{{ row.method }}</span>
+          </template>
+          <template #cell-path="{ row }">
+            <span class="font-mono text-[11px] text-slate-700">{{ row.fullPath }}</span>
+          </template>
+          <template #cell-description="{ row }">
+            <span class="text-secondary">{{ row.description }}</span>
+          </template>
+          <template #cell-parameters="{ row }">
+            <span v-if="row.parameters.length" class="text-[10px] text-secondary">
+              {{ row.parameters.join(', ') }}
+            </span>
+            <span v-else class="text-[10px] text-tertiary">&mdash;</span>
+          </template>
+        </ResponsiveTable>
       </div>
 
       <!-- BI Quick Access -->
@@ -81,9 +69,9 @@
         </div>
         <div class="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           <button v-for="bi in biEndpoints" :key="bi.path" @click="previewBi(bi)"
-            class="p-3 rounded-lg border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left group">
+            class="p-3 rounded-lg border border-strong hover:border-accent hover:bg-accent-soft/50 transition-all text-left group">
             <div class="text-[11px] font-bold text-slate-700 group-hover:text-blue-700">{{ bi.label }}</div>
-            <div class="text-[10px] font-mono text-slate-400 mt-1">GET {{ bi.path }}</div>
+            <div class="text-[10px] font-mono text-tertiary mt-1">GET {{ bi.path }}</div>
           </button>
         </div>
       </div>
@@ -93,13 +81,13 @@
         <div class="ds-modal-panel max-w-3xl max-h-[80vh] flex flex-col">
           <div class="ds-modal-header">
             <h3 class="ds-modal-title">{{ biPreview.label }}</h3>
-            <button @click="biPreview = null" class="text-slate-400 hover:text-slate-600" :aria-label="t('common.close')">
+            <button @click="biPreview = null" class="text-tertiary hover:text-secondary" :aria-label="t('common.close')">
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
           <div class="flex-1 overflow-auto p-4">
-            <div v-if="biLoading" class="text-center py-8 text-sm text-slate-400">Loading...</div>
-            <pre v-else class="text-[10px] font-mono text-slate-600 bg-slate-50 p-3 rounded-lg overflow-auto max-h-96">{{ JSON.stringify(biData, null, 2) }}</pre>
+            <div v-if="biLoading" class="text-center py-8 text-sm text-tertiary">Loading...</div>
+            <pre v-else class="text-[10px] font-mono text-secondary bg-surface-hover p-3 rounded-lg overflow-auto max-h-96">{{ JSON.stringify(biData, null, 2) }}</pre>
           </div>
         </div>
       </div>
@@ -113,8 +101,17 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { catalogApi } from '../api/catalog'
 import { biApi } from '../api/bi'
+import ResponsiveTable from '../components/ResponsiveTable.vue'
 
 const { t } = useI18n()
+
+const epColumns = [
+  { key: 'method', label: 'Method', class: 'w-20' },
+  { key: 'path', label: 'Path', class: 'w-48' },
+  { key: 'description', label: 'Description' },
+  { key: 'parameters', label: 'Parameters', class: 'w-40' },
+  { key: 'auth', label: 'Auth', class: 'w-56' },
+]
 
 const search = ref('')
 const catalog = ref([])
@@ -165,6 +162,17 @@ function filteredEndpoints(svc) {
   )
 }
 
+function endpointRows(svc) {
+  return filteredEndpoints(svc).map(ep => ({
+    id: `${ep.method} ${ep.path}`,
+    method: ep.method,
+    fullPath: svc.basePath + ep.path,
+    description: ep.description,
+    parameters: ep.parameters || [],
+    auth: ep.auth,
+  }))
+}
+
 function methodClass(method) {
   return {
     'GET': 'bg-emerald-100 text-emerald-700',
@@ -172,7 +180,7 @@ function methodClass(method) {
     'PUT': 'bg-amber-100 text-amber-700',
     'PATCH': 'bg-purple-100 text-purple-700',
     'DELETE': 'bg-red-100 text-red-700',
-  }[method] || 'bg-slate-100 text-slate-600'
+  }[method] || 'bg-surface-hover text-secondary'
 }
 
 async function previewBi(bi) {

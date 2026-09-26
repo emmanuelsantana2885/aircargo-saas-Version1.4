@@ -150,7 +150,7 @@
 
         <form @submit.prevent="handleEnrollEnable" class="space-y-4">
           <div class="text-center">
-            <div class="inline-block p-3 rounded-lg border border-slate-200 bg-white">
+            <div class="inline-block p-3 rounded-lg border border-strong bg-surface">
               <img v-if="enrollOtpAuthUrl"
                 :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(enrollOtpAuthUrl)}`"
                 alt="QR Code" class="w-[180px] h-[180px]" />

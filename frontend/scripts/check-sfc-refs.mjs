@@ -478,7 +478,8 @@ function templateScope(template) {
       if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) scope.add(name)
     }
   }
-  const slotRe = /\bv-slot(?:[:\s][^\s=]*)?\s*=\s*["']\{?([^"']*)\}?["']|\#default\s*=\s*["']\{?([^"']*)\}?["']/g
+  // v-slot / #slot con o sin nombre: #default="{ row }", #cell-method="{ row, value }"
+  const slotRe = /\bv-slot(?:[:\s][^\s=]*)?\s*=\s*["']\{?([^"']*)\}?["']|\#[\w-]+\s*=\s*["']\{?([^"']*)\}?["']/g
   while ((m = slotRe.exec(template))) {
     const content = m[1] || m[2] || ''
     for (const raw of content.split(',')) {
@@ -514,12 +515,36 @@ function lineOf(code, globalStart, idx) {
   return lines + globalStart // approx: +0 (block offset added by caller)
 }
 
+/**
+ * Extrae el <template> RAÍZ respetando los <template> anidados de los slots
+ * (#cell-x, v-slot, <template v-for>). Un regex no-greedy cortaría en el primer
+ * </template> —el de un slot— y dejaría sin analizar media vista.
+ */
+function extractRootTemplate(src) {
+  const open = /<template(?:\s[^>]*)?>/i.exec(src)
+  if (!open) return null
+  const contentStart = open.index + open[0].length
+  const tagRe = /<template(?:\s[^>]*)?>|<\/template>/gi
+  tagRe.lastIndex = contentStart
+  let depth = 1
+  let m
+  while ((m = tagRe.exec(src))) {
+    if (m[0].startsWith('</')) {
+      depth--
+      if (depth === 0) return { content: src.slice(contentStart, m.index), start: contentStart }
+    } else {
+      depth++
+    }
+  }
+  return null
+}
+
 function analyseFile(file) {
   const src = readFileSync(file, 'utf8')
   const issues = []
   const globalBases = new Set([...GLOBALS, ...VUE_MACROS, ...JS_KEYWORDS])
 
-  const tplMatch = src.match(/<template[\s\S]*?>([\s\S]*?)<\/template>/i)
+  const tpl = extractRootTemplate(src)
   const setupMatches = [...src.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   const setupBlock = setupMatches.find(([, attrs]) => attrs.includes('setup'))
   if (!setupBlock) return issues // no setup, no guard
@@ -540,9 +565,9 @@ function analyseFile(file) {
   }
 
   // --- 2) referencias del <template> ---
-  if (tplMatch) {
-    const template = tplMatch[1]
-    const templateStart = src.indexOf(template) + tplMatch[0].indexOf(template) + 1
+  if (tpl) {
+    const template = tpl.content
+    const templateStart = tpl.start
     const allowed = new Set([...defined, ...templateScope(template), ...globalBases])
 
     // mustache {{ ... }}

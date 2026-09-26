@@ -7,7 +7,7 @@
       <i class="pi pi-box"></i>
       <div v-if="!collapsed">
         <div class="font-bold text-[14px] tracking-wide">AirCargo</div>
-        <div class="text-[10px] font-medium tracking-wider text-slate-500">{{ auth.selectedSite?.code || 'SDQ' }} Operations</div>
+        <div class="sidebar-site text-[10px] font-medium tracking-wider">{{ auth.selectedSite?.code || 'SDQ' }} Operations</div>
       </div>
       <div v-else class="text-center">
         <i class="pi pi-box" style="font-size: 20px;"></i>
@@ -24,7 +24,7 @@
         <span>{{ t(item.labelKey) }}</span>
       </RouterLink>
 
-      <div class="nav-section" v-if="settingsMenu.length">{{ t('sidebar.settings') }}</div>
+      <div class="nav-section" v-if="settingsMenu.length">{{ t('sidebar.sectionAdmin') }}</div>
       <RouterLink v-for="item in settingsMenu" :key="item.path" :to="item.path"
         class="nav-item" :class="{ on: isActive(item.path) }"
         @click="closeMobileSidebar">
@@ -52,12 +52,12 @@
 
     <!-- User -->
     <div class="sidebar-user" v-if="!collapsed">
-      <div class="user-avatar" :style="{ background: roleIcon.bg }">
-        <component :is="icons[roleIcon.iconKey]" :size="16" :stroke-width="1.8" style="color: white" />
+      <div class="user-avatar role-icon" :style="{ '--role': roleIcon.color }">
+        <component :is="icons[roleIcon.iconKey]" :size="16" :stroke-width="1.8" style="color: var(--brand-ink)" />
       </div>
       <div class="user-info">
         <div class="font-bold text-[12px] truncate">{{ auth.fullName || auth.email }}</div>
-        <div class="text-[10px] truncate" :style="{ color: roleIcon.fg }">{{ roleLabel }}</div>
+        <div class="role-label text-[10px] truncate" :style="{ '--role': roleIcon.color }">{{ roleLabel }}</div>
       </div>
       <div class="user-actions">
         <button @click="showPasswordChange = true" :title="t('sidebar.changePassword')" class="hover:opacity-70 transition-opacity" :aria-label="t('sidebar.changePassword')">
@@ -98,15 +98,17 @@ const isMobile = ref(false)
 const showPasswordChange = ref(false)
 
 const roleConfig = {
-  SUPER_USER:        { iconKey: 'CrownFilled',       labelKey: 'users.roles.SUPER_USER', bg: 'rgba(234,179,8,.15)',  fg: '#b45309' },
-  ADMIN:             { iconKey: 'ShieldLock',         labelKey: 'users.roles.ADMIN', bg: 'rgba(37,99,235,.12)',  fg: '#2563eb' },
-  OPERATIONS:        { iconKey: 'AirTrafficControl',  labelKey: 'users.roles.OPERATIONS', bg: 'rgba(22,163,74,.12)',  fg: '#16a34a' },
-  TRAFFIC:           { iconKey: 'ArrowsExchange',     labelKey: 'users.roles.TRAFFIC', bg: 'rgba(124,58,237,.12)', fg: '#7c3aed' },
-  LOAD_PLANNER:      { iconKey: 'Scale',              labelKey: 'users.roles.LOAD_PLANNER', bg: 'rgba(7,148,148,.12)',  fg: '#0891b2' },
-  WAREHOUSE_ASSISTANT:{ iconKey: 'Forklift',          labelKey: 'users.roles.WAREHOUSE_ASSISTANT', bg: 'rgba(217,119,6,.12)',  fg: '#d97706' },
-  READ_ONLY:         { iconKey: 'Eye',                labelKey: 'users.roles.READ_ONLY', bg: 'rgba(100,116,139,.12)',fg: '#64748b' },
+  /* Solo el color identidad del rol. El fondo y la tinta se derivan con
+   * color-mix en .role-icon, así se aclaran solos en dark. */
+  SUPER_USER:        { iconKey: 'CrownFilled',       labelKey: 'users.roles.SUPER_USER', color: '#eab308' },
+  ADMIN:             { iconKey: 'ShieldLock',         labelKey: 'users.roles.ADMIN', color: '#3b82f6' },
+  OPERATIONS:        { iconKey: 'AirTrafficControl',  labelKey: 'users.roles.OPERATIONS', color: '#16a34a' },
+  TRAFFIC:           { iconKey: 'ArrowsExchange',     labelKey: 'users.roles.TRAFFIC', color: '#8b5cf6' },
+  LOAD_PLANNER:      { iconKey: 'Scale',              labelKey: 'users.roles.LOAD_PLANNER', color: '#0d9488' },
+  WAREHOUSE_ASSISTANT:{ iconKey: 'Forklift',          labelKey: 'users.roles.WAREHOUSE_ASSISTANT', color: '#d97706' },
+  READ_ONLY:         { iconKey: 'Eye',                labelKey: 'users.roles.READ_ONLY', color: '#64748b' },
 }
-const roleIcon = computed(() => roleConfig[auth.role] || { iconKey: 'User', labelKey: 'users.roles.READ_ONLY', bg: 'rgba(100,116,139,.12)', fg: '#64748b' })
+const roleIcon = computed(() => roleConfig[auth.role] || { iconKey: 'User', labelKey: 'users.roles.READ_ONLY', color: '#64748b' })
 const roleLabel = computed(() => t(roleIcon.value.labelKey) || auth.role?.replace('_', ' ') || '')
 
 const isActive = (path) => path === '/' ? route.path === '/' : route.path.startsWith(path)
@@ -158,8 +160,8 @@ const settingsMenu = computed(() => {
 <style scoped>
 .sidebar {
   width: 210px;
-  background: #ededed;
-  border-right: 1px solid #dfe2e7;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -183,7 +185,7 @@ const settingsMenu = computed(() => {
 }
 .rail {
   width: 5px;
-  background: #31216b;
+  background: var(--brand);
   border-radius: 0 4px 4px 0;
   margin: 8px 0;
 }
@@ -192,12 +194,18 @@ const settingsMenu = computed(() => {
   align-items: center;
   gap: 10px;
   padding: 16px 14px;
-  border-bottom: 1px solid #dfe2e7;
+  border-bottom: 1px solid var(--border);
   font-weight: 800;
-  color: #31216b;
+  color: var(--brand);
 }
 .sidebar-logo .pi {
   font-size: 20px;
+}
+/* Antes `text-slate-500`: fijo en los 12 temas y a 4.4:1 en light
+ * (por debajo de AA). --text-2 lo deriva el motor de tema desde el
+ * muted del tema (15% hacia --text) y pasa 4.97:1 en el peor caso. */
+.sidebar-site {
+  color: var(--text-2);
 }
 .sidebar-nav {
   flex: 1;
@@ -216,14 +224,14 @@ const settingsMenu = computed(() => {
   padding: 8px 14px 4px;
   font-size: 10px;
   font-weight: 800;
-  color: #94a3b8;
+  color: var(--text-2);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .nav-divider {
   width: 100%;
   height: 1px;
-  background: #dfe2e7;
+  background: var(--border);
   margin: 8px 0;
 }
 .nav-item {
@@ -232,7 +240,7 @@ const settingsMenu = computed(() => {
   gap: 11px;
   padding: 10px 14px;
   cursor: pointer;
-  color: #31216b;
+  color: var(--brand);
   font-weight: 600;
   font-size: 13px;
   border-radius: 8px;
@@ -244,14 +252,14 @@ const settingsMenu = computed(() => {
   font-size: 15px;
 }
 .nav-item:hover {
-  background: #e2e2e6;
+  background: var(--surface-3);
 }
 .nav-item.on {
-  background: #31216b;
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 .nav-item.on .pi {
-  color: #fff;
+  color: var(--brand-ink);
 }
 .nav-item-collapsed {
   display: flex;
@@ -260,7 +268,7 @@ const settingsMenu = computed(() => {
   width: 40px;
   height: 40px;
   cursor: pointer;
-  color: #31216b;
+  color: var(--brand);
   border-radius: 8px;
   margin: 4px 0;
   transition: background 0.15s, color 0.15s;
@@ -270,22 +278,30 @@ const settingsMenu = computed(() => {
   font-size: 18px;
 }
 .nav-item-collapsed:hover {
-  background: #e2e2e6;
+  background: var(--surface-3);
 }
 .nav-item-collapsed.on {
-  background: #31216b;
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 .nav-item-collapsed.on .pi {
-  color: #fff;
+  color: var(--brand-ink);
 }
 .sidebar-user {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-top: 1px solid #dfe2e7;
-  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-3) 100%);
+}
+.role-icon {
+  background: color-mix(in srgb, var(--role) 18%, transparent);
+}
+.role-label {
+  /* En light mezcla hacia el negro (oscurece, como antes); en dark mezcla
+   * hacia el blanco y gana contraste sin cambiar el color identidad. */
+  color: color-mix(in srgb, var(--role) 68%, var(--text));
 }
 .user-avatar {
   width: 36px;
@@ -311,13 +327,13 @@ const settingsMenu = computed(() => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  color: #64748b;
+  color: var(--text-2);
   background: transparent;
   border: none;
 }
 .user-actions button:hover {
-  background: #dfe2e7;
-  color: #31216b;
+  background: var(--border);
+  color: var(--brand);
 }
 @media (max-width: 767px) {
   .sidebar {
@@ -328,9 +344,9 @@ const settingsMenu = computed(() => {
     transform: translateX(0);
   }
 }
-@media (min-width: 768px) and (max-width: 1023px) {
-  .sidebar:not(.sidebar-collapsed) {
-    width: 60px;
-  }
-}
+/* Antes esta franja (768-1023) forzaba `width: 60px` sin colapsar el markup:
+ * las etiquetas seguían renderizadas y se recortaban dentro de 60px, y
+ * App.vue reservaba los 210px de `sidebarMarginLeft` (collapsed=false), dejando
+ * 150px de hueco muerto. El colapso real lo decide el usuario con el botón del
+ * header, que ya mantiene markup y margen sincronizados. */
 </style>

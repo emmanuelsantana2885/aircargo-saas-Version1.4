@@ -15,6 +15,7 @@ export default {
     search: 'Search',
     clear: 'Clear',
     clearFilters: 'Clear filters',
+    lang: 'Language',
     loading: 'Loading...',
     refresh: 'Refresh',
     actions: 'Actions',
@@ -63,6 +64,9 @@ export default {
     weekdaysShort: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
   },
 
+  changePassword: {
+    title: 'Change password',
+  },
   privacy: { title: 'Privacy Policy', version: 'Version', link: 'Privacy Policy' },
   idle: {
     title: 'Session about to expire',
@@ -109,13 +113,16 @@ export default {
     mawbs: 'MAWBs',
     loadPlanning: 'Load Planning',
     ulds: 'ULDs',
+    exports: 'Exports',
     users: 'Users',
     settings: 'Settings',
+    apiCatalog: 'API Catalog',
     logout: 'Log out',
     siteLabel: 'Site',
     operations: 'Operations',
+    sectionAdmin: 'Administration',
     security: 'Security',
-    changePassword: 'Change Password',
+    changePassword: 'Change password',
   },
 
   bottomnav: {
@@ -356,6 +363,7 @@ export default {
       deleted: 'Booking deleted successfully',
       awbUpdated: 'AWB assigned to booking',
       error: 'Could not save booking',
+      fileReadError: 'Could not read the file: {error}',
     },
   },
 
@@ -430,6 +438,11 @@ export default {
   },
 
   mawbs: {
+    columnsButton: 'Columns',
+    columnsMenu: 'Visible columns',
+    columnsShowAll: 'Show all',
+    columnsTooltip: 'Hide matrix columns to gain width',
+    columnRequired: 'The MAWB column is required',
     tabs: {
       matrix: 'Matrix',
       states: 'States',
@@ -1400,6 +1413,7 @@ export default {
   },
 
   login: {
+    title: 'Sign in',
     brand: 'AirCargo',
     tagline: 'SDQ Operations',
     email: 'Email',
@@ -1591,5 +1605,11 @@ export default {
       '3': 'Good',
       '4': 'Strong',
     },
+  },
+  notFound: {
+    title: 'Page not found',
+    hint: 'This address does not match any AirCargo view. The link may be outdated or the route may have changed.',
+    back: 'Go back',
+    home: 'Go to dashboard',
   },
 }

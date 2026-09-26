@@ -13,8 +13,9 @@
     "lint": "npm run check:refs && npm run check:contrast && eslint src/",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check:refs": "node scripts/check-sfc-refs.mjs",
-    "check:contrast": "node scripts/audit-contrast.mjs"
+    "check:refs": "node scripts/check-sfc-refs.mjs && node scripts/check-i18n-keys.mjs",
+    "check:contrast": "node scripts/audit-contrast.mjs",
+    "check:i18n": "node scripts/check-i18n-keys.mjs"
   },
   "dependencies": {
     "@mdi/js": "^7.4.47",

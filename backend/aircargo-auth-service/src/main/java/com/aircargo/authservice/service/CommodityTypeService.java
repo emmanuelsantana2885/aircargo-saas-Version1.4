@@ -84,7 +84,6 @@ public class CommodityTypeService {
 
     @Transactional
     public int resetToDefaults() {
-        repository.deleteAll();
         List<CommodityTypeEntity> defaults = List.of(
             buildDefault("DRY_CARGO", "Dry Cargo", "General dry cargo", "#6366f1", 1),
             buildDefault("PERISHABLE", "Perishable", "Temperature-sensitive goods", "#10b981", 2),
@@ -112,8 +111,29 @@ public class CommodityTypeService {
             buildDefault("EMPTY_BAGS", "Empty Bags", "Empty bags equipment", "#d1d5db", 24),
             buildDefault("NETS", "Nets", "Cargo nets", "#a3a3a3", 25)
         );
-        repository.saveAll(defaults);
-        return defaults.size();
+
+        // RESTAURAR (no resetear): los defaults se insertan/refrescan por código,
+        // pero NO se borra el catálogo. Antes esta operación hacía deleteAll() y
+        // eliminaba códigos ajenos a la lista (HIGH_VALUES, CIGARETTES,
+        // SMALL_PACKAGES, LIVE_PLANTS, COMAT, EMPTY_PALLET, RED_TAG…) que pueden
+        // estar referenciados por mawb.commodity_type / booking, dejándolos sin
+        // catálogo y rompiendo los selects de la UI.
+        int restored = 0;
+        for (CommodityTypeEntity def : defaults) {
+            CommodityTypeEntity existing = repository.findByCodeIgnoreCase(def.getCode()).orElse(null);
+            if (existing == null) {
+                repository.save(def);
+                restored++;
+            } else {
+                existing.setLabel(def.getLabel());
+                existing.setDescription(def.getDescription());
+                existing.setColor(def.getColor());
+                existing.setSortOrder(def.getSortOrder());
+                existing.setIsActive(true);
+                repository.save(existing);
+            }
+        }
+        return restored;
     }
 
     private CommodityTypeEntity buildDefault(String code, String label, String description, String color, int order) {

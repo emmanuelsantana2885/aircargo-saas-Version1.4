@@ -74,7 +74,7 @@
                   <span v-for="m in uldMawbs(u.id)" :key="m.id"
                     class="px-1.5 py-0.5 text-[11px] font-mono rounded bg-slate-100 border border-slate-200 hover:bg-slate-200 transition"
                     :style="commodityChipStyle(m.commodityType)"
-                    :title="`${m.awbNumber} • ${m.pieces} pcs • ${m.commodityType || 'DRY_CARGO'}`">
+                    :title="`${m.awbNumber} • ${m.pieces} pcs • ${tooltipOf(m.commodityType) || 'DRY_CARGO'}`">
                     {{ m.awbNumber }}
                   </span>
                 </div>
@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAppStore } from '../stores/app'
 import { useCommodities } from '../composables/useCommodities'
 
@@ -131,7 +131,12 @@ const props = defineProps({
 })
 
 const appStore = useAppStore()
-const { commodities: dbCommodities } = useCommodities()
+const { commodities: dbCommodities, loadCommodities, tooltipOf } = useCommodities()
+
+// El catálogo es un caché de módulo: basta con calentarlo una vez. Garantiza que
+// el tooltip del chip muestre la description aunque este componente se monte
+// sin una vista padre que ya haya cargado el catálogo.
+onMounted(() => { loadCommodities() })
 const activeTab = ref('dist')
 const tabs = [
   { id: 'dist', label: 'Distribución' },

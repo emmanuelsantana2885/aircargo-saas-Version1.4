@@ -34,7 +34,7 @@
       loading-label="Consultando..."
       @search="loadData"
       @clear="clearFilters"
-      container-class="mb-4 shrink-0 p-3 rounded-lg border border-slate-200 bg-slate-50"
+      container-class="mb-4 shrink-0 p-3 rounded-lg border border-strong bg-surface-hover"
     >
       <div class="h-6 w-[1px] bg-slate-300 self-end mb-0.5"></div>
       <div class="flex flex-col gap-0.5">
@@ -52,7 +52,7 @@
         <span class="text-[13px] font-bold text-white uppercase tracking-wider font-mono">
           {{ typeLabel }} — Datos
         </span>
-        <span class="text-[12px] font-mono text-slate-300">
+        <span class="text-[12px] font-mono text-tertiary">
           {{ rows.length > 0 ? rows.length + ' registro(s)' : '' }}
         </span>
       </div>
@@ -61,7 +61,7 @@
       <div v-if="loading" class="flex-1 flex items-center justify-center">
         <div class="flex items-center gap-2">
           <div class="w-4 h-4 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
-          <span class="text-[13px] font-mono text-slate-500 uppercase tracking-wider">Cargando datos...</span>
+          <span class="text-[13px] font-mono text-secondary uppercase tracking-wider">Cargando datos...</span>
         </div>
       </div>
 
@@ -76,8 +76,8 @@
       <!-- Empty -->
       <div v-else-if="!rows.length" class="flex-1 flex items-center justify-center">
         <div class="text-center">
-          <component :is="icons.Search" :size="32" class="mx-auto mb-2 text-slate-300" />
-          <p class="text-[13px] font-mono text-slate-400 uppercase tracking-wider">
+          <component :is="icons.Search" :size="32" class="mx-auto mb-2 text-tertiary" />
+          <p class="text-[13px] font-mono text-tertiary uppercase tracking-wider">
             Selecciona tipo y presiona Consultar
           </p>
         </div>
@@ -86,12 +86,12 @@
       <!-- Data -->
       <div v-else class="flex-1 min-h-0 overflow-auto">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="text-[13px] font-mono" :style="tableStyle">
+        <table class="data-table text-[13px] font-mono" :style="tableStyle">
           <colgroup>
             <col v-for="(col, ci) in cols" :key="col" :style="colStyle(ci)" />
           </colgroup>
           <thead class="sticky top-0 z-20">
-            <tr class="bg-slate-700 text-white">
+            <tr>
               <th v-for="(col, ci) in cols" :key="col"
                 class="text-left px-3 py-2 font-bold uppercase tracking-wider whitespace-nowrap relative border-r border-slate-600 last:border-r-0"
                 :class="isNumCol(col) ? 'text-center' : ''"
@@ -99,15 +99,15 @@
                 {{ col }}
                 <div class="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize group z-40"
                   @pointerdown="startColResize(ci, $event)">
-                  <div class="w-0.5 h-full mx-auto bg-transparent group-hover:bg-white/40 transition-colors"></div>
+                  <div class="w-0.5 h-full mx-auto bg-transparent group-hover:bg-surface/40 transition-colors"></div>
                 </div>
               </th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, ri) in rows" :key="ri"
-              class="border-t border-slate-200 hover:bg-blue-50 transition-colors"
-              :class="ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'">
+              class="border-t border-strong hover:bg-blue-50 transition-colors"
+              :class="ri % 2 === 0 ? 'bg-surface' : 'bg-surface-hover/50'">
               <td v-for="col in cols" :key="col"
                 class="px-3 py-1.5 whitespace-nowrap overflow-hidden text-ellipsis"
                 :class="isNumCol(col) ? 'text-center font-semibold' : ''"

@@ -55,9 +55,9 @@
       <!-- Users table -->
       <div class="ds-table-section">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="w-full text-sm" style="min-width: 800px">
+        <table class="data-table w-full" style="min-width: 800px">
           <thead>
-            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+            <tr>
               <th>{{ t('settings.users.email') }}</th>
               <th>{{ t('settings.users.fullName') }}</th>
               <th>{{ t('settings.users.role') }}</th>
@@ -70,30 +70,30 @@
           </thead>
           <tbody>
             <tr v-for="user in filteredUsers" :key="user.id"
-              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
-              <td class="text-slate-900">{{ user.email }}</td>
-              <td class="text-slate-900">{{ user.fullName }}</td>
+              class="border-b border-default transition-colors hover:bg-surface-hover/80">
+              <td class="text-primary">{{ user.email }}</td>
+              <td class="text-primary">{{ user.fullName }}</td>
               <td>
-                <span class="ds-label bg-slate-100 px-2 py-0.5 rounded">
+                <span class="ds-label bg-surface-hover px-2 py-0.5 rounded">
                   {{ roleLabel(user.role) }}
                 </span>
               </td>
               <td>
                 <span v-for="site in userSiteNames(user.siteIds)" :key="site"
-                  class="ds-label bg-slate-100 px-1.5 py-0.5 rounded mr-1 mb-0.5">
+                  class="ds-label bg-surface-hover px-1.5 py-0.5 rounded mr-1 mb-0.5">
                   {{ site }}
                 </span>
-                <span v-if="!user.siteIds?.length" class="text-[12px] text-slate-400">—</span>
+                <span v-if="!user.siteIds?.length" class="text-[12px] text-tertiary">—</span>
               </td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="user.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
+                  :class="user.isActive ? 'bg-surface-hover text-primary' : 'bg-surface-hover text-secondary'">
                   {{ user.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
               <td class="text-center">
                 <span class="text-[12px] font-medium"
-                  :class="user.mustChangePassword ? 'text-red-600' : (user.passwordSet ? 'text-slate-900' : 'text-slate-400')">
+                  :class="user.mustChangePassword ? 'text-danger' : (user.passwordSet ? 'text-primary' : 'text-tertiary')">
                   {{ user.mustChangePassword ? t('settings.users.passwordStatus.pending') : (user.passwordSet ? t('settings.users.passwordStatus.set') : t('settings.users.passwordStatus.none')) }}
                 </span>
               </td>
@@ -103,7 +103,7 @@
                     ? (user.mfaLocked
                       ? 'bg-red-50 text-red-800'
                       : 'bg-green-50 text-green-800')
-                    : 'bg-slate-100 text-slate-600'">
+                    : 'bg-surface-hover text-secondary'">
                   {{ user.mfaLocked ? t('settings.users.mfaStatus.locked') : (user.mfaEnabled ? t('settings.users.mfaStatus.active') : t('settings.users.mfaStatus.inactive')) }}
                 </span>
               </td>
@@ -112,7 +112,7 @@
                   <button @click="startEdit(user)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">{{ t('common.edit') }}</button>
                   <button @click="resetPass(user)" class="ds-btn-secondary !px-2 !py-1 !text-[12px]">{{ t('settings.users.resetPassword') }}</button>
                   <button @click="genTempPassword(user)"
-                    class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-blue-50 text-blue-700">{{ t('settings.users.genTemp') }}</button>
+                    class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-accent-soft text-accent-strong">{{ t('settings.users.genTemp') }}</button>
                   <template v-if="user.mfaEnabled">
                     <button v-if="!user.mfaLocked" @click="lockMfaUser(user)"
                       class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-red-50 text-red-800">{{ t('settings.users.lockMfa') }}</button>
@@ -128,7 +128,7 @@
               </td>
             </tr>
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="8" class="px-4 py-8 text-center text-sm italic text-slate-400">
+              <td colspan="8" class="px-4 py-8 text-center text-sm italic text-tertiary">
                 {{ t('settings.users.empty') }}
               </td>
             </tr>
@@ -162,7 +162,7 @@
               <label class="ds-label block mb-0.5">{{ t('settings.users.sites') }}</label>
               <div class="space-y-1 max-h-32 overflow-y-auto">
                 <label v-for="site in allSites" :key="site.id"
-                  class="flex items-center gap-2 text-sm cursor-pointer text-slate-900">
+                  class="flex items-center gap-2 text-sm cursor-pointer text-primary">
                   <input type="checkbox" :value="site.id" v-model="editForm.siteIds"
                     class="rounded border-slate-300">
                   {{ site.name }} ({{ site.code }})
@@ -209,7 +209,7 @@
               <label class="ds-label block mb-0.5">{{ t('settings.users.sites') }}</label>
               <div class="space-y-1 max-h-32 overflow-y-auto">
                 <label v-for="site in allSites" :key="site.id"
-                  class="flex items-center gap-2 text-sm cursor-pointer text-slate-900">
+                  class="flex items-center gap-2 text-sm cursor-pointer text-primary">
                   <input type="checkbox" :value="site.id" v-model="createForm.siteIds"
                     class="rounded border-slate-300">
                   {{ site.name }} ({{ site.code }})
@@ -231,11 +231,11 @@
             <h2 class="ds-modal-title">{{ t('settings.users.mfaSetup') }}</h2>
           </div>
           <div class="p-6">
-            <p class="text-[13px] mb-4 text-slate-500">
+            <p class="text-[13px] mb-4 text-secondary">
               {{ t('settings.users.mfaQrDesc') }}
             </p>
             <div class="text-center mb-4">
-              <div class="inline-block p-3 rounded-lg border border-slate-200 bg-white">
+              <div class="inline-block p-3 rounded-lg border border-strong bg-white">
                 <img v-if="mfaOtpAuthUrl" :src="`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(mfaOtpAuthUrl)}`"
                   alt="QR Code" class="w-[180px] h-[180px]" />
               </div>
@@ -268,7 +268,7 @@
             <h2 class="ds-modal-title">{{ t('settings.users.tempPassword.title') }}</h2>
           </div>
           <div class="p-6">
-            <p class="text-[13px] mb-4 text-slate-500">
+            <p class="text-[13px] mb-4 text-secondary">
               {{ t('settings.users.tempPassword.share') }}
             </p>
             <div class="mb-4 p-3 rounded-lg bg-green-50 border border-green-200">
@@ -283,7 +283,7 @@
                 </button>
               </div>
             </div>
-            <p class="text-[12px] mb-4 text-slate-400">
+            <p class="text-[12px] mb-4 text-tertiary">
               {{ t('settings.users.tempPassword.mustChange') }}
             </p>
             <button @click="showTempPassword = false" class="ds-btn-primary w-full justify-center">
@@ -306,9 +306,9 @@
       <!-- Sites table -->
       <div class="ds-table-section">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="w-full text-sm" style="min-width: 500px">
+        <table class="data-table w-full" style="min-width: 500px">
           <thead>
-            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+            <tr>
               <th>{{ t('settings.sites.code') }}</th>
               <th>{{ t('settings.sites.name') }}</th>
               <th>{{ t('settings.sites.country') }}</th>
@@ -318,13 +318,13 @@
           </thead>
           <tbody>
             <tr v-for="site in allSites" :key="site.id"
-              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
-              <td class="font-mono font-semibold text-slate-900">{{ site.code }}</td>
-              <td class="text-slate-900">{{ site.name }}</td>
-              <td class="text-slate-900">{{ site.country || '—' }}</td>
+              class="border-b border-default transition-colors hover:bg-surface-hover/80">
+              <td class="font-mono font-semibold text-primary">{{ site.code }}</td>
+              <td class="text-primary">{{ site.name }}</td>
+              <td class="text-primary">{{ site.country || '—' }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="site.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
+                  :class="site.isActive ? 'bg-surface-hover text-primary' : 'bg-surface-hover text-secondary'">
                   {{ site.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -336,7 +336,7 @@
               </td>
             </tr>
             <tr v-if="allSites.length === 0">
-              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-slate-400">
+              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-tertiary">
                 {{ t('settings.sites.empty') }}
               </td>
             </tr>
@@ -421,9 +421,9 @@
 
       <div class="ds-table-section">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="w-full text-sm" style="min-width: 600px">
+        <table class="data-table w-full" style="min-width: 600px">
           <thead>
-            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+            <tr>
               <th>Código</th>
               <th>Nombre</th>
               <th>IATA</th>
@@ -434,14 +434,14 @@
           </thead>
           <tbody>
             <tr v-for="a in airlines" :key="a.id"
-              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
-              <td class="font-mono font-semibold text-slate-900">{{ a.code }}</td>
-              <td class="text-slate-900">{{ a.name }}</td>
-              <td class="font-mono text-slate-700">{{ a.iataCode || '—' }}</td>
-              <td class="text-slate-900">{{ a.country || '—' }}</td>
+              class="border-b border-default transition-colors hover:bg-surface-hover/80">
+              <td class="font-mono font-semibold text-primary">{{ a.code }}</td>
+              <td class="text-primary">{{ a.name }}</td>
+              <td class="font-mono text-primary">{{ a.iataCode || '—' }}</td>
+              <td class="text-primary">{{ a.country || '—' }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="a.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
+                  :class="a.isActive ? 'bg-surface-hover text-primary' : 'bg-surface-hover text-secondary'">
                   {{ a.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -454,7 +454,7 @@
               </td>
             </tr>
             <tr v-if="airlines.length === 0">
-              <td colspan="6" class="px-4 py-8 text-center text-sm italic text-slate-400">
+              <td colspan="6" class="px-4 py-8 text-center text-sm italic text-tertiary">
                 {{ t('settings.airlines.empty') }}
               </td>
             </tr>
@@ -541,7 +541,7 @@
             </h2>
           </div>
           <div class="p-6 space-y-3">
-            <p class="text-[12px] text-slate-500">{{ t('settings.receiptCalc.globalHint') }}</p>
+            <p class="text-[12px] text-secondary">{{ t('settings.receiptCalc.globalHint') }}</p>
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="ds-label block mb-0.5">{{ t('settings.receiptCalc.dimFactorDom') }}</label>
@@ -615,9 +615,9 @@
 
       <div class="ds-table-section">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="w-full text-sm" style="min-width: 700px">
+        <table class="data-table w-full" style="min-width: 700px">
           <thead>
-            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+            <tr>
               <th>Tipo ULD</th>
               <th class="text-right">Tara default (lbs)</th>
               <th class="text-right">Max Gross (lbs)</th>
@@ -627,7 +627,7 @@
           </thead>
           <tbody>
             <tr v-for="(cfg, idx) in typeConfigs" :key="idx"
-              class="border-b border-slate-100">
+              class="border-b border-default">
               <td>
                 <select v-model="cfg.uldType" class="ds-input font-mono" :title="typeOptionFor(cfg.uldType)?.description || ''">
                   <option v-for="tp in typeOptions" :key="tp.code" :value="tp.code">{{ tp.code }}{{ tp.description ? ' — ' + tp.description : '' }}</option>
@@ -649,7 +649,7 @@
               </td>
             </tr>
             <tr v-if="typeConfigs.length === 0">
-              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-slate-400">
+              <td colspan="5" class="px-4 py-8 text-center text-sm italic text-tertiary">
                 {{ t('settings.uldConfig.empty') }}
               </td>
             </tr>
@@ -665,14 +665,14 @@
 
       <!-- IATA ULD type catalog management -->
       <div class="ds-table-section mt-4">
-        <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
-          <span class="text-[12px] font-bold uppercase tracking-wider text-slate-600">{{ t('settings.uldConfig.catalog.title', { n: uldCatalog.length }) }}</span>
-          <span class="text-[11px] text-slate-400">{{ t('settings.uldConfig.catalog.hint') }}</span>
+        <div class="px-4 py-2 bg-surface-hover border-b border-strong flex items-center justify-between">
+          <span class="text-[12px] font-bold uppercase tracking-wider text-secondary">{{ t('settings.uldConfig.catalog.title', { n: uldCatalog.length }) }}</span>
+          <span class="text-[11px] text-tertiary">{{ t('settings.uldConfig.catalog.hint') }}</span>
         </div>
         <div class="overflow-y-auto" style="max-height: 280px">
-          <table class="w-full text-[13px]">
+          <table class="data-table data-table--light w-full">
             <thead>
-              <tr class="bg-slate-50 text-[11px] uppercase text-slate-500 [&>th]:px-4 [&>th]:py-1.5 [&>th]:text-left [&>th]:font-semibold">
+              <tr>
                 <th style="width: 90px">{{ t('settings.uldConfig.uldType') }}</th>
                 <th>{{ t('settings.uldConfig.newTypeDesc') }}</th>
                 <th style="width: 110px">{{ t('settings.uldConfig.catalog.state') }}</th>
@@ -680,13 +680,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="tp in uldCatalog" :key="tp.id || tp.code" class="border-b border-slate-100 hover:bg-slate-50">
+              <tr v-for="tp in uldCatalog" :key="tp.id || tp.code" class="border-b border-default hover:bg-surface-hover">
                 <td class="px-4 py-1.5 font-mono font-bold">{{ tp.code }}</td>
-                <td class="px-4 py-1.5 text-slate-600">{{ tp.description || '—' }}</td>
+                <td class="px-4 py-1.5 text-secondary">{{ tp.description || '—' }}</td>
                 <td class="px-4 py-1.5">
                   <button v-if="tp.id" @click="toggleUldTypeActive(tp)"
                     class="text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors"
-                      :class="tp.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-slate-100 text-slate-600 border-slate-200'">
+                      :class="tp.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-surface-hover text-secondary border-strong'">
                     {{ tp.isActive ? t('settings.uldConfig.catalog.active') : t('settings.uldConfig.catalog.inactive') }}
                   </button>
                   <span v-else class="text-[11px] text-slate-300">legacy</span>
@@ -694,7 +694,7 @@
                 <td class="px-4 py-1.5 text-right">
                   <div class="flex gap-1 justify-end">
                     <button @click="startEditUldType(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px]" :disabled="!tp.id" :aria-label="t('common.edit')">✎</button>
-                    <button @click="removeCatalogEntry(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px] hover:!bg-red-50 hover:!text-red-600" :disabled="!tp.id" :aria-label="t('common.delete')">✕</button>
+                    <button @click="removeCatalogEntry(tp)" class="ds-btn-secondary !px-2 !py-0.5 !text-[11px] hover:!bg-red-50 hover:!text-danger" :disabled="!tp.id" :aria-label="t('common.delete')">✕</button>
                   </div>
                 </td>
               </tr>
@@ -710,13 +710,13 @@
             <h2 class="ds-modal-title">{{ editingUldType ? t('settings.uldConfig.editTypeTitle') : t('settings.uldConfig.newTypeTitle') }}</h2>
           </div>
           <div class="p-6 space-y-3">
-            <p v-if="!editingUldType" class="text-[12px] text-slate-500 leading-relaxed">{{ t('settings.uldConfig.newTypeHelp') }}</p>
+            <p v-if="!editingUldType" class="text-[12px] text-secondary leading-relaxed">{{ t('settings.uldConfig.newTypeHelp') }}</p>
             <div>
               <label class="ds-label block mb-0.5">{{ t('settings.uldConfig.uldType') }}</label>
               <input v-model="newUldTypeForm.code" maxlength="5" required
                 :disabled="!!editingUldType"
                 placeholder="PMC / AKE / RKN"
-                class="ds-input font-mono uppercase disabled:bg-slate-100 disabled:text-slate-400">
+                class="ds-input font-mono uppercase disabled:bg-surface-hover disabled:text-tertiary">
             </div>
             <div>
               <label class="ds-label block mb-0.5">{{ t('settings.uldConfig.newTypeDesc') }}</label>
@@ -752,9 +752,9 @@
 
       <div class="ds-table-section">
         <div class="table-scroll-wrapper flex-1 min-h-0 overflow-y-auto">
-        <table class="w-full text-sm" style="min-width: 700px">
+        <table class="data-table w-full" style="min-width: 700px">
           <thead>
-            <tr class="bg-slate-800 text-white text-[13px] font-bold uppercase tracking-wider [&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-semibold">
+            <tr>
               <th>Código</th>
               <th>Etiqueta</th>
               <th>Descripción</th>
@@ -766,20 +766,20 @@
           </thead>
           <tbody>
             <tr v-for="c in commodityList" :key="c.id"
-              class="border-b border-slate-100 transition-colors hover:bg-slate-50/80">
-              <td class="font-mono font-semibold text-slate-900">{{ c.code }}</td>
-              <td class="text-slate-900">{{ c.label }}</td>
-              <td class="text-slate-500 text-[12px] max-w-[200px] truncate">{{ c.description || '—' }}</td>
+              class="border-b border-default transition-colors hover:bg-surface-hover/80">
+              <td class="font-mono font-semibold text-primary">{{ c.code }}</td>
+              <td class="text-primary">{{ c.label }}</td>
+              <td class="text-secondary text-[12px] max-w-[200px] truncate">{{ c.description || '—' }}</td>
               <td>
                 <div class="flex items-center gap-2">
-                  <span class="w-4 h-4 rounded border border-slate-200 inline-block" :style="{ backgroundColor: c.color || '#94a3b8' }"></span>
-                  <span class="font-mono text-[12px] text-slate-500">{{ c.color || '—' }}</span>
+                  <span class="w-4 h-4 rounded border border-strong inline-block" :style="{ backgroundColor: c.color || '#94a3b8' }"></span>
+                  <span class="font-mono text-[12px] text-secondary">{{ c.color || '—' }}</span>
                 </div>
               </td>
-              <td class="text-right font-mono text-slate-700">{{ c.sortOrder }}</td>
+              <td class="text-right font-mono text-primary">{{ c.sortOrder }}</td>
               <td class="text-center">
                 <span class="text-[12px] font-medium px-2 py-0.5 rounded"
-                  :class="c.isActive ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-600'">
+                  :class="c.isActive ? 'bg-surface-hover text-primary' : 'bg-surface-hover text-secondary'">
                   {{ c.isActive ? t('common.yes') : t('common.no') }}
                 </span>
               </td>
@@ -791,7 +791,7 @@
               </td>
             </tr>
             <tr v-if="commodityList.length === 0">
-              <td colspan="7" class="px-4 py-8 text-center text-sm italic text-slate-400">
+              <td colspan="7" class="px-4 py-8 text-center text-sm italic text-tertiary">
                 {{ t('settings.commodities.empty') }}
               </td>
             </tr>
@@ -823,7 +823,7 @@
               <label class="ds-label block mb-0.5">Color (hex)</label>
               <div class="flex items-center gap-2">
                 <input v-model="commodityForm.color" maxlength="20" class="ds-input font-mono" placeholder="#94a3b8">
-                <span class="w-8 h-8 rounded border border-slate-200 inline-block flex-shrink-0" :style="{ backgroundColor: commodityForm.color || '#94a3b8' }"></span>
+                <span class="w-8 h-8 rounded border border-strong inline-block flex-shrink-0" :style="{ backgroundColor: commodityForm.color || '#94a3b8' }"></span>
               </div>
             </div>
             <div>
@@ -874,7 +874,7 @@
               <label class="ds-label block mb-0.5">Color (hex)</label>
               <div class="flex items-center gap-2">
                 <input v-model="commodityCreateForm.color" maxlength="20" class="ds-input font-mono" placeholder="#94a3b8">
-                <span class="w-8 h-8 rounded border border-slate-200 inline-block flex-shrink-0" :style="{ backgroundColor: commodityCreateForm.color || '#94a3b8' }"></span>
+                <span class="w-8 h-8 rounded border border-strong inline-block flex-shrink-0" :style="{ backgroundColor: commodityCreateForm.color || '#94a3b8' }"></span>
               </div>
             </div>
             <div>
@@ -903,22 +903,22 @@
         <!-- Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div class="ds-table-section p-3">
-            <p class="text-[11px] text-slate-500">{{ t('settings.backups.totalBackups') }}</p>
-            <p class="text-xl font-semibold text-slate-900">{{ backupStats.totalBackups ?? '—' }}</p>
+            <p class="text-[11px] text-secondary">{{ t('settings.backups.totalBackups') }}</p>
+            <p class="text-xl font-semibold text-primary">{{ backupStats.totalBackups ?? '—' }}</p>
           </div>
           <div class="ds-table-section p-3">
-            <p class="text-[11px] text-slate-500">{{ t('settings.backups.totalSize') }}</p>
-            <p class="text-xl font-semibold text-slate-900">{{ formatBytes(backupStats.totalSizeBytes) }}</p>
+            <p class="text-[11px] text-secondary">{{ t('settings.backups.totalSize') }}</p>
+            <p class="text-xl font-semibold text-primary">{{ formatBytes(backupStats.totalSizeBytes) }}</p>
           </div>
           <div class="ds-table-section p-3">
-            <p class="text-[11px] text-slate-500">{{ t('settings.backups.successRate') }}</p>
+            <p class="text-[11px] text-secondary">{{ t('settings.backups.successRate') }}</p>
             <p class="text-xl font-semibold text-emerald-700">
               {{ backupSuccessRate }}<span v-if="backupSuccessRate !== '—'" class="text-sm">%</span>
             </p>
           </div>
           <div class="ds-table-section p-3">
-            <p class="text-[11px] text-slate-500">{{ t('settings.backups.diskFree') }}</p>
-            <p class="text-xl font-semibold text-slate-900">{{ formatBytes(backupStats.availableSpaceBytes) }}</p>
+            <p class="text-[11px] text-secondary">{{ t('settings.backups.diskFree') }}</p>
+            <p class="text-xl font-semibold text-primary">{{ formatBytes(backupStats.availableSpaceBytes) }}</p>
           </div>
         </div>
 
@@ -927,7 +927,7 @@
           <div class="p-4 space-y-4">
             <div>
               <h3 class="text-sm font-semibold text-slate-800 mb-1">{{ t('settings.backups.folderTitle') }}</h3>
-              <p class="text-[11px] text-slate-500 leading-relaxed">{{ t('settings.backups.folderHelp') }}</p>
+              <p class="text-[11px] text-secondary leading-relaxed">{{ t('settings.backups.folderHelp') }}</p>
             </div>
 
             <div>
@@ -940,7 +940,7 @@
                   {{ backupSaving ? t('common.saving') : t('common.save') }}
                 </button>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">
+              <p class="text-[11px] text-tertiary mt-1">
                 {{ t('settings.backups.currentDir') }}: <code class="font-mono">{{ backupStats.backupDir || '—' }}</code>
               </p>
             </div>
@@ -967,25 +967,25 @@
         </div>
 
         <!-- Rollback info -->
-        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-          <p class="text-[11px] text-slate-600 leading-relaxed">
-            <strong class="text-slate-900">{{ t('settings.backups.rollbackTitle') }}</strong>
+        <div class="bg-surface-hover border border-strong rounded-lg p-3">
+          <p class="text-[11px] text-secondary leading-relaxed">
+            <strong class="text-primary">{{ t('settings.backups.rollbackTitle') }}</strong>
             {{ t('settings.backups.rollbackHelp') }}
-            <code class="bg-slate-200 px-1 rounded font-mono text-[10px]">./scripts/rollback.sh --pre-deploy</code>
+            <code class="bg-surface-hover px-1 rounded font-mono text-[10px]">./scripts/rollback.sh --pre-deploy</code>
             ·
-            <code class="bg-slate-200 px-1 rounded font-mono text-[10px]">--emergency</code>
+            <code class="bg-surface-hover px-1 rounded font-mono text-[10px]">--emergency</code>
             ·
-            <code class="bg-slate-200 px-1 rounded font-mono text-[10px]">--restore &lt;file&gt;</code>
+            <code class="bg-surface-hover px-1 rounded font-mono text-[10px]">--restore &lt;file&gt;</code>
           </p>
         </div>
 
         <!-- Restaurar BD -->
         <div class="ds-table-section">
-          <div class="px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+          <div class="px-4 py-2 border-b border-strong flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-800">{{ t('settings.backups.restoreTitle') }}</h3>
           </div>
           <div class="p-4 space-y-3">
-            <p class="text-[11px] text-slate-500 leading-relaxed">{{ t('settings.backups.restoreHelp') }}</p>
+            <p class="text-[11px] text-secondary leading-relaxed">{{ t('settings.backups.restoreHelp') }}</p>
 
             <div class="flex items-center gap-4">
               <label class="flex items-center gap-1.5 text-[12px] cursor-pointer">
@@ -1019,7 +1019,7 @@
                 class="bg-red-600 hover:bg-red-700 text-white text-[12px] whitespace-nowrap rounded-lg px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ restoring ? t('settings.backups.restoring') : t('settings.backups.restoreBtn') }}
               </button>
-              <span class="text-[11px] text-slate-400">{{ t('settings.backups.restoreSafety') }}</span>
+              <span class="text-[11px] text-tertiary">{{ t('settings.backups.restoreSafety') }}</span>
             </div>
 
             <div v-if="restoreResult" :class="restoreResult.success
@@ -1034,31 +1034,31 @@
 
         <!-- History -->
         <div class="ds-table-section">
-          <div class="px-4 py-2 border-b border-slate-200 flex items-center justify-between">
+          <div class="px-4 py-2 border-b border-strong flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-800">{{ t('settings.backups.history') }}</h3>
             <button @click="loadBackupHistory" class="text-[11px] text-blue-600 hover:underline">
               {{ t('common.refresh') }}
             </button>
           </div>
           <div class="overflow-x-auto max-h-72 overflow-y-auto">
-            <table class="w-full text-[11px]">
-              <thead class="sticky top-0 bg-slate-100">
-                <tr class="text-left text-slate-600">
-                  <th class="px-3 py-1.5 font-semibold">{{ t('settings.backups.file') }}</th>
-                  <th class="px-3 py-1.5 font-semibold">{{ t('settings.backups.type') }}</th>
-                  <th class="px-3 py-1.5 font-semibold">{{ t('settings.backups.size') }}</th>
-                  <th class="px-3 py-1.5 font-semibold">{{ t('settings.backups.statusCol') }}</th>
-                  <th class="px-3 py-1.5 font-semibold">{{ t('settings.backups.date') }}</th>
+            <table class="data-table data-table--light w-full">
+              <thead class="sticky top-0 bg-surface-hover">
+                <tr>
+                  <th>{{ t('settings.backups.file') }}</th>
+                  <th>{{ t('settings.backups.type') }}</th>
+                  <th>{{ t('settings.backups.size') }}</th>
+                  <th>{{ t('settings.backups.statusCol') }}</th>
+                  <th>{{ t('settings.backups.date') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-if="!backupHistory.length">
-                  <td colspan="5" class="px-3 py-6 text-center text-slate-400">{{ t('settings.backups.empty') }}</td>
+                  <td colspan="5" class="px-3 py-6 text-center text-tertiary">{{ t('settings.backups.empty') }}</td>
                 </tr>
-                <tr v-for="h in backupHistory" :key="h.id" class="border-t border-slate-100 hover:bg-slate-50">
+                <tr v-for="h in backupHistory" :key="h.id" class="border-t border-default hover:bg-surface-hover">
                   <td class="px-3 py-1.5 font-mono text-[10px]">{{ h.fileName }}</td>
                   <td class="px-3 py-1.5">
-                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] uppercase">{{ h.backupType }}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-surface-hover text-secondary text-[10px] uppercase">{{ h.backupType }}</span>
                   </td>
                   <td class="px-3 py-1.5">{{ formatBytes(h.sizeBytes) }}</td>
                   <td class="px-3 py-1.5">
@@ -1067,7 +1067,7 @@
                       : 'text-red-700 bg-red-50'"
                       class="px-1.5 py-0.5 rounded text-[10px] font-medium">{{ h.status }}</span>
                   </td>
-                  <td class="px-3 py-1.5 text-slate-500">{{ formatDateTime(h.createdAt) }}</td>
+                  <td class="px-3 py-1.5 text-secondary">{{ formatDateTime(h.createdAt) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -1082,9 +1082,9 @@
       <div class="space-y-4 overflow-y-auto flex-1 pr-1">
 
         <!-- Header -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="bg-accent-soft border border-blue-200 rounded-lg p-4">
           <h3 class="text-sm font-semibold text-blue-900 mb-1">{{ t('settings.apiBi.biConnection') }}</h3>
-          <p class="text-xs text-blue-700 leading-relaxed">
+          <p class="text-xs text-accent-strong leading-relaxed">
             {{ t('settings.apiBi.biConnectionDesc') }}
           </p>
         </div>
@@ -1101,23 +1101,23 @@
                 <button @click="customUrl = ''" class="ds-btn-secondary text-[11px] whitespace-nowrap"
                   v-if="customUrl">{{ t('settings.apiBi.reset') }}</button>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">
+              <p class="text-[11px] text-tertiary mt-1">
                 {{ t('settings.apiBi.autoDetected') }}: <code class="font-mono">{{ currentOrigin }}</code>
               </p>
             </div>
 
             <!-- EC2 deployment note -->
-            <div class="bg-slate-50 border border-slate-200 rounded p-3">
-              <p class="text-[11px] text-slate-700 leading-relaxed">
-                <strong class="text-slate-900">{{ t('settings.apiBi.ec2Deploy') }}</strong>
+            <div class="bg-surface-hover border border-strong rounded p-3">
+              <p class="text-[11px] text-primary leading-relaxed">
+                <strong class="text-primary">{{ t('settings.apiBi.ec2Deploy') }}</strong>
                 Abre la app en tu navegador con la URL publica del servidor.
-                La URL se detecta automaticamente. nginx proxys las llamadas <code class="bg-slate-200 px-1 rounded font-mono text-[10px]">/api/</code> al gateway internamente.
+                La URL se detecta automaticamente. nginx proxys las llamadas <code class="bg-surface-hover px-1 rounded font-mono text-[10px]">/api/</code> al gateway internamente.
                 Las URLs de abajo ya apuntan al lugar correcto.
               </p>
               <div class="bg-slate-900 text-green-400 rounded p-2 font-mono text-[11px] mt-2 overflow-x-auto">
-                <div class="text-slate-500"># {{ t('settings.apiBi.ec2Example') }}</div>
+                <div class="text-secondary"># {{ t('settings.apiBi.ec2Example') }}</div>
                 <div>{{ gatewayUrl }}/api/bi/dashboard?api_key=TOKEN</div>
-                <div class="text-slate-500 mt-1"># {{ t('settings.apiBi.ec2PowerBI') }}</div>
+                <div class="text-secondary mt-1"># {{ t('settings.apiBi.ec2PowerBI') }}</div>
               </div>
             </div>
 
@@ -1126,7 +1126,7 @@
               <label class="ds-label block mb-1">{{ t('settings.apiBi.serviceName') }}</label>
               <div class="flex items-center gap-2">
                 <input :value="biToken || ''" readonly placeholder="Genera el token para conectarte a Power BI"
-                  class="ds-input font-mono text-[10px] flex-1 bg-slate-50 select-all">
+                  class="ds-input font-mono text-[10px] flex-1 bg-surface-hover select-all">
                 <button :disabled="!biToken || biTokenLoading" @click="copyToClipboard(biToken, 'token')"
                   class="ds-btn-secondary text-[12px] whitespace-nowrap disabled:opacity-30">
                   {{ copied && copiedEndpoint === 'token' ? t('common.copied', {text:''}) : t('common.copy') }}
@@ -1134,12 +1134,12 @@
                 <button @click="loadServiceToken" :disabled="biTokenLoading"
                   class="ds-btn-secondary text-[12px] whitespace-nowrap disabled:opacity-40">{{ biTokenLoading ? 'Generando...' : 'Regenerar' }}</button>
               </div>
-              <p v-if="biTokenError" class="text-[11px] text-red-600 mt-1">{{ biTokenError }}</p>
-              <p v-else-if="biToken" class="text-[11px] text-slate-400 mt-1">
+              <p v-if="biTokenError" class="text-[11px] text-danger mt-1">{{ biTokenError }}</p>
+              <p v-else-if="biToken" class="text-[11px] text-tertiary mt-1">
                 Cuenta: <span class="font-mono">bi@rannik.com</span> (BI_USER) — Generado
                 <template v-if="biTokenExpiry">· Expira: {{ biTokenExpiry }}</template>
               </p>
-              <p v-else class="text-[11px] text-slate-400 mt-1">
+              <p v-else class="text-[11px] text-tertiary mt-1">
                 Cuenta: <span class="font-mono">bi@rannik.com</span> (BI_USER) — Pulsa "Regenerar" para emitir un token de servicio.
               </p>
             </div>
@@ -1151,7 +1151,7 @@
                 {{ connectionTesting ? t('common.loading') : t('settings.apiBi.testConnection') }}
               </button>
               <span v-if="connectionStatus" class="ml-3 text-[12px]"
-                :class="connectionStatus.ok ? 'text-green-700 font-medium' : 'text-red-600'">
+                :class="connectionStatus.ok ? 'text-ok font-medium' : 'text-danger'">
                 {{ connectionStatus.msg }}
               </span>
             </div>
@@ -1165,7 +1165,7 @@
               <span class="text-amber-500 text-lg">&#9632;</span>
               <label class="ds-label block !mb-0">{{ t('settings.apiBi.powerBI') }}</label>
             </div>
-            <div class="space-y-2 text-[12px] text-slate-600 leading-relaxed">
+            <div class="space-y-2 text-[12px] text-secondary leading-relaxed">
               <div class="flex items-start gap-3">
                 <span class="flex-shrink-0 w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
                 <p>{{ t('settings.apiBi.powerBIOpen') }}</p>
@@ -1207,12 +1207,12 @@
             <div class="grid grid-cols-1 gap-1.5">
               <div v-for="ep in biEndpoints" :key="ep.path"
                 @click="copyToClipboard(biToken ? `${gatewayUrl}${ep.path}?api_key=${biToken}` : '', ep.path)"
-                class="flex items-center justify-between bg-slate-50 rounded px-3 py-2 border border-slate-100 hover:border-blue-300 hover:bg-blue-50/30 cursor-pointer transition-all group">
+                class="flex items-center justify-between bg-surface-hover rounded px-3 py-2 border border-default hover:border-blue-300 hover:bg-accent-soft/30 cursor-pointer transition-all group">
                 <div class="min-w-0 flex-1">
-                  <code class="text-[11px] font-mono text-slate-900 block truncate">GET {{ ep.path }}</code>
-                  <p class="text-[10px] text-slate-500 mt-0.5">{{ ep.desc }}</p>
+                  <code class="text-[11px] font-mono text-primary block truncate">GET {{ ep.path }}</code>
+                  <p class="text-[10px] text-secondary mt-0.5">{{ ep.desc }}</p>
                 </div>
-                <span class="text-[10px] text-blue-500 group-hover:text-blue-700 whitespace-nowrap ml-3 flex-shrink-0">
+                <span class="text-[10px] text-blue-500 group-hover:text-accent-strong whitespace-nowrap ml-3 flex-shrink-0">
                   {{ copied && copiedEndpoint === ep.path ? t('common.copied', {text:''}) : t('settings.apiBi.copyUrl') }}
                 </span>
               </div>
@@ -1227,11 +1227,11 @@
 
             <!-- Power BI M query -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
                 <svg class="w-4 h-4 text-amber-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 Power BI — Power Query (M)
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <p class="font-medium text-slate-800">{{ t('settings.apiBi.pythonDirectDesc') }}</p>
                 <div class="bg-slate-900 text-green-400 rounded p-2 font-mono text-[11px] overflow-x-auto">
                   <div>let</div>
@@ -1245,11 +1245,11 @@
 
             <!-- Tableau -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
                 <svg class="w-4 h-4 text-blue-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 Tableau
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <ol class="list-decimal list-inside space-y-1">
                   <li>Abre Tableau &rarr; <strong>Connect</strong> &rarr; <strong>To a Server</strong> &rarr; <strong>Web Data Connector</strong></li>
                   <li>Pega la URL de cualquier endpoint (clic en "Copiar URL" arriba)</li>
@@ -1260,32 +1260,32 @@
 
             <!-- Metabase -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
                 <svg class="w-4 h-4 text-purple-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 Metabase
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <ol class="list-decimal list-inside space-y-1">
                   <li>Metabase &rarr; Admin &rarr; <strong>Databases</strong> &rarr; <strong>Add database</strong></li>
                   <li>Tipo: <strong>HTTP API</strong> o <strong>REST API / JSON</strong></li>
-                  <li>Base URL: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">{{ gatewayUrl }}</code></li>
-                  <li>Headers: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">Authorization: Bearer TOKEN_AQUI</code></li>
+                  <li>Base URL: <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">{{ gatewayUrl }}</code></li>
+                  <li>Headers: <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">Authorization: Bearer TOKEN_AQUI</code></li>
                 </ol>
               </div>
             </details>
 
             <!-- Looker Studio -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
                 <svg class="w-4 h-4 text-sky-600 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 Google Looker Studio
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <ol class="list-decimal list-inside space-y-1">
-                  <li><code class="bg-slate-100 px-1 rounded font-mono text-[11px]">script.google.com</code> &rarr; proyecto nuevo &rarr; pega el contenido de <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi-integrations/looker-studio-connector.gs</code></li>
+                  <li><code class="bg-surface-hover px-1 rounded font-mono text-[11px]">script.google.com</code> &rarr; proyecto nuevo &rarr; pega el contenido de <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">bi-integrations/looker-studio-connector.gs</code></li>
                   <li><strong>Implementar &rarr; Nuevo despliegue</strong> &rarr; tipo <em>Add-on/Editor</em> &rarr; marcando la casilla <strong>Looker Studio</strong> &rarr; copia el <strong>ID del despliegue</strong></li>
                   <li>En Looker Studio: <strong>Crear fuente de datos &rarr; Conectores (Partners)</strong> &rarr; <strong>Aircargo BI</strong></li>
-                  <li>Configura: URL base <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">{{ gatewayUrl }}</code> &middot; API Key <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">TOKEN_AQUI</code> &middot; Endpoint (ej. <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi/flights</code>) &middot; Filas máximas</li>
+                  <li>Configura: URL base <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">{{ gatewayUrl }}</code> &middot; API Key <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">TOKEN_AQUI</code> &middot; Endpoint (ej. <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">bi/flights</code>) &middot; Filas máximas</li>
                   <li>Las columnas se derivan del endpoint autom&aacute;ticamente</li>
                 </ol>
                 <div class="bg-amber-50 border border-amber-200 rounded p-2 text-[11px] text-amber-800 leading-relaxed">
@@ -1296,37 +1296,37 @@
 
             <!-- Apache Superset -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
                 <svg class="w-4 h-4 text-orange-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 Apache Superset (docker-compose incluido)
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <ol class="list-decimal list-inside space-y-1">
-                  <li>Variables: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">SUPERSET_SECRET_KEY=$(openssl rand -base64 42)</code> y <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">SUPERSET_ADMIN_PASSWORD=... </code> en <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">.env</code></li>
-                  <li>Crear el rol de solo lectura: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">./scripts/configure-bi-reader.sh</code></li>
-                  <li>Levantar: <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">docker compose -f docker/docker-compose.superset.yml up -d</code></li>
-                  <li>Abrir <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">http://localhost:8088</code> (admin / SUPERSET_ADMIN_PASSWORD)</li>
-                  <li><strong>Settings &rarr; Database Connections &rarr; + Database &rarr; PostgreSQL</strong>: host <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">host.docker.internal</code>, puerto <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">5432</code>, DB <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">aircargo</code>, usuario <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">bi_reader</code>, password de <code class="bg-slate-100 px-1 rounded font-mono text-[11px]">BI_READER_PASSWORD</code></li>
+                  <li>Variables: <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">SUPERSET_SECRET_KEY=$(openssl rand -base64 42)</code> y <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">SUPERSET_ADMIN_PASSWORD=... </code> en <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">.env</code></li>
+                  <li>Crear el rol de solo lectura: <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">./scripts/configure-bi-reader.sh</code></li>
+                  <li>Levantar: <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">docker compose -f docker/docker-compose.superset.yml up -d</code></li>
+                  <li>Abrir <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">http://localhost:8088</code> (admin / SUPERSET_ADMIN_PASSWORD)</li>
+                  <li><strong>Settings &rarr; Database Connections &rarr; + Database &rarr; PostgreSQL</strong>: host <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">host.docker.internal</code>, puerto <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">5432</code>, DB <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">aircargo</code>, usuario <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">bi_reader</code>, password de <code class="bg-surface-hover px-1 rounded font-mono text-[11px]">BI_READER_PASSWORD</code></li>
                 </ol>
                 <div class="bg-slate-900 text-green-400 rounded p-2 font-mono text-[11px] overflow-x-auto">
-                  <div class="text-slate-500"># SQLAlchemy URI (con <strong class="text-slate-400">PASS</strong> sustituir por BI_READER_PASSWORD)</div>
+                  <div class="text-secondary"># SQLAlchemy URI (con <strong class="text-tertiary">PASS</strong> sustituir por BI_READER_PASSWORD)</div>
                   <div>postgresql+psycopg2://bi_reader:PASS@host.docker.internal:5432/aircargo</div>
                 </div>
-                <p class="text-[11px] text-slate-400">Superset solo LEE: la conexi&oacute;n usa <code class="bg-slate-100 px-1 rounded font-mono text-[10px]">bi_reader</code> (GRANT SELECT, sin INSERT/UPDATE/DELETE).</p>
+                <p class="text-[11px] text-tertiary">Superset solo LEE: la conexi&oacute;n usa <code class="bg-surface-hover px-1 rounded font-mono text-[10px]">bi_reader</code> (GRANT SELECT, sin INSERT/UPDATE/DELETE).</p>
               </div>
             </details>
 
             <!-- curl / Python -->
             <details class="group">
-              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-blue-700 select-none">
-                <svg class="w-4 h-4 text-slate-500 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+              <summary class="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-800 hover:text-accent-strong select-none">
+                <svg class="w-4 h-4 text-secondary transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 curl / Python / pandas
               </summary>
-              <div class="mt-2 ml-6 space-y-2 text-[12px] text-slate-600 leading-relaxed">
+              <div class="mt-2 ml-6 space-y-2 text-[12px] text-secondary leading-relaxed">
                 <div class="bg-slate-900 text-green-400 rounded p-2 font-mono text-[11px] overflow-x-auto">
-                  <div class="text-slate-500"># curl</div>
+                  <div class="text-secondary"># curl</div>
                   <div>curl "{{ gatewayUrl }}/api/bi/dashboard?api_key=TOKEN_AQUI"</div>
-                  <div class="text-slate-500 mt-2"># Python + pandas</div>
+                  <div class="text-secondary mt-2"># Python + pandas</div>
                   <div>import pandas as pd</div>
                   <div>df = pd.read_json("{{ gatewayUrl }}/api/bi/weight-report?api_key=TOKEN_AQUI")</div>
                 </div>
@@ -1355,6 +1355,7 @@ import { calcConfigApi } from '../api/receiptCalcConfig'
 import { uldTypeConfigApi } from '../api/uldTypeConfig'
 import { uldTypeCatalogApi } from '../api/uldTypeCatalog'
 import { commodityTypesApi } from '../api/commodityTypes'
+import { useCommodities } from '../composables/useCommodities'
 import { backupsApi } from '../api/backups'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
@@ -2133,6 +2134,18 @@ async function loadCommodities() {
   } catch (e) { toast.error(extractError(e, t('settings.commodities.toast.error'))) }
 }
 
+// El catálogo se comparte vía useCommodities (caché a nivel de módulo) con
+// todas las vistas que muestran label/description. Sin invalidar tras cada
+// mutación, el resto de vistas siguen viendo los valores anteriores hasta
+// recargar la página: por eso editar una description no se propagaba.
+const { invalidate: invalidateCommodityCache, loadCommodities: refreshCommodityCache } = useCommodities()
+
+async function refreshCommodityCatalog() {
+  await loadCommodities()
+  invalidateCommodityCache()
+  await refreshCommodityCache(true)
+}
+
 function openCommodityCreate() {
   commodityCreateForm.value = { code: '', label: '', description: '', color: '#94a3b8', sortOrder: commodityList.value.length, isActive: true }
   commodityTotpCode.value = ''
@@ -2152,7 +2165,7 @@ async function saveCommodityEdit() {
     toast.success(t('settings.commodities.toast.updated'))
     editingCommodity.value = null
     commodityTotpCode.value = ''
-    await loadCommodities()
+    await refreshCommodityCatalog()
   } catch (e) { toast.error(extractError(e, t('settings.commodities.toast.error'))) }
 }
 
@@ -2165,7 +2178,7 @@ async function saveCommodityCreate() {
     toast.success(t('settings.commodities.toast.created'))
     showCommodityCreate.value = false
     commodityTotpCode.value = ''
-    await loadCommodities()
+    await refreshCommodityCatalog()
   } catch (e) { toast.error(extractError(e, t('settings.commodities.toast.error'))) }
 }
 
@@ -2176,7 +2189,7 @@ async function removeCommodity(c) {
     await commodityTypesApi.delete(c.id, commodityTotpCode.value)
     toast.success(t('settings.commodities.toast.deleted'))
     commodityTotpCode.value = ''
-    await loadCommodities()
+    await refreshCommodityCatalog()
   } catch (e) { toast.error(extractError(e, t('settings.commodities.toast.error'))) }
 }
 
@@ -2188,7 +2201,7 @@ async function restoreCommodityDefaults() {
     const restored = res.data?.restored || 0
     toast.success(t('settings.commodities.toast.restored', { n: restored }))
     commodityTotpCode.value = ''
-    await loadCommodities()
+    await refreshCommodityCatalog()
   } catch (e) { toast.error(extractError(e, t('settings.commodities.toast.error'))) }
 }
 
@@ -2210,7 +2223,7 @@ onMounted(async () => {
   }
   if (canManageSettings.value) {
     await loadAirlines()
-    await loadCommodities()
+    await refreshCommodityCatalog()
     await loadUldCatalog()
     if (airlines.value.length) {
       configAirlineId.value = airlines.value[0].id

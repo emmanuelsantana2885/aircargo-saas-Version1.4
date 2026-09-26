@@ -15,6 +15,7 @@ export default {
     search: 'Buscar',
     clear: 'Limpiar',
     clearFilters: 'Limpiar filtros',
+    lang: 'Idioma',
     loading: 'Cargando...',
     refresh: 'Actualizar',
     actions: 'Acciones',
@@ -63,6 +64,9 @@ export default {
     weekdaysShort: ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'],
   },
 
+  changePassword: {
+    title: 'Cambiar contraseña',
+  },
   privacy: { title: 'Política de Privacidad', version: 'Versión', link: 'Política de Privacidad' },
   idle: {
     title: 'Sesión por cerrar',
@@ -102,20 +106,23 @@ export default {
   },
 
   sidebar: {
-    dashboard: 'Dashboard',
+    dashboard: 'Panel',
     bookings: 'Reservas',
     receipts: 'Recibos',
     flights: 'Vuelos',
     mawbs: 'MAWBs',
-    loadPlanning: 'Load Planning',
+    loadPlanning: 'Plan de Carga',
     ulds: 'ULDs',
+    exports: 'Exportes',
     users: 'Usuarios',
     settings: 'Configuración',
+    apiCatalog: 'Catálogo API',
     logout: 'Cerrar sesión',
     siteLabel: 'Sitio',
     operations: 'Operaciones',
+    sectionAdmin: 'Administración',
     security: 'Seguridad',
-    changePassword: 'Cambiar Contraseña',
+    changePassword: 'Cambiar contraseña',
   },
 
   bottomnav: {
@@ -356,6 +363,7 @@ import: {
       deleted: 'Reserva eliminada correctamente',
       awbUpdated: 'AWB asignado a la reserva',
       error: 'No se pudo guardar la reserva',
+      fileReadError: 'No se pudo leer el archivo: {error}',
     },
   },
 
@@ -430,6 +438,11 @@ import: {
   },
 
   mawbs: {
+    columnsButton: 'Columnas',
+    columnsMenu: 'Mostrar columnas',
+    columnsShowAll: 'Mostrar todas',
+    columnsTooltip: 'Ocultar columnas de la matriz para ganar ancho',
+    columnRequired: 'La columna MAWB es obligatoria',
     tabs: {
       matrix: 'Matriz',
       states: 'Estados',
@@ -1399,6 +1412,7 @@ import: {
   },
 
   login: {
+    title: 'Iniciar sesión',
     brand: 'AirCargo',
     tagline: 'SDQ Operations',
     email: 'Correo electrónico',
@@ -1589,5 +1603,11 @@ import: {
       '3': 'Buena',
       '4': 'Fuerte',
     },
+  },
+  notFound: {
+    title: 'Página no encontrada',
+    hint: 'La dirección no corresponde a ninguna vista de AirCargo. Puede que el enlace sea viejo o que la ruta haya cambiado.',
+    back: 'Volver',
+    home: 'Ir al dashboard',
   },
 }
