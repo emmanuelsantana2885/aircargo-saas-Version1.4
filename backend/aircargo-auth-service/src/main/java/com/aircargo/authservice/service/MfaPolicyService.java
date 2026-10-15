@@ -66,11 +66,26 @@ public class MfaPolicyService {
     @Transactional
     public MfaPolicy policy() {
         return policyRepository.findById(1).map(existing -> {
-            // Sync DB value from config property (allows env var to override existing DB value)
-            if (existing.getResetOnStartup() != defaultResetOnStartup) {
+            // Re-sync DB values from config properties so env vars override a row
+            // created by an earlier deployment (p. ej. el seed de V24). Antes sólo se
+            // sincronizaba reset_on_startup: una vez existía el singleton, cambiar
+            // MFA_MAX_AGE_DAYS no tenía efecto alguno (la config se ignoraba en
+            // silencio). Ambas columnas son NOT NULL, pero se guarda contra null por
+            // si una fila fue insertada a mano sin valor.
+            boolean changed = false;
+            if (existing.getResetOnStartup() == null
+                    || !existing.getResetOnStartup().equals(defaultResetOnStartup)) {
                 existing.setResetOnStartup(defaultResetOnStartup);
-                policyRepository.save(existing);
+                changed = true;
                 log.info("MfaPolicy reset_on_startup sincronizado desde config: {}", defaultResetOnStartup);
+            }
+            if (existing.getMaxAgeDays() == null || existing.getMaxAgeDays() != defaultMaxAgeDays) {
+                existing.setMaxAgeDays(defaultMaxAgeDays);
+                changed = true;
+                log.info("MfaPolicy max_age_days sincronizado desde config: {}", defaultMaxAgeDays);
+            }
+            if (changed) {
+                policyRepository.save(existing);
             }
             return existing;
         }).orElseGet(() -> {
@@ -108,7 +123,9 @@ public class MfaPolicyService {
         if (p.getLastResetAt() != null && enrolledAt.isBefore(p.getLastResetAt())) {
             return MfaEligibility.RESET_REQUIRED;
         }
-        int maxAgeDays = p.getMaxAgeDays() != null ? p.getMaxAgeDays() : 1;
+        // Fallback al default configurado (7) — antes caía a 1 día, en desacuerdo con
+        // app.mfa.max-age-days y capaz de expirar el MFA de todos casi al día siguiente.
+        int maxAgeDays = p.getMaxAgeDays() != null ? p.getMaxAgeDays() : defaultMaxAgeDays;
         if (enrolledAt.isBefore(OffsetDateTime.now(ZoneOffset.UTC).minusDays(maxAgeDays))) {
             return MfaEligibility.EXPIRED;
         }
