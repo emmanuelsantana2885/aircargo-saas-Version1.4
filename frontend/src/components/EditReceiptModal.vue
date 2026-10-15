@@ -8,7 +8,7 @@
             <span class="text-[14px] font-mono font-bold uppercase tracking-widest text-slate-950">
               Editar Recibo
             </span>
-            <span v-if="loading" class="text-[12px] font-mono text-slate-400 uppercase">Cargando...</span>
+            <span v-if="loading" class="text-[12px] font-mono text-slate-400 uppercase">{{ t('common.loading') }}</span>
           </div>
           <button @click="close" class="text-slate-400 hover:text-slate-700 transition text-sm" :aria-label="t('common.close')">✕</button>
         </div>

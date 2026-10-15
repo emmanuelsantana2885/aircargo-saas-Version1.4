@@ -69,6 +69,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- Email: recuperación de MFA (código OTP por correo). Gated por app.mail.enabled;
+             con mail deshabilitado el MailService solo registra en log (no hay envío real). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
@@ -76,6 +82,22 @@
         <dependency>
             <groupId>dev.samstevens.totp</groupId>
             <artifactId>totp</artifactId>
+        </dependency>
+        <!--
+          ZXing solo se usa aqui, de forma transitiva, para el QR de enrolamiento
+          MFA que genera la libreria totp. Se declara explicitamente (3.5.3) para
+          fijarla: la transitiva de totp es 3.4.0 y Maven aplica "nearest wins".
+          Sin esta declaracion el reactor compila contra 3.4.0.
+        -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

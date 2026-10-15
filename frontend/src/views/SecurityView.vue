@@ -213,7 +213,7 @@ function sessionSig(s) {
   return JSON.stringify([s.userId, s.email, s.fullName, s.role, s.lastLogin])
 }
 
-const POLL_INTERVAL_MS = 10000
+const POLL_INTERVAL_MS = 30000
 let pollTimer = null
 let clockTimer = null
 

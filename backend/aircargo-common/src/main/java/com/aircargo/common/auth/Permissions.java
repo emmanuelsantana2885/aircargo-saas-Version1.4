@@ -45,9 +45,6 @@ public final class Permissions {
     public static final String CAN_DELETE_MAWB = "CAN_DELETE_MAWB";
     public static final String CAN_MANAGE_MAWB_DOCS = "CAN_MANAGE_MAWB_DOCS";
     public static final String CAN_MANAGE_COMPLIANCE = "CAN_MANAGE_COMPLIANCE";
-    public static final String CAN_MANAGE_LABEL_TEMPLATE = "CAN_MANAGE_LABEL_TEMPLATE";
-    public static final String CAN_PRINT_LABEL = "CAN_PRINT_LABEL";
-    public static final String CAN_PRINT_PALLET_LABEL = "CAN_PRINT_PALLET_LABEL";
 
     public static final String CAN_READ_RECEIPT = "CAN_READ_RECEIPT";
     public static final String CAN_CREATE_RECEIPT = "CAN_CREATE_RECEIPT";
@@ -98,8 +95,7 @@ public final class Permissions {
                 CAN_READ_BOOKING, CAN_CREATE_BOOKING, CAN_UPDATE_BOOKING, CAN_DELETE_BOOKING,
                 CAN_IMPORT_BOOKING,
                 CAN_READ_MAWB, CAN_CREATE_MAWB, CAN_UPDATE_MAWB, CAN_DELETE_MAWB,
-                CAN_MANAGE_MAWB_DOCS, CAN_MANAGE_COMPLIANCE, CAN_MANAGE_LABEL_TEMPLATE,
-                CAN_PRINT_LABEL, CAN_PRINT_PALLET_LABEL,
+                CAN_MANAGE_MAWB_DOCS, CAN_MANAGE_COMPLIANCE,
                 CAN_READ_RECEIPT, CAN_CREATE_RECEIPT, CAN_UPDATE_RECEIPT, CAN_DELETE_RECEIPT,
                 CAN_MANAGE_RECEIPT_CALC,
                 CAN_READ_ULD, CAN_CREATE_ULD, CAN_UPDATE_ULD, CAN_DELETE_ULD, CAN_SCAN_ULD,

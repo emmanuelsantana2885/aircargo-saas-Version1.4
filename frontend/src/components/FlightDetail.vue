@@ -122,8 +122,13 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useAppStore } from '../stores/app'
+import { useAppStore, inferUldType } from '../stores/app'
 import { useCommodities } from '../composables/useCommodities'
+import { normalizeAwb } from '../utils/awb'
+import {
+  mawbDispatchedWeightLbs as mawbDispatchWeightLbs,
+  dispatchedPiecesForMawb,
+} from '../utils/mawbDispatch'
 
 const props = defineProps({
   flight: { type: Object, required: true },
@@ -146,17 +151,21 @@ const tabs = [
 const flightUlds = computed(() => appStore.ulds.filter(u => u.flightId === props.flightId))
 const flightMawbs = computed(() => appStore.mawbs.filter(m => m.flightId === props.flightId))
 
+// Las MAWBs de un ULD salen de `uld_awb.mawbLabel`, que es el número AWB. El
+// histórico mezcla formatos (`40605857585` vs `406-05857585`), así que la
+// comparación va SIEMPRE por `normalizeAwb`. Antes sólo se comparaba por
+// `awbNumber` exacto, y los links con otro separador desaparecían en silencio.
 function uldMawbs(uldId) {
   const links = appStore.uldAwbs?.filter?.(l => l.uldId === uldId) || []
-  return links.map(l => appStore.mawbs.find(m => m.id === l.mawbLabel || m.awbNumber === l.mawbLabel)).filter(Boolean)
+  return links
+    .map(l => appStore.mawbs.find(m => normalizeAwb(m.awbNumber) === normalizeAwb(l.mawbLabel)))
+    .filter(Boolean)
 }
 
 // ── Helpers ──────────────────────────────────────────────────
-function inferUldType(uldNumber) {
-  const code = (uldNumber || '').toUpperCase().substring(0, 3)
-  const map = { PMC: 'PMC', PAH: 'PAH', PAG: 'PAG', PAJ: 'PAJ', AAY: 'AAY', AAZ: 'AAZ', AAD: 'AAD', PIP: 'PIP', AMP: 'AMP', AMJ: 'AMJ' }
-  return map[code] || 'UNK'
-}
+// `inferUldType` es el helper canónico de `stores/app.js` (incluye PMH y hace
+// fallback a PMC). La copia local de este archivo omitía PMH y devolvía 'UNK',
+// así que los ULDs PMH salían como tipo desconocido sólo en este panel.
 
 function isBellyPosition(position) {
   if (!position) return false
@@ -175,22 +184,18 @@ const COMMODITY_MAP = computed(() => {
 })
 const fallbackCommodity = { label: 'DRY CARGO', short: 'DRY', color: '#64748b' }
 
-// Dispatched weight per MAWB within this flight
+// Dispatched weight per MAWB within this flight.
+// Lógica compartida con el Dashboard (utils/mawbDispatch.js) para que ambos
+// paneles muestren SIEMPRE el mismo número: antes divergían (este panel no
+// consultaba los recibos y prefería el peso declarado al real del recibo).
 function mawbDispatchedWeightLbs(mawb) {
-  const receivedKg = Number(mawb.chargeableWeightKg || mawb.reportedWeightKg || 0)
-  const receivedPcs = Number(mawb.pieces || 0)
-  if (!receivedKg || !receivedPcs) return 0
   const uldIds = new Set(flightUlds.value.map(u => u.id))
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
-  const dispatchedPcs = links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
-  if (!dispatchedPcs) return 0
-  return (receivedKg * 2.20462 / receivedPcs) * dispatchedPcs
+  return mawbDispatchWeightLbs(mawb, appStore.uldAwbs, uldIds, appStore.receipts)
 }
 
 function mawbDispatchedPieces(mawb) {
   const uldIds = new Set(flightUlds.value.map(u => u.id))
-  const links = appStore.uldAwbs?.filter?.(l => l.mawbLabel === mawb.awbNumber && uldIds.has(l.uldId)) || []
-  return links.reduce((s, l) => s + (Number(l.pieces) || 0), 0)
+  return dispatchedPiecesForMawb(mawb, appStore.uldAwbs, uldIds, mawb.pieces)
 }
 
 const commodityBreakdown = computed(() => {

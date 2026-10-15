@@ -33,9 +33,4 @@ class FeignContractSyncTest {
     void hawbDto_contractIsSubsetOfServiceDto() {
         assertContract(com.aircargo.feign.dto.HawbDTO.class, HawbDTO.class, "HawbDTO");
     }
-
-    @Test
-    void labelTemplateDto_contractIsSubsetOfServiceDto() {
-        assertContract(com.aircargo.feign.dto.LabelTemplateDTO.class, LabelTemplateDTO.class, "LabelTemplateDTO");
-    }
 }

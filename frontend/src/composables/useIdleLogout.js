@@ -19,7 +19,7 @@ import { captureForms, saveDraft, setReturnTo } from '@/utils/formDraft'
  */
 const IDLE_MS = 60 * 60 * 1000
 const WARN_MS = 55 * 60 * 1000
-const TICK_MS = 1000
+const TICK_MS = 5000
 
 const warningSeconds = ref(null) // null = sin aviso activo
 let lastActivity = Date.now()
@@ -27,6 +27,7 @@ let lastTick = Date.now() // marca del tick anterior para detectar suspensiones 
 let timer = null
 let bound = false
 let running = false
+let expiring = false
 let pointerMoveThrottle = null
 
 function touch() {
@@ -118,23 +119,26 @@ export function useIdleLogout(onExpire) {
   }
 
   async function expire() {
+    if (expiring) return   // un clic doble en "Cerrar sesión" no duplica el trabajo
+    expiring = true
     stop()
     try {
       // 1. preservar trabajo no guardado + vista de retorno
       saveDraft({ route: router.currentRoute.value.fullPath, forms: captureForms() })
       setReturnTo(router.currentRoute.value.fullPath)
     } catch {}
-    try {
-      // 2. logout limpio: revoca cookies y sesión en el servidor
-      await onExpire?.()
-    } catch {}
-    // 3. al volver a entrar se ofrece restaurar el borrador
-    router.push('/login?idle=1')
+    // 2. logout + navegación: los hace el HOST (App.vue) vía `onExpire`, que
+    // es quien conoce el store de auth y decide la redirección. Aquí NO se
+    // navega: antes `expire()` hacía `router.push` después de que `onExpire`
+    // (`expireIdleSession`) ya había navegado, provocando doble logout y doble
+    // redirect en cada expiración por inactividad.
+    await onExpire?.()
   }
 
   function start() {
     if (running) stop() // arranque idempotente: reinicia el ciclo en vez de ignorarlo
     running = true
+    expiring = false   // nueva sesión: el candado de expiración se rearma
     lastTick = Date.now() // re-ancla el guard de suspensión por sesión
     touch() // inicializa lastActivity al inicio
     bindListeners()
@@ -156,5 +160,10 @@ export function useIdleLogout(onExpire) {
 
   onBeforeUnmount(stop)
 
-  return { start, stop, continueWorking, warningSeconds: secondsLeft }
+  // `expire` se expone para el botón "Cerrar sesión ahora" del modal. Antes
+  // `App.vue` enlazaba ese botón directo a su handler, que hacía logout sin
+  // pasar por `expire()`: el timer seguía corriendo (y expiraría otra vez más
+  // tarde) y los formularios no se capturaban antes del logout, así que el
+  // trabajo en curso se perdía.
+  return { start, stop, continueWorking, expire, warningSeconds: secondsLeft }
 }

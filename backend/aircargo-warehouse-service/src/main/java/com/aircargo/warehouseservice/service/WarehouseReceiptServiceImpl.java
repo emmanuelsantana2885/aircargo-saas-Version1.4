@@ -7,6 +7,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +25,14 @@ public class WarehouseReceiptServiceImpl implements WarehouseReceiptService {
     @Cacheable("warehouse-receipts")
     public List<WarehouseReceiptDTO> getAll() {
         return receiptRepository.findBySupersededFalse().stream()
+                .map(WarehouseReceiptDTO::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Cacheable(value = "warehouse-receipts", key = "#since.toInstant().toEpochMilli()")
+    public List<WarehouseReceiptDTO> getReceiptsSince(OffsetDateTime since) {
+        return receiptRepository.findByCreatedAtAfter(since).stream()
                 .map(WarehouseReceiptDTO::fromEntity)
                 .toList();
     }

@@ -12,12 +12,14 @@ public class LoadPlanningDTO {
     private String origin;
     private String destination;
     private String aircraftReg;
+    private String aircraftType;
     private LocalDate flightDate;
     private Integer totalPositions;
     private BigDecimal maxPayloadKg;
     private List<LoadPlanningUldDTO> ulds;
     private String airlineName;
     private String airlineCode;
+    private WeightBalanceDTO weightBalance;
 
     public LoadPlanningDTO() {}
 
@@ -31,6 +33,8 @@ public class LoadPlanningDTO {
     public void setDestination(String destination) { this.destination = destination; }
     public String getAircraftReg() { return aircraftReg; }
     public void setAircraftReg(String aircraftReg) { this.aircraftReg = aircraftReg; }
+    public String getAircraftType() { return aircraftType; }
+    public void setAircraftType(String aircraftType) { this.aircraftType = aircraftType; }
     public LocalDate getFlightDate() { return flightDate; }
     public void setFlightDate(LocalDate flightDate) { this.flightDate = flightDate; }
     public Integer getTotalPositions() { return totalPositions; }
@@ -43,4 +47,6 @@ public class LoadPlanningDTO {
     public void setAirlineName(String airlineName) { this.airlineName = airlineName; }
     public String getAirlineCode() { return airlineCode; }
     public void setAirlineCode(String airlineCode) { this.airlineCode = airlineCode; }
+    public WeightBalanceDTO getWeightBalance() { return weightBalance; }
+    public void setWeightBalance(WeightBalanceDTO weightBalance) { this.weightBalance = weightBalance; }
 }

@@ -24,6 +24,7 @@ import com.aircargo.authservice.service.AuditService;
 import com.aircargo.authservice.service.AuthSessionService;
 import com.aircargo.authservice.service.MfaPolicyService;
 import com.aircargo.authservice.service.MfaPolicyService.MfaEligibility;
+import com.aircargo.authservice.service.MfaRecoveryService;
 import com.aircargo.authservice.service.MfaService;
 import com.aircargo.authservice.service.PasswordResetService;
 import com.aircargo.authservice.service.TokenRevocationService;
@@ -72,6 +73,7 @@ public class AuthController {
     private final TokenRevocationService tokenRevocationService;
     private final AuthSessionService authSessionService;
     private final UserStateRedisService userStateRedisService;
+    private final MfaRecoveryService mfaRecoveryService;
 
     @org.springframework.beans.factory.annotation.Value("${app.jwt.cookie-secure:false}")
     private boolean cookieSecure;
@@ -92,6 +94,7 @@ public class AuthController {
                           TokenRevocationService tokenRevocationService,
                           AuthSessionService authSessionService,
                           UserStateRedisService userStateRedisService,
+                          MfaRecoveryService mfaRecoveryService,
                           org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
         this.loginHandler = loginHandler;
         this.setPasswordHandler = setPasswordHandler;
@@ -108,6 +111,7 @@ public class AuthController {
         this.tokenRevocationService = tokenRevocationService;
         this.authSessionService = authSessionService;
         this.userStateRedisService = userStateRedisService;
+        this.mfaRecoveryService = mfaRecoveryService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -562,16 +566,14 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Usuario no encontrado"));
         }
         String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
-        mfaService.disableMfa(user.getId());
-        user.setTokensValidFrom(java.time.OffsetDateTime.now()); // revoca sesiones activas
-        userRepository.save(user);
-        tokenRevocationService.evict(user.getId());
+        mfaService.resetUserMfa(user.getId()); // deshabilita MFA + revoca sesiones (bump)
         // Limpia cookies del usuario actual
         CookieAuthSupport.clear(servletResponse, cookieSecure);
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "MFA_RESET_SELF", "USER", user.getId().toString(),
                 "Usuario reinició su propio MFA",
-                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(
+                        userRepository.findById(user.getId()).orElse(user)),
                 servletRequest.getRemoteAddr());
         return ResponseEntity.ok(Map.of(
                 "message", "MFA reiniciado correctamente. En el próximo inicio de sesión deberá configurarlo nuevamente.",
@@ -599,17 +601,90 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "Use /mfa/reset para reiniciar su propio MFA"));
         }
         String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
-        mfaService.disableMfa(user.getId());
-        user.setTokensValidFrom(java.time.OffsetDateTime.now()); // revoca sesiones del usuario afectado
-        userRepository.save(user);
-        tokenRevocationService.evict(userId);
+        mfaService.resetUserMfa(userId); // deshabilita MFA + revoca sesiones (bump)
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "MFA_RESET_ADMIN", "USER", userId.toString(),
                 "Admin reinició MFA de " + user.getEmail(),
-                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(user),
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(
+                        userRepository.findById(userId).orElse(user)),
                 servletRequest.getRemoteAddr());
         return ResponseEntity.ok(Map.of(
                 "message", "MFA de " + user.getEmail() + " reiniciado. Deberá configurarlo en su próximo login.",
+                "email", user.getEmail()
+        ));
+    }
+
+    /**
+     * PASO 1 de la recuperación de MFA (público): el usuario que perdió su
+     * autenticador solicita un código OTP por correo. Responde SIEMPRE 200 con
+     * un mensaje genérico para no revelar si el correo existe.
+     */
+    @PostMapping("/mfa/recovery/request")
+    public ResponseEntity<?> requestMfaRecovery(@RequestBody(required = false) Map<String, String> body,
+                                                HttpServletRequest servletRequest) {
+        Map<String, Object> ok = Map.of(
+                "message", "Si el correo está registrado, enviaremos un código de recuperación.",
+                "sent", true);
+        String email = body != null ? body.get("email") : null;
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.ok(ok);
+        }
+        AppUser user = userRepository.findByEmail(email.trim()).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            return ResponseEntity.ok(ok);
+        }
+        var exposed = mfaRecoveryService.createCode(user.getId(), user.getEmail());
+        auditService.log(user.getId(), user.getEmail(), user.getFullName(),
+                "MFA_RECOVERY_REQUESTED", "USER", user.getId().toString(),
+                "Solicitud de recuperación de MFA por correo",
+                servletRequest.getRemoteAddr());
+        if (exposed.isPresent()) {
+            // Solo en desarrollo (app.mfa.recovery.expose-code=true)
+            return ResponseEntity.ok(Map.of(
+                    "message", ok.get("message"), "sent", true, "devCode", exposed.get()));
+        }
+        return ResponseEntity.ok(ok);
+    }
+
+    /**
+     * PASO 2 de la recuperación de MFA (público): valida el código OTP y, si es
+     * correcto, deshabilita el MFA previo, revoca las sesiones del usuario y
+     * emite un enrollToken de un solo uso para reconfigurar el autenticador en
+     * los pasos /mfa/enroll/setup + /mfa/enroll/enable.
+     */
+    @PostMapping("/mfa/recovery/confirm")
+    public ResponseEntity<?> confirmMfaRecovery(@RequestBody(required = false) Map<String, String> body,
+                                                HttpServletRequest servletRequest) {
+        String email = body != null ? body.get("email") : null;
+        String code = body != null ? body.get("code") : null;
+        Map<String, Object> invalid = Map.of("error", "Código inválido o expirado");
+        if (email == null || email.isBlank() || code == null || code.isBlank()) {
+            return ResponseEntity.badRequest().body(invalid);
+        }
+        AppUser user = userRepository.findByEmail(email.trim()).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getIsActive())) {
+            return ResponseEntity.badRequest().body(invalid);
+        }
+        if (!mfaRecoveryService.confirmCode(user.getId(), code)) {
+            auditService.log(user.getId(), user.getEmail(), user.getFullName(),
+                    "MFA_RECOVERY_FAILED", "USER", user.getId().toString(),
+                    "Código de recuperación de MFA inválido o expirado",
+                    servletRequest.getRemoteAddr());
+            return ResponseEntity.badRequest().body(invalid);
+        }
+        String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(user);
+        mfaService.resetUserMfa(user.getId()); // deshabilita MFA + revoca sesiones (bump)
+        String enrollToken = jwtUtil.generateEnrollToken(user.getId().toString(),
+                user.getRole().name(), user.getEmail(), user.getFullName());
+        auditService.log(user.getId(), user.getEmail(), user.getFullName(),
+                "MFA_RECOVERY_CONFIRMED", "USER", user.getId().toString(),
+                "MFA recuperado por código OTP; se emite enrolamiento",
+                beforeSnapshot, com.aircargo.authservice.service.AuditService.snapshot(
+                        userRepository.findById(user.getId()).orElse(user)),
+                servletRequest.getRemoteAddr());
+        return ResponseEntity.ok(Map.of(
+                "message", "Código verificado. Configure nuevamente su autenticador.",
+                "enrollToken", enrollToken,
                 "email", user.getEmail()
         ));
     }

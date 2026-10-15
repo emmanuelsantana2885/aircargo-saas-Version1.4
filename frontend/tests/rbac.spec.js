@@ -30,7 +30,9 @@ function parseJavaCatalog() {
   }
 
   // ADMIN = build(ALL_SET, Set.of(...))  -> ALL menos las exclusiones.
-  const minusMatch = cat.match(/ALL_MINUS_SITE_LABEL\s*=\s*build\(ALL_SET,\s*Set\.of\(([\s\S]*?)\)\)/)
+  // El nombre de la constante se ignora a proposito (ALL_MINUS_*): asi un
+  // renombre en Java no invalida este parser.
+  const minusMatch = cat.match(/ALL_MINUS_[A-Z_]+\s*=\s*build\(ALL_SET,\s*Set\.of\(([\s\S]*?)\)\)/)
   const removed = minusMatch ? [...minusMatch[1].matchAll(/Permissions\.(CAN_[A-Z_]+)/g)].map((m) => m[1]) : []
 
   return {
@@ -41,6 +43,28 @@ function parseJavaCatalog() {
 }
 
 const JAVA = parseJavaCatalog()
+
+/**
+ * Set.of() de Java lanza IllegalArgumentException si recibe un elemento
+ * repetido, y eso ocurre en <clinit>: rompe TODOS los logins con 500 sin
+ * que el compilador ni un test de Java lo detecten (el fallo aparece en
+ * runtime). Este guard lee el catalogo y falla si un rol repite un codigo.
+ */
+function duplicatedCodesPerRole() {
+  const cat = readFileSync(CATALOG, 'utf8')
+  const out = {}
+  for (const m of cat.matchAll(/([A-Z_][A-Z_0-9]*)\s*=\s*build\(([\s\S]*?)\);/g)) {
+    const [, name, body] = m
+    const seen = new Set()
+    const dupes = new Set()
+    for (const c of body.matchAll(/Permissions\.(CAN_[A-Z_]+)/g)) {
+      if (seen.has(c[1])) dupes.add(c[1])
+      seen.add(c[1])
+    }
+    if (dupes.size) out[name] = [...dupes].sort()
+  }
+  return out
+}
 
 /** ¿El backend permite a ese rol abrir la vista? Misma semántica ANY que rbac.js. */
 const backendAllows = (role, view) => {
@@ -61,10 +85,17 @@ describe('rbac — sincronía con el catálogo del backend', () => {
     for (const role of Object.keys(JAVA)) expect(JAVA[role].size, role).toBeGreaterThan(0)
   })
 
-  it('ADMIN recibe todo salvo CAN_MANAGE_SITE y CAN_MANAGE_LABEL_TEMPLATE', () => {
+  it('ningun rol repite un codigo de permiso (Set.of revienta en runtime)', () => {
+    const dupes = duplicatedCodesPerRole()
+    expect(
+      dupes,
+      `Set.of() con duplicados lanza IllegalArgumentException en <clinit> y tumba el login: ${JSON.stringify(dupes)}`,
+    ).toEqual({})
+  })
+
+  it('ADMIN recibe todo salvo CAN_MANAGE_SITE', () => {
     expect(JAVA.SUPER_USER.has('CAN_MANAGE_SITE')).toBe(true)
     expect(JAVA.ADMIN.has('CAN_MANAGE_SITE')).toBe(false)
-    expect(JAVA.ADMIN.has('CAN_MANAGE_LABEL_TEMPLATE')).toBe(false)
     expect(JAVA.ADMIN.has('CAN_READ_AUDIT')).toBe(true)
   })
 

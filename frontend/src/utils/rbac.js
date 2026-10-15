@@ -45,7 +45,7 @@ export const VIEW_CODES = {
 export const CLIENT_ONLY_VIEWS = ['API_CATALOG']
 
 /* Rol -> vistas visibles. SUPER_USER y ADMIN no se listan: ADMIN recibe
- * Permissions.allCodesAsList() menos CAN_MANAGE_SITE/CAN_MANAGE_LABEL_TEMPLATE,
+ * Permissions.allCodesAsList() menos CAN_MANAGE_SITE,
  * lo que cubre las doce vistas. */
 export const ROLE_VIEWS = {
   // El backend da lectura de dashboard/airline/flight/aircraft/booking/mawb/

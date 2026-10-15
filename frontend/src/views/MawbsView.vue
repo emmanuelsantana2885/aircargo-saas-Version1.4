@@ -29,9 +29,6 @@
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <span class="badge gy">{{ filteredRows.length }} / {{ matrixRows.length }} MAWBs · {{ flightColumns.length }} vuelos</span>
-        <button @click="showLabels = true" class="button ghost" :title="t('mawbs.labelsTooltip')">
-          <i class="pi pi-print"></i> {{ t('mawbs.labelsButton') }}
-        </button>
         <button @click="exportCSV" class="button ghost">
           <i class="pi pi-download"></i> {{ t('mawbs.exportCsv') }}
         </button>
@@ -452,7 +449,6 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
     </button>
 
-    <LabelPrintModal v-if="showLabels" type="CARGO" :items="labelItems" @close="showLabels = false" />
 
     <!-- Estados View -->
     <template v-if="activeTab === 'estados'">
@@ -768,7 +764,6 @@ import { biApi } from '../api/bi'
 import { downloadCSV } from '../utils/csv'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
-import LabelPrintModal from '../components/labels/LabelPrintModal.vue'
 import FilterBar from '../components/FilterBar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useCommodities } from '../composables/useCommodities'
@@ -793,13 +788,6 @@ const { t } = useI18n()
 const icons = useIcons()
 const { commodities: dbCommodities, loadCommodities, labelOf, tooltipOf } = useCommodities()
 const hf = useHeaderFilters({ containerSelector: '.ds-table-section' })
-
-const showLabels = ref(false)
-const labelItems = computed(() =>
-  filteredRows.value
-    .filter(r => r.mawbId)
-    .map(r => ({ id: r.mawbId, label: r.awbNumber || r.mawbId }))
-)
 
 function airlineCodeById(airlineId) {
   const a = store.airlines.find(x => x.id === airlineId)
@@ -1828,7 +1816,7 @@ useLiveRefresh(() => {
     if (activeTab.value === 'matriz') return buildMatrix(true)
     if (activeTab.value === 'lbs-vuelo') loadWeightReport(true)
   })
-}, { interval: 30000 })
+}, { interval: 60000 })
 
 onUnmounted(() => {
   document.removeEventListener('pointermove', onColResize)

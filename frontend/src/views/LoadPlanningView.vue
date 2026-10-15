@@ -97,6 +97,54 @@
       </span>
     </section>
 
+    <!-- Weight & Balance / CG envelope -->
+    <section v-if="wb && wb.configured" class="wb-panel card">
+      <div class="wb-head">
+        <span class="wb-title">{{ t('loadPlanning.wb.title') }}</span>
+        <span class="wb-ac">{{ wb.aircraftLabel || aircraftType }}</span>
+        <span v-if="wb.placeholder" class="wb-chip warn">{{ t('loadPlanning.wb.placeholder') }}</span>
+        <span class="wb-spacer"></span>
+        <span class="wb-chip" :class="wb.withinEnvelope ? 'ok' : 'bad'">
+          <component :is="icons.Gauge" :size="13" :stroke-width="2.5" />
+          {{ t('loadPlanning.wb.cg') }} {{ cgGauge ? cgGauge.pct.toFixed(1) : '—' }}% {{ t('loadPlanning.wb.mac') }}
+        </span>
+      </div>
+
+      <div class="cg" v-if="cgGauge">
+        <div class="cg-head">
+          <span>{{ t('loadPlanning.wb.envelope') }}</span>
+          <span :class="wb.withinEnvelope ? 'text-ok' : 'text-bad'">
+            {{ wb.withinEnvelope ? t('loadPlanning.wb.within') : t('loadPlanning.wb.outside') }}
+            <template v-if="cgGauge.low !== null">({{ cgGauge.low }}–{{ cgGauge.high }}% {{ t('loadPlanning.wb.mac') }})</template>
+          </span>
+        </div>
+        <div class="cg-track">
+          <div class="cg-zone" :style="cgGauge.zoneStyle"></div>
+          <div class="cg-mark" :class="wb.withinEnvelope ? '' : 'bad'" :style="cgGauge.markStyle"></div>
+        </div>
+        <div class="cg-scale">
+          <span v-if="cgGauge.low !== null" :style="{ left: cgGauge.low + '%' }">{{ cgGauge.low }}%</span>
+          <span v-if="cgGauge.high !== null" :style="{ left: cgGauge.high + '%' }">{{ cgGauge.high }}%</span>
+        </div>
+      </div>
+
+      <div class="wb-stats">
+        <div class="wb-stat"><span class="k">{{ t('loadPlanning.wb.dow') }}</span><span class="v">{{ (wb.downWeightLbs || 0).toLocaleString() }} lb</span></div>
+        <div class="wb-stat"><span class="k">{{ t('loadPlanning.wb.payload') }}</span><span class="v">{{ (wb.payloadLbs || 0).toLocaleString() }} lb</span></div>
+        <div class="wb-stat"><span class="k">{{ t('loadPlanning.wb.zfw') }}</span><span class="v">{{ (wb.zeroFuelWeightLbs || 0).toLocaleString() }} lb</span></div>
+        <div class="wb-stat"><span class="k">{{ t('loadPlanning.wb.tow') }}</span><span class="v">{{ (wb.takeoffWeightLbs || 0).toLocaleString() }} lb</span></div>
+        <div class="wb-stat"><span class="k">CG arm</span><span class="v">{{ wb.cgArmIn != null ? wb.cgArmIn.toFixed(1) : '—' }} in</span></div>
+      </div>
+
+      <div v-if="wb.unmappedPositions?.length" class="wb-note warn">
+        <component :is="icons.AlertTriangle" :size="13" :stroke-width="2" />
+        {{ t('loadPlanning.wb.unmapped') }}: <strong>{{ wb.unmappedPositions.join(', ') }}</strong>
+      </div>
+      <div v-for="(wn, wi) in (wb.warnings || [])" :key="wi" class="wb-note warn">
+        <component :is="icons.AlertTriangle" :size="13" :stroke-width="2" /> {{ wn }}
+      </div>
+    </section>
+
     <!-- Flight ULD Cards -->
     <section v-if="activeFlightMeta.id && (activeManifest.length > 0 || floatingUlds.length > 0)"
       class="floating-drop-zone flex gap-2 py-2 overflow-x-auto shrink-0 lp-scroll-x"
@@ -372,6 +420,7 @@ import { extractError } from '../utils/error'
 import { useIcons } from '../composables/useIcons'
 import { useConfirm } from '../composables/useConfirm'
 import { useCommodities } from '../composables/useCommodities'
+import { normalizeAwb } from '../utils/awb'
 
 const icons = useIcons()
 const uldsStore = useUldsStore()
@@ -561,6 +610,8 @@ const activeAirlineLabel = computed(() => {
 })
 
 const aircraftType = computed(() => {
+  const real = activeFlightMeta.value.aircraftType
+  if (real) return String(real).toUpperCase()
   const reg = activeFlightMeta.value.aircraftReg || ''
   const upper = reg.toUpperCase()
   if (upper.includes('B767') || upper.includes('767')) return 'B767'
@@ -587,6 +638,26 @@ function isBellyPosition(pos) {
   if (upper === 'LOOSE' || upper === 'BULK') return true
   return bellyPositions.value.map(p => p.toUpperCase()).includes(upper)
 }
+
+const wb = computed(() => loadPlan.value?.weightBalance || null)
+
+const cgGauge = computed(() => {
+  const w = wb.value
+  if (!w || !w.configured || w.cgPercentMac == null) return null
+  const clamp = (v) => Math.max(0, Math.min(100, Number(v)))
+  const fwd = Number(w.cgForwardLimitPctMac)
+  const aft = Number(w.cgAftLimitPctMac)
+  const hasLimits = Number.isFinite(fwd) && Number.isFinite(aft) && aft > fwd
+  const low = hasLimits ? clamp(fwd) : null
+  const high = hasLimits ? clamp(aft) : null
+  return {
+    pct: Number(w.cgPercentMac),
+    markStyle: { left: clamp(w.cgPercentMac) + '%' },
+    zoneStyle: hasLimits ? { left: low + '%', width: (high - low) + '%' } : { left: '0%', width: '100%' },
+    low,
+    high
+  }
+})
 
 function posCellClass(pos) {
   if (!pos) return ''
@@ -954,14 +1025,6 @@ async function confirmTransfer() {
   } catch (e) {
     toast.error('Error transfiriendo ULD: ' + (e.response?.data?.error || e.response?.data?.message || e.message))
   }
-}
-
-function normalizeAwb(raw) {
-  let s = String(raw || '').replace(/[\s\-_/]/g, '')
-  if (/^\d{11}$/.test(s)) {
-    s = s.slice(0, 3) + '-' + s.slice(3)
-  }
-  return s
 }
 
 async function dispatchFlight() {
@@ -1450,4 +1513,43 @@ watch(calculatedTotals, (t) => {
   color: #b45309;
   font-weight: 700;
 }
+
+/* ── Weight & Balance / CG envelope ── */
+.wb-panel { padding: 12px 14px; margin-bottom: 12px; }
+.wb-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text); }
+.wb-title { font-weight: 700; }
+.wb-ac { font-size: 11px; font-weight: 600; color: var(--text-3); font-family: var(--font-data); }
+.wb-spacer { flex: 1; }
+.wb-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+}
+.wb-chip.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.wb-chip.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.wb-chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.cg { margin-top: 12px; }
+.cg-head { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.text-ok { color: var(--ok); }
+.text-bad { color: var(--danger); }
+.cg-track { position: relative; height: 12px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); }
+.cg-zone { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--ok) 22%, transparent); border-radius: 999px; }
+.cg-mark {
+  position: absolute; top: -4px; width: 4px; height: 20px; border-radius: 3px; background: var(--accent-strong);
+  box-shadow: 0 0 0 3px var(--accent-soft); transform: translateX(-50%);
+}
+.cg-mark.bad { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 25%, transparent); }
+.cg-scale { position: relative; height: 14px; margin-top: 4px; font-size: 9.5px; color: var(--text-3); font-family: var(--font-data); }
+.cg-scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.wb-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.wb-stat {
+  display: flex; flex-direction: column; gap: 1px; flex: 1 1 110px; padding: 6px 10px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2);
+}
+.wb-stat .k { font-size: 9.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--text-3); }
+.wb-stat .v { font-size: 13px; font-weight: 700; color: var(--text); font-family: var(--font-data); }
+.wb-note {
+  display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 10px; border-radius: 8px;
+  font-size: 11px; font-weight: 600;
+}
+.wb-note.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
 </style>

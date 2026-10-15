@@ -33,7 +33,6 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/ulds/**", "/api/uld-awbs/**", "/api/uld-type-config/**", "/api/uld-type-catalog/**", "/api/scan/**").hasAuthority(Permissions.CAN_READ_ULD)
-                .requestMatchers(HttpMethod.POST, "/api/ulds/labels/**").hasAuthority(Permissions.CAN_PRINT_PALLET_LABEL)
                 .requestMatchers(HttpMethod.POST, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)
                 .requestMatchers(HttpMethod.PUT, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)
                 .requestMatchers(HttpMethod.DELETE, "/api/uld-type-config/**", "/api/uld-type-catalog/**").hasAuthority(Permissions.CAN_MANAGE_ULD_TYPE)

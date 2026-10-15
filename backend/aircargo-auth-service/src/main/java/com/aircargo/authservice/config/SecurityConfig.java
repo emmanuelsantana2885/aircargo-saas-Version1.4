@@ -34,6 +34,13 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.POST, "/api/auth/block/**").hasAuthority(Permissions.CAN_MANAGE_USER)
                 .requestMatchers(HttpMethod.POST, "/api/auth/unblock/**").hasAuthority(Permissions.CAN_MANAGE_USER)
+                // MFA reset: NUNCA debe caer en el permitAll genérico de /api/auth/**.
+                // · POST /api/auth/mfa/reset          → autodescable (requiere sesión propia)
+                // · POST /api/auth/mfa/reset/{userId} → admin/superuser (resetea a otro)
+                // Los endpoints /mfa/recovery/** (autoservicio sin sesión) sí son públicos
+                // y quedan cubiertos por el permitAll de /api/auth/** de más abajo.
+                .requestMatchers(HttpMethod.POST, "/api/auth/mfa/reset").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/auth/mfa/reset/*").hasAuthority(Permissions.CAN_MANAGE_USER)
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/connected").hasAnyAuthority(Permissions.CAN_READ_DASHBOARD, Permissions.CAN_READ_AUDIT)

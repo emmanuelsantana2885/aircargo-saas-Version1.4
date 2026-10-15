@@ -640,53 +640,77 @@
               </div>
 
               <!-- ═══ STEP 4: EVIDENCE ═══ -->
-              <div v-if="localStep === 4" class="space-y-1.5">
-                <p class="text-[12px] font-mono text-primary">Adjuntar fotos, documentos u otras evidencias</p>
+              <div v-if="localStep === 4" class="space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[12px] font-mono text-primary">{{ t('warehouse.evidence.subtitle') }}</p>
+                  <span class="shrink-0 text-[11px] font-mono text-secondary tabular-nums">
+                    {{ t('warehouse.evidence.counter', { n: (receiptForms[m.id].evidence || []).length }) }}
+                  </span>
+                </div>
 
-                <!-- Evidencias del MAWB (desde base de datos) -->
+                <!-- Evidencias del MAWB (gestor, persistidas en el MAWB) -->
                 <div v-if="(receiptForms[m.id].mawbEvidence || []).length > 0">
-                  <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider mb-1 block">{{ t('warehouse.evidence.mawbEvidence') }}</span>
-                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
+                  <div class="flex items-center justify-between gap-2 mb-1">
+                    <span class="text-[11px] font-mono font-bold text-primary uppercase tracking-wider">{{ t('warehouse.evidence.mawbEvidence') }}</span>
+                    <button type="button" @click.stop="toggleMawbEvidenceManager(m)" class="text-[11px] font-mono uppercase tracking-wider text-tertiary hover:text-primary transition underline underline-offset-2">
+                      {{ t('warehouse.evidence.manage') }}
+                    </button>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                     <div v-for="(ev, ei) in receiptForms[m.id].mawbEvidence" :key="'mawb-' + ei"
                       class="relative border border-strong rounded bg-surface-hover/30 overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
-                      <img v-if="ev.type === 'image' && ev.url" :src="ev.url" class="w-full h-20 object-cover" />
-                      <div v-else-if="ev.type === 'text'" class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
+                      <img v-if="ev.type === 'image' && ev.url" :src="ev.url" class="w-full h-20 object-cover" alt="" />
                       <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-surface-hover text-slate-700 text-[12px] font-mono">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                        <component :is="icons.File" :size="18" class="mb-0.5" />
                         <span class="text-[10px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                       </div>
-                      <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono">{{ ev.name }}</div>
-                      <span class="block text-[12px] font-mono text-primary px-1.5 py-0.5 leading-tight">{{ ev.name }}</span>
+                      <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono px-2 text-center leading-tight">{{ ev.name }}</div>
+                      <span class="block text-[11px] font-mono text-primary px-1.5 py-0.5 leading-tight truncate">{{ ev.name }}</span>
                     </div>
                   </div>
                 </div>
 
-                <!-- Nuevas evidencias (subidas en este formulario) -->
-                <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider mb-1 block">Nuevas evidencias (este recibo)</span>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <!-- Evidencias de este recibo -->
+                <div v-if="(receiptForms[m.id].evidence || []).length === 0"
+                  class="border border-dashed border-strong rounded px-3 py-4 text-center">
+                  <span class="text-[12px] font-mono text-tertiary uppercase tracking-wider">{{ t('warehouse.evidence.empty') }}</span>
+                </div>
+
+                <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <div v-for="(ev, ei) in receiptForms[m.id].evidence" :key="'rec-' + ei"
                     class="relative border border-strong rounded bg-surface overflow-hidden group cursor-pointer" @click="previewEvidence(ev)">
-                    <img v-if="ev.type === 'image'" :src="ev.url" class="w-full h-20 object-cover" />
+                    <img v-if="ev.type === 'image' && ev.url" :src="ev.url" class="w-full h-20 object-cover" alt="" />
                     <div v-else-if="isPdfUrl(ev.url)" class="w-full h-20 flex flex-col items-center justify-center bg-surface-hover text-slate-700 text-[12px] font-mono">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="w-6 h-6 mb-0.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-                      <span class="text-[11px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
+                      <component :is="icons.File" :size="18" class="mb-0.5" />
+                      <span class="text-[10px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                     </div>
                     <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[12px] font-mono">{{ ev.name }}</div>
-                    <button @click.stop="removeEvidence(m.id, ei)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-surface-hover0 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
-                    <span class="block text-[12px] font-mono text-primary px-1.5 py-0.5 truncate">{{ ev.name }}</span>
-                  </div>
-                  <div class="border-2 border-dashed border-strong rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
-                    @click="addEvidence(m.id)">
-                    <span class="text-[14px] text-tertiary font-mono group-hover:text-primary transition leading-none">+</span>
-                    <span class="text-[12px] font-mono text-primary mt-0.5 uppercase tracking-wider">Subir</span>
-                  </div>
-                  <div class="border-2 border-dashed border-strong rounded flex flex-col items-center justify-center cursor-pointer hover:border-slate-950 transition group min-h-[80px]"
-                    @click="openCamera(m.id)">
-                    <component :is="icons.Camera" :size="16" class="text-tertiary group-hover:text-primary transition" />
-                    <span class="text-[12px] font-mono text-primary mt-0.5 uppercase tracking-wider">Cámara</span>
+                    <button @click.stop="removeEvidence(m.id, ei)" :aria-label="t('warehouse.evidence.remove')"
+                      class="absolute top-0.5 right-0.5 w-5 h-5 bg-slate-900/80 text-white rounded-full text-[11px] flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition">
+                      <component :is="icons.Close" :size="11" />
+                    </button>
+                    <span class="block text-[11px] font-mono text-primary px-1.5 py-0.5 truncate">{{ ev.name }}</span>
                   </div>
                 </div>
-                <CameraCapture :show="showCamera" @close="showCamera = false" @captured="onCameraCapture" />
+
+                <!-- Acciones de captura -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  <button type="button" @click="openReceiptCapture(m.id)"
+                    class="flex items-center justify-center gap-2 px-3 py-2.5 rounded border-2 border-primary bg-surface hover:bg-surface-hover transition active:scale-[.98]">
+                    <component :is="icons.Camera" :size="15" class="text-primary" />
+                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">{{ t('warehouse.evidence.takePhoto') }}</span>
+                  </button>
+                  <button type="button" @click="addEvidence(m.id)"
+                    class="flex items-center justify-center gap-2 px-3 py-2.5 rounded border border-strong bg-surface hover:bg-surface-hover transition active:scale-[.98]">
+                    <component :is="icons.FileUpload" :size="15" class="text-primary" />
+                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">{{ t('warehouse.evidence.uploadFile') }}</span>
+                  </button>
+                  <button type="button" @click="toggleMawbEvidenceManager(m)"
+                    class="flex items-center justify-center gap-2 px-3 py-2.5 rounded border border-strong bg-surface hover:bg-surface-hover transition active:scale-[.98]">
+                    <component :is="icons.Folder" :size="15" class="text-primary" />
+                    <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">{{ t('warehouse.evidence.mawbEvidence') }}</span>
+                  </button>
+                </div>
               </div>
 
               <!-- ═══ STEP 5: SIGNATURES ═══ -->
@@ -718,6 +742,22 @@
                       </div>
                     </div>
                     <SignaturePad v-model="receiptForms[m.id].deliveredBySig" :width="280" :height="50" />
+                  </div>
+                  <div>
+                    <label class="ds-label">Received By</label>
+                    <div class="grid grid-cols-2 gap-1.5 mb-1">
+                      <div>
+                        <label class="ds-label text-[12px]">Name</label>
+                        <input v-model="receiptForms[m.id].receivedByName" type="text"
+                          class="ds-input" />
+                      </div>
+                      <div>
+                        <label class="ds-label text-[12px]">ID / Cédula</label>
+                        <input v-model="receiptForms[m.id].receivedByIdNum" type="text"
+                          class="ds-input" />
+                      </div>
+                    </div>
+                    <SignaturePad v-model="receiptForms[m.id].receivedBySig" :width="280" :height="50" />
                   </div>
                   <div>
                     <label class="ds-label">Broker Representative</label>
@@ -772,11 +812,11 @@
             <span class="ds-modal-title">
               {{ t('warehouse.evidence.title') }} — {{ mawbEvidenceMgr.mawb?.awbNumber || 'MAWB' }}
             </span>
-            <button @click="closeMawbEvidenceMgr" aria-label="Cerrar" class="text-primary hover:text-primary transition text-base">✕</button>
+            <button @click="closeMawbEvidenceMgr" :aria-label="t('common.close')" class="text-primary hover:text-primary transition text-base">✕</button>
           </div>
           <div class="p-4 overflow-y-auto" style="max-height: calc(80vh - 120px);">
             <div v-if="mawbEvidenceMgr.docs.length === 0" class="text-[14px] font-mono text-primary text-center py-6 uppercase tracking-widest">
-              Sin evidencias documentales
+              {{ t('warehouse.evidence.empty') }}
             </div>
             <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-4">
               <div v-for="(doc, di) in mawbEvidenceMgr.docs" :key="di"
@@ -787,31 +827,29 @@
                   <span class="text-[12px] leading-tight px-1 text-center truncate max-w-full">PDF</span>
                 </div>
                 <div v-else class="w-full h-20 flex items-center justify-center bg-surface-hover text-primary text-[13px] font-mono">{{ doc.name }}</div>
-                <button @click.stop="removeMawbEvidence(di)" aria-label="Eliminar evidencia" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-surface-hover0 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
+                <button @click.stop="removeMawbEvidence(di)" :aria-label="t('warehouse.evidence.remove')" class="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-surface-hover0 text-white rounded-full text-[12px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition">✕</button>
                 <span class="block text-[13px] font-mono text-primary px-2 py-1 truncate">{{ doc.name }}</span>
               </div>
             </div>
             <div class="flex items-center gap-2 border-t border-strong pt-3">
-              <button @click="mawbEvidenceInput.click()"
-                class="ds-btn-secondary text-[11px] px-2.5 py-1">
-                + Subir archivo
-              </button>
-              <button @click="openMawbCamera()"
+              <button @click="openMawbCapture()"
                 class="ds-btn-secondary text-[11px] px-2.5 py-1 flex items-center gap-1">
-                <component :is="icons.Camera" :size="12" /> Cámara
+                <component :is="icons.Camera" :size="12" /> {{ t('warehouse.evidence.takePhoto') }}
+              </button>
+              <button @click="addMawbEvidenceFile()"
+                class="ds-btn-secondary text-[11px] px-2.5 py-1 flex items-center gap-1">
+                <component :is="icons.FileUpload" :size="12" /> {{ t('warehouse.evidence.uploadFile') }}
               </button>
               <button v-if="mawbEvidenceMgr.docs.length > 0" @click="downloadMawbEvidencePdf()"
                 class="ml-auto ds-btn-primary text-[11px] px-2.5 py-1">
                 &#128196; PDF
               </button>
             </div>
-            <input type="file" ref="mawbEvidenceInput" @change="handleMawbEvidenceUpload" accept="image/*,.pdf" class="hidden" />
-            <CameraCapture :show="mawbCameraOpen" @close="mawbCameraOpen = false" @captured="onMawbCameraCapture" />
           </div>
           <div class="flex justify-end px-4 py-2.5 border-t border-strong bg-surface-hover">
             <button @click="saveMawbEvidence()"
               class="ds-btn-primary text-[11px] px-3 py-1.5">
-              Guardar cambios
+              {{ t('common.save') }}
             </button>
           </div>
         </div>
@@ -942,6 +980,17 @@
       </div>
     </Teleport>
     <EditReceiptModal ref="editModalRef" @saved="onEditReceiptSaved" />
+
+    <!-- ═══ CAPTURA DE EVIDENCIAS (instancia única) ═══
+         Vive FUERA de los v-if de paso/modal a propósito: así el overlay
+         queda por encima de .ops-overlay (z 60) y del gestor MAWB (z 50),
+         y cambiar de paso mientras está abierto no deja estado zombi. -->
+    <EvidenceCaptureModal
+      :show="capture.open"
+      :z-index="95"
+      @close="capture.open = false"
+      @captured="onEvidenceCaptured"
+    />
   </div>
 </template>
 
@@ -953,7 +1002,7 @@ import { useAppStore } from '../stores/app'
 
 const { t } = useI18n()
 import SignaturePad from '../components/SignaturePad.vue'
-import CameraCapture from '../components/CameraCapture.vue'
+import EvidenceCaptureModal from '../components/EvidenceCaptureModal.vue'
 import EditReceiptModal from '../components/EditReceiptModal.vue'
 import LocaleDatePicker from '../components/LocaleDatePicker.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -966,6 +1015,8 @@ import { receiptsApi } from '../api/receipts'
 import { calcConfigApi } from '../api/receiptCalcConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
+import { normalizeAwb } from '../utils/awb'
+import { activeReceiptForMawb } from '../utils/mawbDispatch'
 import { useConfirm } from '../composables/useConfirm'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
 
@@ -990,10 +1041,6 @@ function fmtFlightDate(iso) {
   }
 }
 
-function normAwbCode(s) {
-  return (s || '').toUpperCase().replace(/[\s\-_/]/g, '')
-}
-
 // Deriva el estado operativo de la MAWB según lógica de negocio (pipeline:
 // PENDIENTE → RECIBIDA → EN_PROCESO → CARGADA → MANIFESTADA → DESPACHADA):
 // 1. PENDIENTE: recibo no completado y piezas NO en ULDs
@@ -1004,12 +1051,12 @@ function normAwbCode(s) {
 // 6. MANIFESTADA: recibo completo y todas las piezas en ULDs, vuelos NO despachados
 function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
   const mawbId = m.id
-  const targetCode = normAwbCode(m.awbNumber)
+  const targetCode = normalizeAwb(m.awbNumber)
 
   // Obtener links de ULD-AWB para esta MAWB
   const links = (uldAwbs || []).filter(ua => {
     if (ua.mawbId && ua.mawbId === mawbId) return true
-    return ua.mawbLabel && normAwbCode(ua.mawbLabel) === targetCode
+    return ua.mawbLabel && normalizeAwb(ua.mawbLabel) === targetCode
   })
 
   // 1-2. Sin links: recibo completo = RECIBIDA; sin recibo = PENDIENTE
@@ -1075,10 +1122,67 @@ function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
   return 'MANIFESTADA'
 }
 
+// Versión optimizada: recibe los mapas pre-computados para evitar O(n*m) por MAWB
+function deriveMawbOperationalStatusPureOptimized(m, uldAwbs, uldToFlightId, flightStatusMap, receiptPiecesByMawb, activeReceiptByMawb) {
+  const mawbId = m.id
+  const targetCode = normalizeAwb(m.awbNumber)
+
+  // Obtener links de ULD-AWB para esta MAWB
+  const links = (uldAwbs || []).filter(ua => {
+    if (ua.mawbId && ua.mawbId === mawbId) return true
+    return ua.mawbLabel && normalizeAwb(ua.mawbLabel) === targetCode
+  })
+
+  // 1-2. Sin links: recibo completo = RECIBIDA; sin recibo = PENDIENTE
+  if (!links.length) {
+    return (activeReceiptByMawb[mawbId]?.pieceCount || 0) > 0 ? 'RECIBIDA' : 'PENDIENTE'
+  }
+
+  // 3. Montada en ULDs pero sin recibo completado → CARGADA (alert operativo)
+  if ((activeReceiptByMawb[mawbId]?.pieceCount || 0) === 0) {
+    return 'CARGADA'
+  }
+
+  const receivedPieces = receiptPiecesByMawb[mawbId] || 0
+
+  // Sumar piezas en ULDs
+  let totalUldPieces = 0
+  let anyOnDepartedFlights = false
+
+  for (const link of links) {
+    const pieces = link.pieces || 0
+    totalUldPieces += pieces
+
+    const uldId = link.uldId
+    if (!uldId) continue
+    const flightId = uldToFlightId[uldId]
+    if (!flightId) continue
+    if (flightStatusMap[flightId] === 'DEPARTED') {
+      anyOnDepartedFlights = true
+    }
+  }
+
+  // 4. Recibo completo y ≥1 ULD en vuelo DEPARTED → DESPACHADA (parcial o completa)
+  if (anyOnDepartedFlights) {
+    return 'DESPACHADA'
+  }
+
+  // 5. Carga en progreso: piezas montadas < piezas recibidas
+  if (totalUldPieces < receivedPieces) {
+    return 'EN_PROCESO'
+  }
+
+  // 6. Recibo completo y todas las recibidas montadas, vuelos NO despachados
+  return 'MANIFESTADA'
+}
+
+// El recibo vigente se resuelve con el helper compartido en vez de reimplementar
+// aquí el "primer recibo no superseded de esta MAWB". El helper además acepta
+// el AWB normalizado como segundo criterio de búsqueda, así que un recibo cuyo
+// `mawbId` venga nulo pero traiga `mawbNumber` (formato histórico, p.ej.
+// 40605857585) ya no se cuenta como MAWB sin recibir.
 function isReceiptCompletePure(m, receipts) {
-  const rid = (receipts || []).find(r => (r.mawb?.id || r.mawbId) === m.id && !r.superseded)
-  if (!rid) return false
-  return !!rid && !!rid.pieceCount && rid.pieceCount > 0
+  return (activeReceiptForMawb(m, receipts)?.pieceCount || 0) > 0
 }
 
 function deriveMawbOperationalStatus(m) {
@@ -1086,19 +1190,17 @@ function deriveMawbOperationalStatus(m) {
 }
 
 function isReceiptComplete(m) {
-  const rid = (store.receipts || []).find(r => (r.mawb?.id || r.mawbId) === m.id && !r.superseded)
-  if (!rid) return false
-  return !!rid.pieceCount && rid.pieceCount > 0
+  return (activeReceiptForMawb(m, store.receipts)?.pieceCount || 0) > 0
 }
 
 // True cuando el MAWB está en ULDs pero el total montado < piezas recibidas
 // (carga parcial en curso — nota junto a DESPACHADA parcial y EN_PROCESO).
 function isPartialLoadingPure(m, uldAwbs, receipts) {
   const mawbId = m.id
-  const targetCode = normAwbCode(m.awbNumber)
+  const targetCode = normalizeAwb(m.awbNumber)
   const links = (uldAwbs || []).filter(ua => {
     if (ua.mawbId && ua.mawbId === mawbId) return true
-    return ua.mawbLabel && normAwbCode(ua.mawbLabel) === targetCode
+    return ua.mawbLabel && normalizeAwb(ua.mawbLabel) === targetCode
   })
   if (!links.length) return false
   let onUld = 0
@@ -1122,9 +1224,40 @@ function isPartialLoading(m) {
 }
 
 const mawbOperationalStatusMap = computed(() => {
+  // Pre-compute lookup maps ONCE to avoid O(n*m) rebuild per MAWB
+  const uldToFlightId = {}
+  for (const u of store.ulds || []) {
+    if (u.flightId) uldToFlightId[u.id] = u.flightId
+  }
+  const flightStatusMap = {}
+  for (const f of store.flights || []) {
+    flightStatusMap[f.id] = f.status
+  }
+  const receiptPiecesByMawb = {}
+  for (const r of store.receipts || []) {
+    if (r.superseded) continue
+    const mid = r.mawb?.id || r.mawbId
+    if (!mid) continue
+    receiptPiecesByMawb[mid] = (receiptPiecesByMawb[mid] || 0) + (r.pieceCount || 0)
+  }
+  const activeReceiptByMawb = {}
+  for (const r of store.receipts || []) {
+    if (r.superseded) continue
+    const mid = r.mawb?.id || r.mawbId
+    if (!mid || activeReceiptByMawb[mid]) continue
+    activeReceiptByMawb[mid] = r
+  }
+
   const map = {}
   for (const m of store.mawbs) {
-    map[m.id] = deriveMawbOperationalStatusPure(m, store.uldAwbs, store.flights, store.receipts)
+    map[m.id] = deriveMawbOperationalStatusPureOptimized(
+      m,
+      store.uldAwbs,
+      uldToFlightId,
+      flightStatusMap,
+      receiptPiecesByMawb,
+      activeReceiptByMawb
+    )
   }
   return map
 })
@@ -1172,8 +1305,6 @@ function bumpFormVersionDebounced(delay = 150) {
   }, delay)
 }
 let successTimer = null
-const showCamera = ref(false)
-const cameraMawbId = ref(null)
 
 const receiptForms = reactive({})
 const receiptHawbs = reactive({})
@@ -1224,6 +1355,9 @@ function saveDraft(mawbId) {
       deliveredByName: f.deliveredByName,
       deliveredByIdNum: f.deliveredByIdNum,
       deliveredBySig: f.deliveredBySig || '',
+      receivedByName: f.receivedByName,
+      receivedByIdNum: f.receivedByIdNum,
+      receivedBySig: f.receivedBySig || '',
       brokerName: f.brokerName,
       brokerIdNum: f.brokerIdNum,
       brokerSig: f.brokerSig || '',
@@ -1287,7 +1421,10 @@ function applyDraftToForm(mawbId) {
     deliveredByName: draft.deliveredByName ?? f.deliveredByName,
     deliveredByIdNum: draft.deliveredByIdNum ?? f.deliveredByIdNum,
     deliveredBySig: draft.deliveredBySig ?? f.deliveredBySig,
-    brokerName: draft.brokerName ?? f.brokerName,
+      receivedByName: draft.receivedByName ?? f.receivedByName,
+      receivedByIdNum: draft.receivedByIdNum ?? f.receivedByIdNum,
+      receivedBySig: draft.receivedBySig ?? f.receivedBySig,
+      brokerName: draft.brokerName ?? f.brokerName,
     brokerIdNum: draft.brokerIdNum ?? f.brokerIdNum,
     brokerSig: draft.brokerSig ?? f.brokerSig,
   })
@@ -1331,7 +1468,7 @@ const refreshNow = ref(Date.now())
 const pipelineAgo = computed(() => Math.max(0, Math.floor((refreshNow.value - lastRefreshMs.value) / 1000)))
 let pipelineClock = null
 onMounted(() => {
-  pipelineClock = setInterval(() => { refreshNow.value = Date.now() }, 5000)
+  pipelineClock = setInterval(() => { refreshNow.value = Date.now() }, 10000)
 })
 onUnmounted(() => {
   if (pipelineClock) clearInterval(pipelineClock)
@@ -1370,7 +1507,7 @@ function flightOf(m) {
     const f = store.flights.find(x => x.id === m.flightId)
     if (f) return f
   }
-  const link = (store.uldAwbs || []).find(x => (x.mawbId && x.mawbId === m.id) || normAwbCode(x.mawbLabel || '') === normAwbCode(m.awbNumber || ''))
+  const link = (store.uldAwbs || []).find(x => (x.mawbId && x.mawbId === m.id) || normalizeAwb(x.mawbLabel || '') === normalizeAwb(m.awbNumber || ''))
   if (link && link.flightId && store.flights?.length) {
     let f = store.flights.find(x => x.id === link.flightId)
     if (f) return f
@@ -1398,8 +1535,10 @@ function flightSub(key) {
   const f = g?.flight
   if (!f) return t('warehouse.noFlight')
   const date = fmtFlightDate(f.flightDate)
-  const route = [f.origin, f.destination].filter(Boolean).join(' → ')
-  return [date, route].filter(Boolean).join(' · ')
+  // NO llamarla `route`: ese nombre es el `useRoute()` del setup y el
+  // sombreado hacía muy fácil usar uno por otro dentro de esta función.
+  const legs = [f.origin, f.destination].filter(Boolean).join(' → ')
+  return [date, legs].filter(Boolean).join(' · ')
 }
 function byFlightGroups() {
   const map = new Map()
@@ -1633,6 +1772,7 @@ function initForm(m) {
       brokerIdNum: '',
       brokerSig: '',
       receivedByName: '',
+      receivedByIdNum: '',
       receivedBySig: '',
       receiptDate: null,
       startDatetime: null,
@@ -1689,6 +1829,7 @@ async function loadExistingReceiptData(m) {
   f.brokerIdNum = sourceReceipt.brokerIdNum ?? f.brokerIdNum
   f.brokerSig = sourceReceipt.brokerSigUrl ?? f.brokerSig
   f.receivedByName = sourceReceipt.receivedByName ?? f.receivedByName
+  f.receivedByIdNum = sourceReceipt.receivedByIdNum ?? f.receivedByIdNum
   f.receivedBySig = sourceReceipt.receivedBySigUrl ?? f.receivedBySig
   f.receiptDate = sourceReceipt.receiptDate ?? f.receiptDate
   f.startDatetime = sourceReceipt.startDatetime ?? f.startDatetime
@@ -2067,37 +2208,96 @@ async function toggleExpand(m) {
 function nextStep() { if (localStep.value < 5) localStep.value++ }
 function prevStep() { if (localStep.value > 1) localStep.value-- }
 
-function openCamera(mawbId) {
-  cameraMawbId.value = mawbId
-  showCamera.value = true
+/* ══════════════════════════════════════════════════════════════════
+   EVIDENCIAS — captura de foto/cámara + subida de archivos
+   Objetivo: que la captura NUNCA falle y nunca deje estado zombi.
+   - Una sola instancia de EvidenceCaptureModal vive en el template raíz
+     (fuera de los v-if) → siempre por encima de cualquier overlay.
+   - Toda mutación pasa por pushEvidence() con guardas + límites.
+   ══════════════════════════════════════════════════════════════════ */
+
+const MAX_EVIDENCE_DOCS = 24          // por formulario
+const MAX_MAWB_EVIDENCE_DOCS = 24     // por MAWB
+const MAX_DOC_CHARS = 1_400_000       // ~1.4 MB en base64
+
+/** Contexto de la captura abierta: 'receipt' | 'mawb'. */
+const capture = reactive({ open: false, target: 'receipt', mawbId: null })
+
+function openReceiptCapture(mawbId) {
+  if (!mawbId || !receiptForms[mawbId]) return
+  capture.target = 'receipt'
+  capture.mawbId = mawbId
+  capture.open = true
 }
 
-function onCameraCapture(dataUrl) {
-  const mawbId = cameraMawbId.value
-  if (mawbId && dataUrl) {
-    receiptForms[mawbId].evidence.push({
-      name: 'Foto_' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.jpg',
-      type: 'image',
-      url: dataUrl,
-      file: null,
-    })
+function openMawbCapture() {
+  const id = mawbEvidenceMgr.mawbId
+  if (!id) {
+    toast.error(t('warehouse.evidence.mawbRequired'))
+    return
   }
-  cameraMawbId.value = null
+  capture.target = 'mawb'
+  capture.mawbId = id
+  capture.open = true
 }
 
-function addEvidence(mawbId) {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*,.pdf'
-  input.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;opacity:0;pointer-events:none'
-  const handler = (e) => {
-    input.removeEventListener('change', handler)
-    input.remove()
-    handleEvidenceUpload(mawbId, e)
+/** Punto único de entrada de todo lo que llega desde EvidenceCaptureModal. */
+function onEvidenceCaptured(payload) {
+  if (!payload?.url) return
+  if (capture.target === 'mawb') pushMawbEvidence(payload)
+  else pushReceiptEvidence(capture.mawbId, payload)
+}
+
+function pushReceiptEvidence(mawbId, doc) {
+  const form = receiptForms[mawbId]
+  if (!form) return
+  if (!doc || !doc.url) {
+    console.warn('[pushReceiptEvidence] invalid doc:', doc)
+    return
   }
-  input.addEventListener('change', handler)
-  document.body.appendChild(input)
-  input.click()
+  if (!Array.isArray(form.evidence)) form.evidence = []
+  if (form.evidence.length >= MAX_EVIDENCE_DOCS) {
+    toast.error(t('warehouse.evidence.limitReached', { max: MAX_EVIDENCE_DOCS }))
+    return
+  }
+  if (typeof doc.url !== 'string' || doc.url.length > MAX_DOC_CHARS) {
+    toast.error(t('warehouse.evidence.fileTooLarge'))
+    return
+  }
+  form.evidence.push({
+    name: doc.name || 'documento',
+    type: doc.type || 'image',
+    url: doc.url,
+    file: null,
+  })
+}
+
+function pushMawbEvidence(doc) {
+  if (!doc || !doc.url) {
+    console.warn('[pushMawbEvidence] invalid doc:', doc)
+    return
+  }
+  if (!Array.isArray(mawbEvidenceMgr.docs)) mawbEvidenceMgr.docs = []
+  if (mawbEvidenceMgr.docs.length >= MAX_MAWB_EVIDENCE_DOCS) {
+    toast.error(t('warehouse.evidence.limitReached', { max: MAX_MAWB_EVIDENCE_DOCS }))
+    return
+  }
+  if (typeof doc.url !== 'string' || doc.url.length > MAX_DOC_CHARS) {
+    toast.error(t('warehouse.evidence.fileTooLarge'))
+    return
+  }
+  mawbEvidenceMgr.docs.push({ name: doc.name || 'documento', type: doc.type || 'image', url: doc.url })
+  mawbEvidenceMgr.dirty = true
+}
+
+/** Lectura + compresión compartida por ambas vías de archivo. */
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (ev) => resolve(ev.target.result)
+    reader.onerror = () => reject(new Error('read-failed'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function isPdfUrl(url) {
@@ -2107,11 +2307,64 @@ function isPdfUrl(url) {
   return false
 }
 
-function compressImage(dataUrl, maxDim = 720, quality = 0.4) {
+async function prepareEvidenceFile(file) {
+  const isImage = (file.type || '').startsWith('image/')
+  const raw = await readAsDataUrl(file)
+  if (!isImage) return { name: file.name, type: 'document', url: raw }
+  let url = await compressImage(raw)
+  if (url && url.length > MAX_DOC_CHARS) {
+    url = await compressImage(raw, 900, 0.5)
+  }
+  if (!url || url === 'data:,') return null
+  return { name: file.name, type: 'image', url }
+}
+
+/** Selector genérico de archivos (usado por "Subir archivo" en ambas zonas). */
+function pickFiles({ accept, multiple = true, onFiles }) {
+  const input = document.createElement('input')
+  input.type = 'file'
+  if (accept) input.accept = accept
+  input.multiple = multiple
+  input.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;opacity:0;pointer-events:none'
+  const handler = async (e) => {
+    input.removeEventListener('change', handler)
+    input.remove()
+    const files = e.target.files
+    if (!files || !files.length) return
+    try {
+      for (const file of Array.from(files)) {
+        const prepared = await prepareEvidenceFile(file)
+        if (prepared) onFiles(prepared)
+      }
+    } catch {
+      toast.error(t('warehouse.evidence.readError'))
+    }
+  }
+  input.addEventListener('change', handler)
+  document.body.appendChild(input)
+  input.click()
+}
+
+function addEvidence(mawbId) {
+  pickFiles({
+    accept: 'image/*,.pdf',
+    onFiles: (doc) => pushReceiptEvidence(mawbId, doc),
+  })
+}
+
+function addMawbEvidenceFile() {
+  pickFiles({
+    accept: 'image/*,.pdf',
+    onFiles: (doc) => pushMawbEvidence(doc),
+  })
+}
+
+function compressImage(dataUrl, maxDim = 1280, quality = 0.72) {
   return new Promise(resolve => {
     const img = new Image()
     img.onload = () => {
       let w = img.width, h = img.height
+      if (!w || !h) return resolve(dataUrl)
       if (w > maxDim || h > maxDim) {
         const s = Math.min(maxDim / w, maxDim / h, 1)
         w = Math.round(w * s)
@@ -2119,7 +2372,9 @@ function compressImage(dataUrl, maxDim = 720, quality = 0.4) {
       }
       const c = document.createElement('canvas')
       c.width = w; c.height = h
-      c.getContext('2d').drawImage(img, 0, 0, w, h)
+      const ctx = c.getContext('2d')
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(img, 0, 0, w, h)
       resolve(c.toDataURL('image/jpeg', quality))
     }
     img.onerror = () => resolve(dataUrl)
@@ -2127,30 +2382,10 @@ function compressImage(dataUrl, maxDim = 720, quality = 0.4) {
   })
 }
 
-async function handleEvidenceUpload(mawbId, e) {
-  const files = e.target.files
-  if (!files || !files.length) return
-  for (const file of files) {
-    const reader = new FileReader()
-    reader.onload = async (ev) => {
-      let url = ev.target.result
-      if (file.type.startsWith('image/')) {
-        url = await compressImage(url)
-      }
-      receiptForms[mawbId].evidence.push({
-        name: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'document',
-        url,
-        file: file,
-      })
-    }
-    reader.readAsDataURL(file)
-  }
-  e.target.value = ''
-}
-
 function removeEvidence(mawbId, idx) {
-  receiptForms[mawbId].evidence.splice(idx, 1)
+  const form = receiptForms[mawbId]
+  if (!form || !Array.isArray(form.evidence)) return
+  form.evidence.splice(idx, 1)
 }
 
 async function downloadReceiptById(m) {
@@ -2587,8 +2822,6 @@ function dataUriToBlob(dataUri, mimeType) {
 
 // ── MAWB Evidence Manager ──
 const mawbEvidenceMgr = reactive({ show: false, mawbId: null, mawb: null, docs: [], dirty: false })
-const mawbEvidenceInput = ref(null)
-const mawbCameraOpen = ref(false)
 
 async function toggleMawbEvidenceManager(m) {
   if (mawbEvidenceMgr.show && mawbEvidenceMgr.mawbId === m.id) {
@@ -2619,39 +2852,6 @@ async function closeMawbEvidenceMgr() {
   mawbEvidenceMgr.dirty = false
 }
 
-function handleMawbEvidenceUpload(e) {
-  const files = e.target.files
-  if (!files || !files.length) return
-  for (const file of files) {
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      mawbEvidenceMgr.docs.push({
-        name: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'document',
-        url: ev.target.result,
-      })
-      mawbEvidenceMgr.dirty = true
-    }
-    reader.readAsDataURL(file)
-  }
-  e.target.value = ''
-}
-
-function openMawbCamera() {
-  mawbCameraOpen.value = true
-}
-
-function onMawbCameraCapture(dataUrl) {
-  if (dataUrl) {
-    mawbEvidenceMgr.docs.push({
-      name: 'Foto_' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.jpg',
-      type: 'image',
-      url: dataUrl,
-    })
-    mawbEvidenceMgr.dirty = true
-  }
-}
-
 function removeMawbEvidence(idx) {
   mawbEvidenceMgr.docs.splice(idx, 1)
   mawbEvidenceMgr.dirty = true
@@ -2667,7 +2867,6 @@ async function saveMawbEvidence() {
     toast.success('Evidencias guardadas correctamente')
   } catch (e) {
     toast.error(extractError(e))
-    toast.error('Error guardando evidencias: ' + (e.response?.data?.error || e.message))
   }
 }
 
@@ -2925,7 +3124,7 @@ async function refreshData() {
 }
 
 useLiveRefresh(refreshData,
-{ interval: 45000, pauses: [submitting, showConfirmModal, showBookingCorrectionModal, showCamera] })
+{ interval: 45000, pauses: [submitting, showConfirmModal, showBookingCorrectionModal, () => capture.open] })
 </script>
 
 <style scoped>

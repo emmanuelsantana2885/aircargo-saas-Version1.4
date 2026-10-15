@@ -120,6 +120,9 @@
                       class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-green-50 text-green-800">{{ t('settings.users.unlockMfa') }}</button>
                     <button @click="disableMfaUser(user)"
                       class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-red-50 text-red-800">{{ t('settings.users.disableMfa') }}</button>
+                    <button @click="resetMfaUser(user)"
+                      class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-amber-50 text-amber-800"
+                      :title="t('settings.users.resetMfaHint')">{{ t('settings.users.resetMfa') }}</button>
                   </template>
                   <button v-if="!user.mfaEnabled" @click="openMfaSetup(user)"
                     class="px-2 py-1 rounded text-[12px] font-medium transition-all hover:brightness-110 bg-green-50 text-green-800">{{ t('settings.users.enableMfa') }}</button>
@@ -372,8 +375,8 @@
               </select>
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveSiteEdit" class="ds-btn-primary flex-1 justify-center">Guardar</button>
-              <button @click="editingSite = null" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="saveSiteEdit" class="ds-btn-primary flex-1 justify-center">{{ t('common.save') }}</button>
+              <button @click="editingSite = null" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -400,7 +403,7 @@
             </div>
             <div class="flex gap-2 pt-2">
               <button @click="saveSiteCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
-              <button @click="showSiteCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="showSiteCreate = false" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -494,8 +497,8 @@
               </select>
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveAirlineEdit" class="ds-btn-primary flex-1 justify-center">Guardar</button>
-              <button @click="editingAirline = null" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="saveAirlineEdit" class="ds-btn-primary flex-1 justify-center">{{ t('common.save') }}</button>
+              <button @click="editingAirline = null" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -526,7 +529,7 @@
             </div>
             <div class="flex gap-2 pt-2">
               <button @click="saveAirlineCreate" class="ds-btn-primary flex-1 justify-center">Crear</button>
-              <button @click="showAirlineCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="showAirlineCreate = false" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -845,7 +848,7 @@
             <div class="flex gap-2 pt-2">
               <button @click="saveCommodityEdit" :disabled="commodityTotpCode.length !== 6"
                 class="ds-btn-primary flex-1 justify-center disabled:opacity-40">{{ t('common.save') }}</button>
-              <button @click="editingCommodity = null" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="editingCommodity = null" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -889,7 +892,7 @@
             <div class="flex gap-2 pt-2">
               <button @click="saveCommodityCreate" :disabled="commodityTotpCode.length !== 6"
                 class="ds-btn-primary flex-1 justify-center disabled:opacity-40">{{ t('common.add') }}</button>
-              <button @click="showCommodityCreate = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="showCommodityCreate = false" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -2051,6 +2054,15 @@ async function unlockMfaUser(user) {
   if (!(await confirm({ message: t('settings.users.confirmUnlock'), danger: true }))) return
   try {
     await usersApi.mfaUnlock(user.id)
+    await loadUsers()
+  } catch (e) { toast.error(extractError(e)) }
+}
+
+async function resetMfaUser(user) {
+  if (!(await confirm({ message: t('settings.users.confirmResetMfa'), danger: true }))) return
+  try {
+    await usersApi.mfaReset(user.id)
+    toast.success(t('settings.users.toast.mfaReset'))
     await loadUsers()
   } catch (e) { toast.error(extractError(e)) }
 }

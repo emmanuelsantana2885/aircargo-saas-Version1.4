@@ -50,7 +50,7 @@ describe('useIdleLogout', () => {
     stop()
   })
 
-  it('a los 60 min: preserva borrador + returnTo, hace logout y navega a /login?idle=1', async () => {
+  it('a los 60 min: preserva borrador + returnTo y delega el logout al host', async () => {
     let expired = false
     const { start, stop } = useIdleLogout(async () => { expired = true })
     start()
@@ -62,7 +62,20 @@ describe('useIdleLogout', () => {
     expect(loadDraft().forms.length).toBeGreaterThan(0)
     expect(loadDraft().forms[0].v).toBe('dato importante sin guardar')
     expect(popReturnTo()).toBe('/receipts?mawbId=123')
-    expect(pushMock).toHaveBeenCalledWith('/login?idle=1')
+    // el composable NO navega: `onExpire` (App.vue) ya hace logout + push a
+    // /login?idle=1. Navegar aquí además causaba doble logout y doble redirect
+    // en cada expiración por inactividad.
+    expect(pushMock).not.toHaveBeenCalled()
+    stop()
+  })
+
+  it('el logout manual no duplica el trabajo con doble expiración', async () => {
+    let calls = 0
+    const { start, stop, expire } = useIdleLogout(async () => { calls++ })
+    start()
+
+    await Promise.all([expire(), expire()])
+    expect(calls).toBe(1)
     stop()
   })
 })

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import {
   accentFor, getTheme, getTone, getMode,
   setTheme, setTone, setMode, resetTheme, initTheme,
-  THEMES, TONE_NAMES, resolveBand, contrast, hslToRgb, accentL,
+  THEMES, TONE_NAMES, MAX_TONE, LIGHT_OF, DARK_OF, resolveBand, contrast, hslToRgb, accentL,
 } from '@/utils/theme'
 
 const root = document.documentElement
@@ -21,6 +21,9 @@ const parseRgb = (s) => s.replace(/rgba?\(|\s/g, '').split(',').slice(0, 3).map(
 const parseHex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
 const over = (base, mix, p) => base.map((v, i) => Math.round(v * (1 - p) + mix[i] * p))
 const accentRgb = (th, tone) => hslToRgb(th.h, th.s, accentL(th, tone))
+/* DARK_OF va de claro -> oscuro, asi que se invierte para poder razonar
+ * sobre pares (oscuro, claro) simetricos. */
+const DARK_PAIRS = Object.fromEntries(Object.entries(DARK_OF).map(([l, d]) => [d, l]))
 
 /* Croma relativa = (max-min)/max. Es la medida que captura el "verde chillón":
  * el mismo L% produce un azul profundo y una menta fosforito, y la diferencia
@@ -37,28 +40,29 @@ describe('accentFor — math of tone', () => {
     expect(accentFor('no-existe', 3)).toBeNull()
   })
 
-  it('clamps tone to the 0..9 range in both directions', () => {
+  it('clamps tone to the 0..MAX_TONE range in both directions', () => {
     // hue/sat/lum are the same for both themes; only the mode differs
     expect(accentFor('azul', -50).acc).toBe(accentFor('azul', 0).acc)
-    expect(accentFor('azul', 999).acc).toBe(accentFor('azul', 9).acc)
+    expect(accentFor('azul', 999).acc).toBe(accentFor('azul', MAX_TONE).acc)
   })
 
   it('keeps dark themes brighter than light themes at every tone', () => {
     // Guard against a regression that would make accent text invisible on dark surfaces:
-    // dark floor is 46%, light floor is 30%.
-    for (let tone = 0; tone <= 9; tone++) {
+    // dark floor is 42%, light floor is 26%.
+    for (let tone = 0; tone <= MAX_TONE; tone++) {
       const light = accentFor('azul', tone).acc
       const dark = accentFor('tokyo', tone).acc
       expect(light).not.toBe(dark)
     }
-    expect(accentFor('azul', 0).acc).toBe('hsl(224 95% 64%)')
-    expect(accentFor('tokyo', 0).acc).toBe('hsl(223 93% 72%)')
+    // azul 66->26 y tokyo 74->42: mismo ramp de lightness, menos croma.
+    expect(accentFor('azul', 0).acc).toBe('hsl(224 78% 66%)')
+    expect(accentFor('tokyo', 0).acc).toBe('hsl(223 76% 74%)')
   })
 
   it('applies the documented lightness floors at max tone', () => {
-    // 64-9*4 = 28 -> clamped to 30 (light); 72-9*3 = 45 -> clamped to 46 (dark)
-    expect(accentFor('azul', 9).acc).toBe('hsl(224 95% 30%)')
-    expect(accentFor('tokyo', 9).acc).toBe('hsl(223 93% 46%)')
+    // los extremos caen exactos en el suelo: 26 (claro) y 42 (oscuro).
+    expect(accentFor('azul', MAX_TONE).acc).toBe('hsl(224 78% 26%)')
+    expect(accentFor('tokyo', MAX_TONE).acc).toBe('hsl(223 76% 42%)')
   })
 
   it('derives soft variants as rgba from the accent rgb, not from the raw hsl', () => {
@@ -70,17 +74,21 @@ describe('accentFor — math of tone', () => {
   })
 
   it('accS is always exactly 10 points darker than acc (the "strong" variant)', () => {
-    // esmeralda: sat 84 -> 58 (de-neon); lightness ramp unchanged: 64 - 5*4 = 44
+    // esmeralda: sat 84 -> 58 (de-neon); lightness ramp unchanged: 66 - 5*3.08
     const a = accentFor('esmeralda', 5)
-    expect(a.acc).toBe('hsl(158 58% 44%)')
-    expect(a.accS).toBe('hsl(158 58% 34%)')
+    expect(a.acc).toBe('hsl(158 58% 50.62%)')
+    expect(a.accS).toBe('hsl(158 58% 40.62%)')
     // and the relationship holds for every theme at every tone
     for (const id of Object.keys(THEMES)) {
-      for (let tone = 0; tone <= 9; tone++) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
         const x = accentFor(id, tone)
-        const L = Number(/(\d+)%\)$/.exec(x.acc)[1])
-        const LS = Number(/(\d+)%\)$/.exec(x.accS)[1])
-        expect(L - LS).toBe(10)
+        // el lightness lleva decimales: `(\d+)%` se comeria el ultimo
+        // grupo entero y daria L === LS en toda la rampa.
+        const L = Number(/([\d.]+)%\)$/.exec(x.acc)[1])
+        const LS = Number(/([\d.]+)%\)$/.exec(x.accS)[1])
+        // toBeCloseTo y no toBe: L y LS se redondean por separado, asi
+        // que la resta puede dar 10.000000000000004.
+        expect(L - LS).toBeCloseTo(10, 2)
       }
     }
   })
@@ -93,24 +101,55 @@ describe('accentFor — math of tone', () => {
     const GREEN_YELLOW = [[60, 190]]
     for (const [id, th] of Object.entries(THEMES)) {
       if (!GREEN_YELLOW.some(([lo, hi]) => th.h >= lo && th.h <= hi)) continue
-      for (let tone = 0; tone <= 9; tone++) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
         const ch = chroma(accentRgb(th, tone))
         expect(ch, `${id} tono ${tone} croma ${ch.toFixed(3)}`).toBeLessThanOrEqual(0.78)
       }
     }
   })
 
-  it('keeps all 10 tones distinct so the tone picker stays usable', () => {
-    /* La rampa usa su suelo en el ultimo tono (64-9*4=28 -> 30). Cualquier
+  it('keeps every tone distinct so the tone picker stays usable', () => {
+    /* La rampa usa su suelo en el ultimo tono (66 -> 26 en claro). Cualquier
      * intento de "arreglar" el brillo del verde moviendo lightness aplana los
      * tonos altos contra ese suelo y varios tonos quedan identicos: este guard
      * es el que lo detecta. Por eso el verde se DESATURA en vez de moverse en
      * lightness. */
     for (const [id, th] of Object.entries(THEMES)) {
       const tones = []
-      for (let tone = 0; tone <= 9; tone++) tones.push(accentFor(id, tone).acc)
-      expect(new Set(tones).size, `${id} tonos distintos`).toBe(10)
-      expect(accentL(th, 0) - accentL(th, 9), `${id} span`).toBeGreaterThanOrEqual(20)
+      for (let tone = 0; tone <= MAX_TONE; tone++) tones.push(accentFor(id, tone).acc)
+      expect(new Set(tones).size, `${id} tonos distintos`).toBe(MAX_TONE + 1)
+      expect(accentL(th, 0) - accentL(th, MAX_TONE), `${id} span`).toBeGreaterThanOrEqual(20)
+    }
+  })
+
+  it('keeps the body text readable on every surface of every theme', () => {
+    /* Un tema nuevo puede entrar en la lista con un `text` que funciona sobre
+     * `bg` pero se apaga sobre `surface2` (el gris de las filas alternas).
+     * Se exigen 4.5:1 (AA de cuerpo) en las tres superficies y 3:1 solo para
+     * `muted`, que es texto secundario. Con la referencia WCAG propia para no
+     * validar la matematica del motor con la propia matematica del motor. */
+    for (const [id, th] of Object.entries(THEMES)) {
+      const text = parseHex(th.text)
+      for (const surface of ['bg', 'surface', 'surface2']) {
+        const c = refContrast(text, parseHex(th[surface]))
+        expect(c, `${id}: ${th.text} sobre ${surface} (${th[surface]}) = ${c.toFixed(2)}:1`)
+          .toBeGreaterThanOrEqual(4.5)
+      }
+      const cm = refContrast(parseHex(th.muted), parseHex(th.surface))
+      expect(cm, `${id}: muted ${th.muted} sobre ${th.surface} = ${cm.toFixed(2)}:1`)
+        .toBeGreaterThanOrEqual(3)
+    }
+  })
+
+  it('gives every light/dark pair the same accent hue family', () => {
+    /* El toggle de modo repara en un par: si el par no comparte familia de
+     * tono, el cambio de iluminacion parece un cambio de tema entero. */
+    for (const [dark, light] of Object.entries(DARK_PAIRS)) {
+      const h1 = THEMES[light].h
+      const h2 = THEMES[dark].h
+      const gap = Math.min(Math.abs(h1 - h2), 360 - Math.abs(h1 - h2))
+      expect(gap, `${light}(h=${h1}) ↔ ${dark}(h=${h2}) separados ${gap}°`)
+        .toBeLessThanOrEqual(60)
     }
   })
 })
@@ -147,7 +186,7 @@ describe('setTheme / setTone', () => {
     expect(setTone(4.6)).toBe(5)
     expect(getTone()).toBe(5)
     expect(getTheme()).toBe('marino')
-    expect(setTone(999)).toBe(9)
+    expect(setTone(999)).toBe(MAX_TONE)
     expect(setTone('abc')).toBe(3) // non-numeric falls back to DEFAULT_TONE
   })
 
@@ -176,12 +215,38 @@ describe('setMode — light/dark switching by theme name', () => {
     expect(getTone()).toBe(6)
   })
 
-  it('falls back to tokyo/azul for themes without a dedicated pair', () => {
+  it('lands a neutral grey theme on another grey, not on azul', () => {
     setTheme('pizarra', 1)
     setMode('dark')
-    expect(getTheme()).toBe('tokyo')
+    expect(getTheme()).toBe('grafito')
     setMode('light')
-    expect(getTheme()).toBe('azul')
+    expect(getTheme()).toBe('pizarra')
+  })
+
+  it('keeps the warm themes in the warm family when going dark', () => {
+    setTheme('ambar', 3)
+    setMode('dark')
+    expect(getTheme()).toBe('lava')
+  })
+
+  it('keeps a navy theme on the indigo side, not on plain azul', () => {
+    setTheme('marino', 3)
+    setMode('light')
+    expect(getTheme()).toBe('indigo')
+  })
+
+  it('covers every theme: toggling mode always lands on the requested mode', () => {
+    for (const key of Object.keys(THEMES)) {
+      setTheme(key, 3)
+      const other = THEMES[key].mode === 'dark' ? 'light' : 'dark'
+      expect(getMode()).not.toBe(other)
+      setMode(other)
+      expect(getMode()).toBe(other)
+      /* Y volviendo debe recuperar una familia de tono coherente, no quedar
+       * saltando al azul por defecto. */
+      setMode(THEMES[key].mode)
+      expect(getMode()).toBe(THEMES[key].mode)
+    }
   })
 
   it('is a no-op when the mode already matches', () => {
@@ -212,7 +277,7 @@ describe('initTheme — restoring persisted state', () => {
     localStorage.setItem('aircargo_theme', 'azul')
     localStorage.setItem('aircargo_tone', '42')
     initTheme()
-    expect(getTone()).toBe(9)
+    expect(getTone()).toBe(MAX_TONE)
   })
 
   it('migrates a persisted legacy "light" value', () => {
@@ -242,7 +307,7 @@ describe('resolveBand — contrast guarantee for the header band', () => {
   it('never returns a band/ink pair below 4.5:1 in any of the 120 theme x tone combos', () => {
     const worst = []
     for (const [id, th] of Object.entries(THEMES)) {
-      for (let tone = 0; tone <= 9; tone++) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
         const { band, ink } = resolveBand(...accentRgb(th, tone))
         const ratio = refContrast(parseRgb(band), parseHex(ink))
         worst.push({ id, tone, ratio })
@@ -255,7 +320,7 @@ describe('resolveBand — contrast guarantee for the header band', () => {
 
   it('keeps the chips and the inverted ctrl-chip readable over the band', () => {
     for (const [id, th] of Object.entries(THEMES)) {
-      for (let tone = 0; tone <= 9; tone++) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
         const { band, ink } = resolveBand(...accentRgb(th, tone))
         const bandRgb = parseRgb(band)
         const inkRgb = parseHex(ink)
@@ -273,7 +338,7 @@ describe('resolveBand — contrast guarantee for the header band', () => {
 
   it('picks the ink that maximises contrast, so it is never the losing option', () => {
     for (const [id, th] of Object.entries(THEMES)) {
-      for (let tone = 0; tone <= 9; tone++) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
         const { band, ink } = resolveBand(...accentRgb(th, tone))
         const bandRgb = parseRgb(band)
         const white = refContrast(bandRgb, [255, 255, 255])
@@ -295,7 +360,7 @@ describe('resolveBand — contrast guarantee for the header band', () => {
 
   it('is idempotent: resolving an already-resolved band is a no-op', () => {
     for (const th of Object.values(THEMES)) {
-      for (const tone of [0, 3, 9]) {
+      for (const tone of [0, 3, 9, 13]) {
         const once = resolveBand(...accentRgb(th, tone))
         const twice = resolveBand(...parseRgb(once.band))
         expect(parseRgb(twice.band)).toEqual(parseRgb(once.band))
@@ -306,12 +371,46 @@ describe('resolveBand — contrast guarantee for the header band', () => {
 
   it('publishes the band tokens through setTheme for every theme', () => {
     for (const id of Object.keys(THEMES)) {
-      for (const tone of [0, 5, 9]) {
+      for (const tone of [0, 5, 9, 13]) {
         setTheme(id, tone)
         expect(cssVar('--accent-band'), `${id}/t${tone}`).toMatch(/^rgba?\(\d+,\d+,\d+,?1?\)$/)
         expect([INK_WHITE, INK_DARK]).toContain(cssVar('--accent-ink'))
         expect(cssVar('--accent-ink-soft')).toMatch(/^rgba\(0,0,0,0\.16\)$|^rgba\(255,255,255,0\.18\)$/)
         expect(cssVar('--accent-ink-soft-2')).toMatch(/^rgba\(0,0,0,0\.28\)$|^rgba\(255,255,255,0\.32\)$/)
+      }
+    }
+  })
+
+  it('every published gradient has exactly two stops in every theme x tone', () => {
+    /* Tres paradas (acento -> acento -> cian) se leian como un barrido de
+     * color en vez de superficie. El guard cubre los 4 degradados que el
+     * motor publica, en los 12 temas y 10 tonos. */
+    const grads = ['--gradient-accent', '--gradient-title', '--bg-grad']
+    /* Cuenta solo las paradas de COLOR: el separador inicial (angulo, p.ej.
+     * `135deg,`) no es una parada, y los `hsl(...)` traen comas y parentesis
+     * propios que rompen un split ingenuo. */
+    const stopCount = (v) => {
+      const parts = []
+      let depth = 0
+      let cur = ''
+      for (let i = v.indexOf('(') + 1; i < v.length; i++) {
+        const ch = v[i]
+        if (ch === '(') { depth++; cur += ch }
+        else if (ch === ')') { if (depth === 0) break; depth--; cur += ch }
+        else if (ch === ',' && depth === 0) { parts.push(cur); cur = '' }
+        else cur += ch
+      }
+      parts.push(cur)
+      return parts.filter((p) => /hsl\(|#|rgb/.test(p)).length
+    }
+    for (const id of Object.keys(THEMES)) {
+      for (let tone = 0; tone <= MAX_TONE; tone++) {
+        setTheme(id, tone)
+        for (const g of grads) {
+          const v = cssVar(g)
+          expect(v, `${g} ${id}/t${tone}`).toContain('linear-gradient')
+          expect(stopCount(v), `${g} ${id}/t${tone} -> ${v}`).toBe(2)
+        }
       }
     }
   })
@@ -338,7 +437,7 @@ describe('resetTheme + catalog invariants', () => {
   })
 
   it('every tone has a display name', () => {
-    expect(TONE_NAMES).toHaveLength(10)
+    expect(TONE_NAMES).toHaveLength(MAX_TONE + 1)
     TONE_NAMES.forEach((n) => expect(typeof n).toBe('string'))
   })
 })

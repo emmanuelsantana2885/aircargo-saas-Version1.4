@@ -2,7 +2,6 @@ package com.aircargo.feign.client;
 
 import com.aircargo.feign.dto.MawbDTO;
 import com.aircargo.feign.dto.HawbDTO;
-import com.aircargo.feign.dto.LabelTemplateDTO;
 import com.aircargo.feign.fallback.MawbClientFallbackFactory;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.UUID;
@@ -42,10 +40,4 @@ public interface MawbClient {
 
     @PutMapping("/api/mawbs/{id}/status")
     MawbDTO updateMawbStatus(@PathVariable UUID id, @RequestBody String status);
-
-    @GetMapping("/api/label-templates")
-    List<LabelTemplateDTO> getLabelTemplates(@RequestParam("type") String type);
-
-    @GetMapping("/api/label-templates/{id}")
-    LabelTemplateDTO getLabelTemplateById(@PathVariable UUID id);
 }

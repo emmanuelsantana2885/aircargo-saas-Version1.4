@@ -45,7 +45,16 @@ for arg in "$@"; do
 done
 
 # ── Cargar secrets y validar ───────────────────────────────────
-AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks before deriving AIR_ROOT (running via a symlink in $HOME
+# would otherwise yield $HOME and miss the real .env / docker-compose paths).
+_self="${BASH_SOURCE[0]}"
+while [ -L "$_self" ]; do
+  _d="$(cd -P "$(dirname "$_self")" && pwd)"
+  _self="$(readlink "$_self")"
+  case "$_self" in /*) ;; *) _self="$_d/$_self" ;; esac
+done
+AIR_ROOT="$(cd -P "$(dirname "$_self")" && pwd)"
+unset _self _d
 . "$AIR_ROOT/aircargo-env.sh"
 
 PG_PORT="${POSTGRES_PORT:-5432}"
@@ -429,6 +438,30 @@ if [ "$NO_INFRA" = "false" ] && [ "$ONLY_FRONTEND" = "false" ]; then
         sleep 2
       done
     fi
+    # rabbitmq-server instalado por apt: el broker YA tiene su unidad systemd y su
+    # configuración en /etc/rabbitmq/rabbitmq.conf (donde vive listeners.tcp.default).
+    # Se intenta ANTES del spawn nativo porque `rabbitmq-server -detached` de más abajo
+    # arranca un SEGUNDO broker con RABBITMQ_BASE=~/.local-rabbitmq: si el servicio ya
+    # existe, dos brokers pelean por el mismo puerto y el nativo cae en 5672.
+    # `sudo -n` evita bloquear el script esperando una contraseña; si no puede, no es
+    # fatal: se sigue al siguiente escalón.
+    if [ "$started_rmq" = "false" ] \
+       && command -v systemctl >/dev/null 2>&1 \
+       && systemctl list-unit-files rabbitmq-server.service >/dev/null 2>&1; then
+      echo "🐰 Intentando arrancar rabbitmq-server.service (systemd)..."
+      if systemctl is-active --quiet rabbitmq-server.service 2>/dev/null; then
+        :
+      else
+        sudo -n systemctl start rabbitmq-server.service >/dev/null 2>&1 \
+          || systemctl start rabbitmq-server.service >/dev/null 2>&1 \
+          || true
+      fi
+      for _ in $(seq 1 15); do
+        port_up "$RMQ_PORT" && { started_rmq=true; break; }
+        sleep 2
+      done
+      [ "$started_rmq" = "true" ] || echo "   ⚠️  rabbitmq-server.service no levantó :$RMQ_PORT (¿sudo? revisa: journalctl -u rabbitmq-server)"
+    fi
     if [ "$started_rmq" = "false" ] && command -v rabbitmq-server >/dev/null 2>&1; then
       echo "🐰 Usando RabbitMQ NATIVO..."
       export RABBITMQ_BASE="$HOME/.local-rabbitmq"
@@ -545,12 +578,16 @@ if [ "$ONLY_FRONTEND" = "false" ]; then
   # 1) Gateway — todo pasa por él
   start_service "aircargo-gateway" 8080 120 || exit 1
 
-  # 2) Auth — necesario para JWT que usan los demás
+  # 2) Flight — auth valida con ddl-auto=validate la tabla compartida
+  #    flight.airline, así que el Flyway de flight debe correr antes que auth.
+  #    Ningún servicio depende de tablas de auth, por eso invertir es seguro.
+  start_service "aircargo-flight-service" 9093 240 || exit 1
+
+  # 3) Auth — necesario para JWT que usan los demás
   start_service "aircargo-auth-service" 9092 240 || exit 1
 
-  # 3) Resto de servicios (orden de dependencias)
+  # 4) Resto de servicios (orden de dependencias)
   declare -a services=(
-    "aircargo-flight-service 9093"
     "aircargo-booking-service 9094"
     "aircargo-mawb-service 9095"
     "aircargo-warehouse-service 9096"

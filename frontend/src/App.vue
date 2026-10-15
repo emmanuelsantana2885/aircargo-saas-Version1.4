@@ -20,7 +20,7 @@
     v-if="idleWarningSeconds !== null && idleWarningSeconds >= 0"
     :seconds-left="idleWarningSeconds ?? 0"
     @continue="continueWorkingSafe"
-    @logout-now="expireIdleSession"
+    @logout-now="expireIdle"
   />
   <ToastNotifications />
   <ConfirmDialog />
@@ -48,6 +48,8 @@ import api from './api/client'
 import { initTheme } from './utils/theme'
 import { initFont } from './utils/font'
 import { initDensity } from './utils/density'
+import { setSessionExpiredHandler } from './api/client'
+import { isCapturing } from './composables/captureState'
 
 initTheme()
 initFont()
@@ -61,28 +63,29 @@ const router = useRouter()
 const sidebarRef = ref(null)
 const paletteOpen = ref(false)
 let heartbeatInterval
-const prevReceiptCount = ref(0)
+const lastReceiptCheck = ref(null)
 const NOTIFY_ROLES = ['TRAFFIC', 'OPERATIONS', 'SUPER_USER', 'ADMIN']
 
 const sidebarCollapsed = computed(() => sidebarRef.value?.collapsed ?? false)
 
 const sidebarMarginLeft = computed(() => {
   const s = sidebarRef.value
-  if (!s) return '210px'
+  if (!s) return 'var(--sidebar-width)'
   // móvil: el sidebar es un overlay fijo (fuera del flujo) → sin margen
   if (s.isMobile) return '0px'
-  return s.collapsed ? '60px' : '210px'
+  return s.collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)'
 })
 
 async function expireIdleSession() {
   auth.logout()
-  window.location.href = '/login?idle=1'   // recarga limpia: garantiza estado fresco
+  router.push('/login?idle=1')   // SPA navigation, preserva drafts en sessionStorage
 }
 
 const {
   start: startIdleLogout,
   stop: stopIdleLogout,
   continueWorking: continueWorkingRaw,
+  expire: expireIdle,
   warningSeconds: idleWarningSeconds,
 } = useIdleLogout(expireIdleSession)
 
@@ -90,7 +93,7 @@ function continueWorkingSafe() {
   continueWorkingRaw()
 }
 
-// IDLE LOGOUT — cierre por inactividad 20 min desde la última interacción (seguridad)
+// IDLE LOGOUT — cierre por inactividad 60 min desde la última interacción (seguridad).
 import { watch } from 'vue'
 watch(() => auth.isAuthenticated, (authed) => {
   if (authed) startIdleLogout(); else stopIdleLogout()
@@ -104,10 +107,10 @@ function startHeartbeat() {
   if (heartbeatInterval) return
   auth.refreshProfile()
   usersApi.heartbeat().catch(() => {})
-  checkNewReceipts()
+  if (NOTIFY_ROLES.includes(auth.role)) checkNewReceipts()
   heartbeatInterval = setInterval(() => {
     usersApi.heartbeat().catch(() => {})
-    checkNewReceipts()
+    if (NOTIFY_ROLES.includes(auth.role)) checkNewReceipts()
   }, 30000)
 }
 
@@ -153,14 +156,16 @@ function onKeydown(e) {
 }
 
 async function checkNewReceipts() {
+  if (!NOTIFY_ROLES.includes(auth.role)) return
+  if (isCapturing.value) return
   try {
-    const res = await api.get('/receipts')
+    const params = lastReceiptCheck.value ? { since: lastReceiptCheck.value } : {}
+    const res = await api.get('/receipts', { params })
     const current = Array.isArray(res.data) ? res.data : []
-    if (prevReceiptCount.value > 0 && current.length > prevReceiptCount.value && NOTIFY_ROLES.includes(auth.role)) {
-      const newCount = current.length - prevReceiptCount.value
-      toast.info(`Nuevo${newCount > 1 ? 's' : ''} recibo${newCount > 1 ? 's' : ''} de bodega disponible${newCount > 1 ? 's' : ''} (${newCount})`, 6000)
+    if (current.length > 0) {
+      toast.info(`Nuevo${current.length > 1 ? 's' : ''} recibo${current.length > 1 ? 's' : ''} de bodega disponible${current.length > 1 ? 's' : ''} (${current.length})`, 6000)
     }
-    prevReceiptCount.value = current.length
+    lastReceiptCheck.value = new Date().toISOString()
   } catch {
     // silent
   }
@@ -168,6 +173,10 @@ async function checkNewReceipts() {
 
 onMounted(() => {
   document.addEventListener('keydown', onKeydown)
+  // Registrar handler global de expiración de sesión (SPA navigation, no hard reload)
+  setSessionExpiredHandler(() => {
+    router.push('/login?expired=1')
+  })
 })
 
 onUnmounted(() => {

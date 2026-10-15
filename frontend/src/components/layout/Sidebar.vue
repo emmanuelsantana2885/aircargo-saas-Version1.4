@@ -7,7 +7,7 @@
       <i class="pi pi-box"></i>
       <div v-if="!collapsed">
         <div class="font-bold text-[14px] tracking-wide">AirCargo</div>
-        <div class="sidebar-site text-[10px] font-medium tracking-wider">{{ auth.selectedSite?.code || 'SDQ' }} Operations</div>
+        <div class="sidebar-site text-[10px] font-medium tracking-wider">{{ auth.selectedSite?.code || 'SDQ' }} {{ t('sidebar.operations') }}</div>
       </div>
       <div v-else class="text-center">
         <i class="pi pi-box" style="font-size: 20px;"></i>
@@ -159,7 +159,7 @@ const settingsMenu = computed(() => {
 
 <style scoped>
 .sidebar {
-  width: 210px;
+  width: var(--sidebar-width);
   background: var(--surface-2);
   border-right: 1px solid var(--border);
   display: flex;
@@ -174,14 +174,14 @@ const settingsMenu = computed(() => {
   transition: width 0.3s ease;
 }
 .sidebar.sidebar-collapsed {
-  width: 60px;
+  width: var(--sidebar-width-collapsed);
 }
 .sidebar.sidebar-mobile {
   transform: translateX(0);
   box-shadow: 4px 0 20px rgba(0,0,0,0.15);
 }
 .sidebar.sidebar-mobile:not(.sidebar-collapsed) {
-  width: 210px;
+  width: var(--sidebar-width);
 }
 .rail {
   width: 5px;

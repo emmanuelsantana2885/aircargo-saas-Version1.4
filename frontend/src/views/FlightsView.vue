@@ -307,7 +307,7 @@ useLiveRefresh(() => {
   const p = store.loadFlights({ silent: true })
   loadFlightWeights()
   return p
-}, { interval: 30000, pauses: [() => showModal.value, () => saving.value] })
+}, { interval: 60000, pauses: [() => showModal.value, () => saving.value] })
 
 // ── Enums ─────────────────────────────────────────────────────
 const aircraftTypes  = ['B767','B757','B737','B747','B777','A300','A310','A330','MD11','DC8','OTHER']

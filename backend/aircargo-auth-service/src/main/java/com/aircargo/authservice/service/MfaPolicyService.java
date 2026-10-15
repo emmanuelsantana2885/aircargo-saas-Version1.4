@@ -55,7 +55,7 @@ public class MfaPolicyService {
     public MfaPolicyService(MfaPolicyRepository policyRepository,
                             AppUserRepository userRepository,
                             @Value("${app.mfa.max-age-days:7}") int defaultMaxAgeDays,
-                            @Value("${app.mfa.reset-on-startup:true}") boolean defaultResetOnStartup) {
+                            @Value("${app.mfa.reset-on-startup:false}") boolean defaultResetOnStartup) {
         this.policyRepository = policyRepository;
         this.userRepository = userRepository;
         this.defaultMaxAgeDays = defaultMaxAgeDays;
@@ -130,7 +130,7 @@ public class MfaPolicyService {
                 p.getLastResetAt());
     }
 
-    /** ¿El siguiente arranque debe forzar re-enrolamiento global? (default true). */
+    /** ¿El siguiente arranque debe forzar re-enrolamiento global? (default false). */
     public boolean isResetOnStartupEnabled() {
         return Boolean.TRUE.equals(policy().getResetOnStartup());
     }

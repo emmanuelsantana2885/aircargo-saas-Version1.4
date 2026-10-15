@@ -2,7 +2,16 @@
 set -euo pipefail
 
 # ── Load secrets from gitignored .env ───────────────────────────
-AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks before deriving AIR_ROOT (running via a symlink in $HOME
+# would otherwise yield $HOME and miss the real .env).
+_self="${BASH_SOURCE[0]}"
+while [ -L "$_self" ]; do
+  _d="$(cd -P "$(dirname "$_self")" && pwd)"
+  _self="$(readlink "$_self")"
+  case "$_self" in /*) ;; *) _self="$_d/$_self" ;; esac
+done
+AIR_ROOT="$(cd -P "$(dirname "$_self")" && pwd)"
+unset _self _d
 . "$AIR_ROOT/aircargo-env.sh"
 LOG_DIR="${LOG_DIR:-$HOME/aircargo-logs}"
 mkdir -p "$LOG_DIR"
@@ -67,14 +76,22 @@ wait_health() {
 )
 wait_health aircargo-gateway 8080 300 || exit 1
 
-# 2) Auth — needed for JWT issuance used by everyone downstream
+# 2) Flight — auth validates the shared flight.airline table (ddl-auto=validate),
+# so flight's Flyway must run first. No service depends on auth's own tables.
+(
+    cd "$AIR_ROOT/backend/aircargo-flight-service"
+    java $MAX_CONNS $JAVA_OPTS -jar "target/aircargo-flight-service-1.2.0-SNAPSHOT.jar" >> "$LOG_DIR/aircargo-flight-service.log" 2>&1 &
+)
+wait_health aircargo-flight-service 9093 240 || exit 1
+
+# 3) Auth — needed for JWT issuance used by everyone downstream
 (
     cd "$AIR_ROOT/backend/aircargo-auth-service"
     java $MAX_CONNS $JAVA_OPTS -jar "target/aircargo-auth-service-1.2.0-SNAPSHOT.jar" >> "$LOG_DIR/aircargo-auth-service.log" 2>&1 &
 )
 wait_health aircargo-auth-service 9092 240 || exit 1
 
-# 3) The remaining 8 — booted sequentially so they don't collide on CPU/mem
+# 4) The remaining 8 — booted sequentially so they don't collide on CPU/mem
 # Detect RabbitMQ for notification-service (port = RABBITMQ_PORT, default 5672)
 RABBITMQ_ENABLED=true
 RMQ_PORT="${RABBITMQ_PORT:-5672}"
@@ -83,8 +100,7 @@ RMQ_PORT="${RABBITMQ_PORT:-5672}"
     RABBITMQ_ENABLED=false
 }
 
-for entry in "aircargo-flight-service 9093" \
-             "aircargo-booking-service 9094" \
+for entry in "aircargo-booking-service 9094" \
              "aircargo-mawb-service 9095" \
              "aircargo-warehouse-service 9096" \
              "aircargo-uld-service 9097" \

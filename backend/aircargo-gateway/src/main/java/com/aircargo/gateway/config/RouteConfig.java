@@ -65,10 +65,9 @@ public class RouteConfig {
                         .uri(svc("SERVICE_BOOKING_URL", "http://localhost:9094")))
 
                 .route("mawb-service", r -> r
-.path("/api/mawbs/**", "/api/hawbs/**",
-     "/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
-     "/api/tracking/**", "/api/compliance/**",
-     "/api/label-templates/**")
+                        .path("/api/mawbs/**", "/api/hawbs/**",
+                                "/api/cargo/mawbs/**", "/api/cargo/hawbs/**",
+                                "/api/tracking/**", "/api/compliance/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("mawb-service")

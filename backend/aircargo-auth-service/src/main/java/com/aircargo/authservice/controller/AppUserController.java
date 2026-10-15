@@ -224,8 +224,7 @@ public class AppUserController {
         AppUserDTO user = appUserService.getById(id).orElse(null);
         if (user == null) return ResponseEntity.notFound().build();
         String beforeSnapshot = com.aircargo.authservice.service.AuditService.snapshot(userRepository.findById(id).orElse(null));
-        mfaService.disableMfa(id);
-        tokenRevocationService.bump(id); // revoca todas las sesiones del usuario
+        mfaService.resetUserMfa(id); // deshabilita MFA + revoca sesiones (bump)
         auditService.log(principal.getUserIdAsUuid(), principal.email(), principal.fullName(),
                 "MFA_RESET_ADMIN", "USER", id.toString(),
                 "Admin reinició MFA de " + user.getEmail(),

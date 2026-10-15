@@ -325,10 +325,6 @@
                       class="ds-btn-secondary">
                       {{ t('ulds.actions.demount') }}
                     </button>
-                    <button v-if="uld.backendId" @click="printPalletLabel(uld)"
-                      class="ds-btn-secondary" :title="t('ulds.printPalletTooltip')">
-                      <i class="pi pi-print"></i> {{ t('ulds.actions.palletLabel') }}
-                    </button>
                     <button @click="saveUld(uld)"
                       class="ds-btn-primary">
                       {{ uld.backendId ? t('ulds.actions.update') : t('ulds.sendToLoadPlanning') }}
@@ -408,7 +404,6 @@
       </div>
     </section>
 
-    <LabelPrintModal v-if="showLabels" type="PALLET" :items="labelIds" @close="showLabels = false" />
   </div>
 </template>
 
@@ -427,13 +422,13 @@ import { extractError } from '../utils/error'
 import { useI18n } from 'vue-i18n'
 import ScanPanel from '../components/ScanPanel.vue'
 import UldTypeDropdown from '../components/UldTypeDropdown.vue'
-import LabelPrintModal from '../components/labels/LabelPrintModal.vue'
 import { useCommodities } from '../composables/useCommodities'
 import { useConfirm } from '../composables/useConfirm'
 import FilterBar from '../components/FilterBar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useIcons } from '../composables/useIcons'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import { normalizeAwb, sameAwb } from '../utils/awb'
 
 const uldsStore = useUldsStore()
 const appStore = useAppStore()
@@ -443,14 +438,6 @@ const { t, te } = useI18n()
 const icons = useIcons()
 const { confirm } = useConfirm()
 const { commodities: dbCommodities, loadCommodities, labelOf, descriptionOf, tooltipOf } = useCommodities()
-
-const showLabels = ref(false)
-const labelIds = ref([])
-function printPalletLabel(uld) {
-  if (!uld.backendId) { toast.warning(t('ulds.toast.saveBeforePrint')); return }
-  labelIds.value = [{ id: uld.backendId, label: uld.uldNumber || uld.backendId }]
-  showLabels.value = true
-}
 
 function airlineCodeById(airlineId) {
   const a = appStore.airlines.find(x => x.id === airlineId)
@@ -668,9 +655,9 @@ function onScanPieceAdded(result) {
   const uld = localUlds.value.find(u => u.uid === uid)
   if (!uld) return
 
-  let mawbRow = uld.mawbs.find(m => m.awbNumber === result.awbNumber)
+  let mawbRow = uld.mawbs.find(m => sameAwb(m.awbNumber, result.awbNumber))
   if (!mawbRow) {
-    const mawbData = appStore.mawbs.find(m => m.awbNumber === result.awbNumber)
+    const mawbData = appStore.mawbs.find(m => sameAwb(m.awbNumber, result.awbNumber))
     mawbRow = {
       _rowId: Math.random().toString(36).slice(2),
       awbNumber: result.awbNumber,
@@ -699,7 +686,7 @@ function onScanPieceRemoved(data) {
   if (!uid) return
   const uld = localUlds.value.find(u => u.uid === uid)
   if (!uld) return
-  const mawbRow = uld.mawbs.find(m => m.awbNumber === data.awbNumber)
+  const mawbRow = uld.mawbs.find(m => sameAwb(m.awbNumber, data.awbNumber))
   if (mawbRow && mawbRow.pieces > 0) {
     mawbRow.pieces--
   }
@@ -739,7 +726,7 @@ async function onUldNumberScanned(code) {
 // Piezas disponibles = prealertadas o recibidas, menos lo ya asignado en ULDs
 function totalAssignedForAwb(awbNumber, excludeRowId) {
   return (localUlds.value || []).flatMap(u =>
-    (u.mawbs || []).filter(mw => mw.awbNumber === awbNumber && mw._rowId !== excludeRowId)
+    (u.mawbs || []).filter(mw => sameAwb(mw.awbNumber, awbNumber) && mw._rowId !== excludeRowId)
   ).reduce((s, mw) => s + (mw.pieces || 0), 0)
 }
 
@@ -790,7 +777,7 @@ function mawbSelectGroups(uld, mIdx) {
 function onMawbDropdownChange(uld, mIdx) {
   const mawb = uld.mawbs[mIdx]
   if (!mawb?.awbNumber) return
-  const selected = availableMawbs.value.find(m => m.awbNumber === mawb.awbNumber)
+  const selected = availableMawbs.value.find(m => sameAwb(m.awbNumber, mawb.awbNumber))
   mawb._isSpecial = !!selected?.isSpecial
   onMawbSelect(uld, mIdx)
 }
@@ -868,7 +855,7 @@ function mawbInBookings(awbNumber) {
 
 function mawbStatusForAwb(awbNumber) {
   if (!awbNumber) return null
-  const m = (appStore.mawbs || []).find(x => x.awbNumber === awbNumber)
+  const m = (appStore.mawbs || []).find(x => sameAwb(x.awbNumber, awbNumber))
   return m?.status || null
 }
 
@@ -912,14 +899,6 @@ function liveCommodityFor(awbNumber, fallback) {
   if (m?.commodityType) return m.commodityType
   const b = (appStore.bookings || []).find(x => normalizeAwb(x.awbNumber) === norm)
   return b?.commodityType || fallback || ''
-}
-
-function normalizeAwb(raw) {
-  let s = String(raw || '').replace(/[\s\-_/]/g, '')
-  if (/^\d{11}$/.test(s)) {
-    s = s.slice(0, 3) + '-' + s.slice(3)
-  }
-  return s
 }
 
 function rebuildLocalList() {
@@ -1145,7 +1124,7 @@ async function saveUld(uld) {
       }
       for (const m of (uld.mawbs || [])) {
         if (m.awbNumber && uld.backendId) {
-          const matchingMawb = appStore.mawbs.find(x => x.awbNumber === m.awbNumber)
+          const matchingMawb = appStore.mawbs.find(x => sameAwb(x.awbNumber, m.awbNumber))
           await uldAwbsApi.create({
             uldId: uld.backendId,
             mawbId: matchingMawb?.id || null,
@@ -1182,7 +1161,7 @@ async function saveUld(uld) {
     // Create ULD-AWB links for each MAWB
     for (const m of (uld.mawbs || [])) {
       if (m.awbNumber && result?.id) {
-        const matchingMawb = appStore.mawbs.find(x => x.awbNumber === m.awbNumber)
+        const matchingMawb = appStore.mawbs.find(x => sameAwb(x.awbNumber, m.awbNumber))
         await uldAwbsApi.create({
           uldId: result.id,
           mawbId: matchingMawb?.id || null,
@@ -1336,7 +1315,7 @@ useLiveRefresh(() => {
     appStore.loadAllMawbs({ silent: true }),
     appStore.loadBookings(undefined, { silent: true }),
   ])
-}, { interval: 30000, pauses: [() => !!expandedUldId.value, showLabels] })
+}, { interval: 60000, pauses: [() => !!expandedUldId.value] })
 </script>
 
 <style scoped>

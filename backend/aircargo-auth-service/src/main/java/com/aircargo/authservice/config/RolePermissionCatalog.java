@@ -21,7 +21,7 @@ public final class RolePermissionCatalog {
     private static final List<String> ALL = Permissions.allCodesAsList();
     private static final Set<String> ALL_SET = Permissions.allCodes();
 
-    private static final List<String> ALL_MINUS_SITE_LABEL;
+    private static final List<String> ALL_MINUS_SITE;
     private static final List<String> READ_ONLY;
     private static final List<String> WAREHOUSE_ASSISTANT;
     private static final List<String> OPERATIONS;
@@ -30,9 +30,8 @@ public final class RolePermissionCatalog {
     private static final List<String> BI_USER;
 
     static {
-        ALL_MINUS_SITE_LABEL = build(ALL_SET, Set.of(
-                Permissions.CAN_MANAGE_SITE,
-                Permissions.CAN_MANAGE_LABEL_TEMPLATE));
+        ALL_MINUS_SITE = build(ALL_SET, Set.of(
+                Permissions.CAN_MANAGE_SITE));
 
         READ_ONLY = build(Set.of(
                 Permissions.CAN_READ_DASHBOARD,
@@ -59,8 +58,7 @@ public final class RolePermissionCatalog {
                 Permissions.CAN_CREATE_RECEIPT,
                 Permissions.CAN_UPDATE_RECEIPT,
                 Permissions.CAN_DELETE_RECEIPT,
-                Permissions.CAN_MANAGE_MAWB_DOCS,
-                Permissions.CAN_PRINT_LABEL));
+                Permissions.CAN_MANAGE_MAWB_DOCS));
 
         OPERATIONS = build(Set.of(
                 Permissions.CAN_READ_DASHBOARD,
@@ -77,12 +75,10 @@ public final class RolePermissionCatalog {
                 Permissions.CAN_UPDATE_MAWB,
                 Permissions.CAN_DELETE_MAWB,
                 Permissions.CAN_MANAGE_MAWB_DOCS,
-                Permissions.CAN_PRINT_LABEL,
                 Permissions.CAN_CREATE_ULD,
                 Permissions.CAN_UPDATE_ULD,
                 Permissions.CAN_DELETE_ULD,
                 Permissions.CAN_SCAN_ULD,
-                Permissions.CAN_PRINT_PALLET_LABEL,
                 Permissions.CAN_CREATE_LOAD_PLAN,
                 Permissions.CAN_ASSIGN_LOAD_PLAN,
                 Permissions.CAN_CLOSE_LOAD_PLAN,
@@ -106,12 +102,10 @@ public final class RolePermissionCatalog {
                 Permissions.CAN_UPDATE_MAWB,
                 Permissions.CAN_DELETE_MAWB,
                 Permissions.CAN_MANAGE_MAWB_DOCS,
-                Permissions.CAN_PRINT_LABEL,
                 Permissions.CAN_CREATE_ULD,
                 Permissions.CAN_UPDATE_ULD,
                 Permissions.CAN_DELETE_ULD,
                 Permissions.CAN_SCAN_ULD,
-                Permissions.CAN_PRINT_PALLET_LABEL,
                 Permissions.CAN_CREATE_LOAD_PLAN,
                 Permissions.CAN_ASSIGN_LOAD_PLAN,
                 Permissions.CAN_CLOSE_LOAD_PLAN,
@@ -135,7 +129,6 @@ public final class RolePermissionCatalog {
                 Permissions.CAN_UPDATE_ULD,
                 Permissions.CAN_DELETE_ULD,
                 Permissions.CAN_SCAN_ULD,
-                Permissions.CAN_PRINT_PALLET_LABEL,
                 Permissions.CAN_CREATE_LOAD_PLAN,
                 Permissions.CAN_ASSIGN_LOAD_PLAN,
                 Permissions.CAN_CLOSE_LOAD_PLAN,
@@ -159,7 +152,7 @@ public final class RolePermissionCatalog {
     public static List<String> codesFor(UserRole role) {
         return switch (role) {
             case SUPER_USER -> ALL;
-            case ADMIN -> ALL_MINUS_SITE_LABEL;
+            case ADMIN -> ALL_MINUS_SITE;
             case READ_ONLY -> RolePermissionCatalog.READ_ONLY;
             case WAREHOUSE_ASSISTANT -> RolePermissionCatalog.WAREHOUSE_ASSISTANT;
             case OPERATIONS -> RolePermissionCatalog.OPERATIONS;

@@ -270,8 +270,8 @@
               <td class="text-[12px] text-secondary">{{ view.description }}</td>
               <td class="text-center">
                 <div class="flex gap-1 justify-center">
-                  <button @click="openViewEditor(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Editar</button>
-                  <button @click="deleteView(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">Eliminar</button>
+                  <button @click="openViewEditor(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">{{ t('common.edit') }}</button>
+                  <button @click="deleteView(view)" class="ds-btn-secondary !px-2 !py-1 !text-[11px]">{{ t('common.delete') }}</button>
                 </div>
               </td>
             </tr>
@@ -309,8 +309,8 @@
               <input v-model="viewForm.description" maxlength="255" placeholder="Descripción de la transacción" class="ds-input">
             </div>
             <div class="flex gap-2 pt-2">
-              <button @click="saveView" class="ds-btn-primary flex-1 justify-center">Guardar</button>
-              <button @click="showViewEditor = false" class="ds-btn-secondary flex-1 justify-center">Cancelar</button>
+              <button @click="saveView" class="ds-btn-primary flex-1 justify-center">{{ t('common.save') }}</button>
+              <button @click="showViewEditor = false" class="ds-btn-secondary flex-1 justify-center">{{ t('common.cancel') }}</button>
             </div>
           </div>
         </div>
@@ -647,5 +647,5 @@ useLiveRefresh(() => {
     return Promise.all([loadRoles(true), loadViews(true), loadAllUsers(true)])
   }
   return loadConnected(true)
-}, { interval: 30000, pauses: [showViewEditor] })
+}, { interval: 60000, pauses: [showViewEditor] })
 </script>

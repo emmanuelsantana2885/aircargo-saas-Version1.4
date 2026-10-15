@@ -53,9 +53,9 @@
            :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
         <span>{{ entry.success ? (entry.warning ? '⚠' : '✓') : '✗' }}</span>
         <span class="font-bold">{{ entry.awbNumber }}</span>
-        <span v-if="entry.pieceNumber">Pieza #{{ entry.pieceNumber }}</span>
+        <span v-if="entry.pieceNumber">{{ t('scan.pieceLabel', { n: entry.pieceNumber }) }}</span>
         <span v-if="entry.totalOnUld">({{ entry.totalOnUld }}/{{ entry.maxAllowed }})</span>
-        <span v-if="entry.warning" class="ml-1 text-amber-600 italic truncate max-w-[120px]" :title="entry.warning">sin Booking</span>
+        <span v-if="entry.warning" class="ml-1 text-amber-600 italic truncate max-w-[120px]" :title="entry.warning">{{ t('scan.noBooking') }}</span>
         <span class="ml-auto opacity-60">{{ entry.time }}</span>
       </div>
     </div>
@@ -76,9 +76,9 @@
     <!-- Camera Modal -->
     <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="closeCamera">
       <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl"
-        role="dialog" aria-modal="true" aria-label="Escanear con camara">
+        role="dialog" aria-modal="true" :aria-label="t('ulds.scanWithCamera')">
         <div class="flex items-center justify-between mb-4">
-          <span class="text-[14px] font-bold text-slate-900 uppercase">Escanear con Cámara</span>
+          <span class="text-[14px] font-bold text-slate-900 uppercase">{{ t('ulds.scanWithCamera') }}</span>
           <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold" :aria-label="t('common.close')">✕</button>
         </div>
         <div class="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-black" style="min-height: 280px;">
@@ -105,8 +105,11 @@
 
 <script setup>
 import { ref, nextTick, watch, computed, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { scanApi } from '@/api/scan.js'
 import { uldTypeCatalogApi } from '@/api/uldTypeCatalog'
+
+const { t } = useI18n()
 
 const props = defineProps({
   active: { type: Boolean, default: false },
@@ -146,6 +149,14 @@ let detectTimer = null
 let scanLoop = null
 let lastDetectedCode = ''
 let lastDetectedAt = 0
+// Los detectores corren en setInterval, pero scanImageData() es async y usa un
+// lector WASM singleton: si un tick entra antes de que termine el anterior,
+// el lector se reentra y ZBar lanza "Cannot read properties of undefined
+// (reading 'startTime')" desde reportAllChanges() en un timer interno (error NO
+// capturado por el try/catch, porque ocurre fuera de la promesa awaited).
+// scanBusy serializa los ticks; scanGeneration invalida ticks de sesiones viejas.
+let scanBusy = false
+let scanGeneration = 0
 
 // Auto-focus when activated
 watch(() => props.active, async (val) => {
@@ -243,6 +254,7 @@ async function openCamera() {
   cameraReady.value = false
   cameraError.value = ''
   lastDetect.value = false
+  const gen = ++scanGeneration
   await nextTick()
 
   const video = cameraVideo.value
@@ -280,14 +292,17 @@ async function openCamera() {
           formats: ['code_128', 'code_39', 'code_39_vin', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar', 'i2of5'],
         })
         detectTimer = setInterval(async () => {
+          if (gen !== scanGeneration) return
           if (!cameraStream?.active || processing.value || !video.videoWidth) return
+          if (scanBusy) return
+          scanBusy = true
           try {
             const codes = await bd.detect(video)
             if (codes.length > 0 && shouldScan(codes[0].rawValue)) {
               lastDetect.value = true
               processScan(markScanned(codes[0].rawValue))
             }
-          } catch {}
+          } catch {} finally { scanBusy = false }
         }, 250)
         return
       } catch {}
@@ -300,7 +315,10 @@ async function openCamera() {
     const ctx = offscreen.getContext('2d')
 
     scanLoop = setInterval(async () => {
+      if (gen !== scanGeneration) return
       if (!cameraStream?.active || processing.value || !video.videoWidth) return
+      if (scanBusy) return
+      scanBusy = true
       try {
         offscreen.width = video.videoWidth || 640
         offscreen.height = video.videoHeight || 480
@@ -317,6 +335,8 @@ async function openCamera() {
       } catch (e) {
         if (e?.message === 'index out of bounds') return
         console.warn('[Scan] ZBar error:', e)
+      } finally {
+        scanBusy = false
       }
     }, 400)
   } catch (err) {
@@ -375,12 +395,14 @@ async function retryCamera() {
 
 function stopStream() {
   if (cameraStream) {
-    cameraStream.getTracks().forEach(t => t.stop())
+    cameraStream.getTracks().forEach((track) => track.stop())
     cameraStream = null
   }
 }
 
 async function closeCamera() {
+  scanGeneration++
+  scanBusy = false
   if (detectTimer) { clearInterval(detectTimer); detectTimer = null }
   if (scanLoop) { clearInterval(scanLoop); scanLoop = null }
   stopStream()

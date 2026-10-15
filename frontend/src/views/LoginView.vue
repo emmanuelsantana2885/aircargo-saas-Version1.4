@@ -110,11 +110,123 @@
           <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
           <button
+            @click="openMfaRecovery"
+            type="button"
+            class="w-full py-1 rounded text-xs font-medium transition-all hover:brightness-110"
+            style="background: transparent; color: var(--accent)"
+          >
+            {{ t('login.mfa.lostDevice') }}
+          </button>
+
+          <button
             @click="handleBackToLogin"
+            type="button"
             class="w-full py-1.5 rounded text-xs font-medium transition-all hover:brightness-110"
             style="background: transparent; color: var(--muted)"
           >
             {{ t('common.back') }}
+          </button>
+        </form>
+      </template>
+
+      <template v-if="step === 'mfa-recovery'">
+        <div class="text-center mb-6">
+          <div class="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3" style="background: var(--accent)">
+            <component :is="icons.ShieldAlert" :size="28" color="white" :stroke-width="2" />
+          </div>
+          <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.mfa.recovery.title') }}</h1>
+          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.mfa.recovery.subtitle') }}</p>
+        </div>
+
+        <form v-if="mfaRecoveryPhase === 'request'" @submit.prevent="handleRecoveryRequest" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.emailLabel') }}</label>
+            <input
+              v-model="mfaRecoveryEmail"
+              type="email"
+              required
+              :placeholder="t('login.emailPlaceholder')"
+              class="w-full px-3 py-2.5 rounded text-sm outline-none transition-all border-slate-300"
+              style="background: var(--bg); color: var(--text)"
+              :disabled="loading"
+              autofocus
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loading || !mfaRecoveryEmail"
+            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
+            style="background: var(--accent); color: white"
+          >
+            <span v-if="loading" class="inline-flex items-center gap-2">
+              <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              {{ t('login.mfa.recovery.sending') }}
+            </span>
+            <span v-else>{{ t('login.mfa.recovery.sendCode') }}</span>
+          </button>
+
+          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+
+          <button
+            @click="backToMfa"
+            type="button"
+            class="w-full py-1.5 rounded text-xs font-medium transition-all hover:brightness-110"
+            style="background: transparent; color: var(--muted)"
+          >
+            {{ t('login.mfa.recovery.backToMfa') }}
+          </button>
+        </form>
+
+        <form v-else @submit.prevent="handleRecoveryConfirm" class="space-y-4">
+          <div
+            class="px-3 py-2.5 rounded-lg border text-xs leading-relaxed"
+            style="background: var(--bg); border-color: var(--border); color: var(--muted)"
+          >
+            {{ t('login.mfa.recovery.sentMessage') }}
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.codeLabel') }}</label>
+            <input
+              v-model="mfaRecoveryCode"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="6"
+              required
+              placeholder="000000"
+              class="w-full px-3 py-2.5 rounded text-sm text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
+              style="background: var(--bg); color: var(--text); font-size: 18px"
+              :disabled="loading"
+              autofocus
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loading || mfaRecoveryCode.length !== 6"
+            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
+            style="background: var(--accent); color: white"
+          >
+            <span v-if="loading" class="inline-flex items-center gap-2">
+              <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+              {{ t('login.mfa.recovery.confirming') }}
+            </span>
+            <span v-else>{{ t('login.mfa.recovery.confirm') }}</span>
+          </button>
+
+          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+
+          <button
+            @click="backToMfa"
+            type="button"
+            class="w-full py-1.5 rounded text-xs font-medium transition-all hover:brightness-110"
+            style="background: transparent; color: var(--muted)"
+          >
+            {{ t('login.mfa.recovery.backToMfa') }}
           </button>
         </form>
       </template>
@@ -318,6 +430,9 @@ const enrollOtpAuthUrl = ref('')
 const enrollCode = ref('')
 const mfaReason = ref('required')
 const mfaReenrollmentNeeded = ref(false)
+const mfaRecoveryEmail = ref('')
+const mfaRecoveryCode = ref('')
+const mfaRecoveryPhase = ref('request')
 
 const selectedSiteLabel = computed(() => {
   if (!selectedSite.value) return ''
@@ -497,6 +612,23 @@ function navigateAfterSiteConfirm() {
     }, 600)
     return
   }
+  // Sesión expirada: se devuelve al usuario a la vista donde se cortó, para
+  // que recupere el contexto (y los borradores que esa vista restaura sola al
+  // inicializar sus formularios). Antes `?expired=1` se perdía aquí y todo el
+  // flujo terminaba en `/`, dejando al usuario sin pista de qué estaba Doing.
+  if (route.query.expired === '1') {
+    let expiredRoute = ''
+    try {
+      expiredRoute = sessionStorage.getItem('aircargo_expired_route') || ''
+      sessionStorage.removeItem('aircargo_expired_route')
+    } catch {}
+    // Sólo se acepta una ruta interna: nunca absoluta ni de otro origen.
+    const safe = expiredRoute.startsWith('/') && !expiredRoute.startsWith('//')
+      ? expiredRoute
+      : ''
+    router.push(safe || popReturnTo() || '/')
+    return
+  }
   router.push(popReturnTo() || '/')
 }
 
@@ -518,6 +650,9 @@ function handleBackToLogin() {
   enrollOtpAuthUrl.value = ''
   enrollCode.value = ''
   mfaReason.value = 'required'
+  mfaRecoveryEmail.value = ''
+  mfaRecoveryCode.value = ''
+  mfaRecoveryPhase.value = 'request'
   errorMsg.value = ''
   needsPassword.value = false
   showSetupLink.value = false
@@ -526,6 +661,64 @@ function handleBackToLogin() {
 
 function goToSetPassword() {
   router.push(`/set-password?email=${encodeURIComponent(loginEmail.value)}`)
+}
+
+function openMfaRecovery() {
+  mfaRecoveryEmail.value = loginEmail.value || pendingEmail.value || ''
+  mfaRecoveryCode.value = ''
+  mfaRecoveryPhase.value = 'request'
+  errorMsg.value = ''
+  step.value = 'mfa-recovery'
+}
+
+function backToMfa() {
+  mfaRecoveryCode.value = ''
+  errorMsg.value = ''
+  step.value = (pendingEmail.value || loginEmail.value) ? 'mfa' : 'credentials'
+}
+
+async function handleRecoveryRequest() {
+  errorMsg.value = ''
+  loading.value = true
+  try {
+    const res = await authApi.mfaRecoveryRequest(mfaRecoveryEmail.value)
+    if (res.data?.devCode) {
+      mfaRecoveryCode.value = res.data.devCode
+    }
+    mfaRecoveryPhase.value = 'confirm'
+  } catch (e) {
+    toast.error(extractError(e))
+    errorMsg.value = t('login.mfa.recovery.failed')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleRecoveryConfirm() {
+  errorMsg.value = ''
+  loading.value = true
+  try {
+    const res = await authApi.mfaRecoveryConfirm(mfaRecoveryEmail.value, mfaRecoveryCode.value)
+    const token = res.data?.enrollToken
+    if (!token) {
+      errorMsg.value = t('login.mfa.recovery.invalidCode')
+      mfaRecoveryCode.value = ''
+      return
+    }
+    loginEmail.value = mfaRecoveryEmail.value
+    await startMfaEnrollment(token)
+  } catch (e) {
+    const status = e.response?.status
+    toast.error(extractError(e))
+    if (status === 400) {
+      errorMsg.value = t('login.mfa.recovery.invalidCode')
+      mfaRecoveryCode.value = ''
+    } else {
+      errorMsg.value = t('login.mfa.recovery.failed')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // Al montar, restauramos el paso del flujo de login guardado.

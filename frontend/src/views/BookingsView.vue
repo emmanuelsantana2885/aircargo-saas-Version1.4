@@ -410,6 +410,8 @@ import FilterBar from '../components/FilterBar.vue'
 import EmptyState from '../components/EmptyState.vue'
 import { useHeaderFilters } from '../composables/useHeaderFilters'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
+import { normalizeAwb, sameAwb } from '../utils/awb'
+import { dupGroupKey, sameDupGroup } from '../utils/bookingGroups'
 
 const store = useAppStore()
 const router = useRouter()
@@ -469,14 +471,6 @@ const COM_MAP = {
 function parseCommodity(abbr) {
   const key = (abbr || '').trim().toUpperCase()
   return COM_MAP[key] || 'GENERAL'
-}
-
-function normalizeAwb(raw) {
-  let s = String(raw || '').replace(/[\s\-_\/]/g, '')
-  if (/^\d{11}$/.test(s)) {
-    s = s.slice(0, 3) + '-' + s.slice(3)
-  }
-  return s
 }
 
 function toInt(v) {
@@ -610,7 +604,7 @@ const visibleBookings = computed(() => {
 const deduplicatedBookings = computed(() => {
   const groups = {}
   for (const b of visibleBookings.value) {
-    const key = b.mawbId || b.awbNumber || b.id
+    const key = dupGroupKey(b)
     if (!groups[key]) {
       groups[key] = { booking: b, count: 1 }
     } else {
@@ -661,7 +655,7 @@ const form = ref({
 
 function bookingMawb(b) {
   if (!b) return null
-  return store.mawbs.find(m => m.id === b.mawbId || m.awbNumber === b.awbNumber) || null
+  return store.mawbs.find(m => m.id === b.mawbId || sameAwb(m.awbNumber, b.awbNumber)) || null
 }
 
 function goToReceipt(b) {
@@ -960,14 +954,14 @@ const isSkid = (form.value.eaType || 'SKID') === 'SKID'
 }
 
 async function removeBooking(b) {
-  const keys = b._dupCount > 1 ? store.bookings.filter(x => (x.mawbId === b.mawbId) || (!b.mawbId && x.awbNumber === b.awbNumber)).map(x => x.clientName).filter(Boolean) : []
+  const keys = b._dupCount > 1 ? store.bookings.filter(x => sameDupGroup(x, b)).map(x => x.clientName).filter(Boolean) : []
   const msg = keys.length > 1
     ? `¿Eliminar ${keys.length} bookings agrupados (${keys.join(', ')})?`
     : `¿Eliminar booking de ${b.clientName || '—'} (${b.awbNumber || b.id?.slice(0, 8) || 'N/A'})?`
   if (!(await confirm({ message: msg }))) return
   try {
     if (b._dupCount > 1) {
-      const group = store.bookings.filter(x => (x.mawbId === b.mawbId) || (!b.mawbId && x.awbNumber === b.awbNumber))
+      const group = store.bookings.filter(x => sameDupGroup(x, b))
       await Promise.all(group.map(x => store.deleteBooking(x.id).catch((e) => { toast.error(extractError(e)) })))
     } else {
       await store.deleteBooking(b.id)
@@ -998,7 +992,7 @@ useLiveRefresh(() =>
     store.loadBookings(undefined, { silent: true }),
     store.loadAllMawbs({ silent: true }),
   ]),
-{ interval: 30000, pauses: [showModal, showImportModal, saving] })
+{ interval: 60000, pauses: [showModal, showImportModal, saving] })
 
 watch(() => store.selectedFlightId, (id) => {
   localFlightId.value = id

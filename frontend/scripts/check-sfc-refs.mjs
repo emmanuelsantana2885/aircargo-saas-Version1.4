@@ -12,6 +12,8 @@
  * Exit 1 si hay referencias no resueltas (para integrarlo en lint/CI).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { join, extname } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
@@ -215,9 +217,84 @@ function candidates(code) {
   return out
 }
 
+/**
+ * Blanquea las sentencias `import ... from '...'` (y `import '...'`) del codigo
+ * que se va a escanear en busca de REFERENCIAS sin resolver.
+ *
+ * Los nombres de un import estan definidos por definicion: solo hace falta
+ * registrarlos como definicion (ver `extractDefinitions`). Contarlos ademas como
+ * referencias produce falsos positivos con los alias:
+ * `import { normalizeAwb as normAwb }` define `normAwb`, pero el texto tambien
+ * contiene `normalizeAwb`, y ese token se reportaba como "simbolo no definido"
+ * aunque jamas se use en el archivo.
+ *
+ * Se reemplazan los caracteres por espacios en vez de borrar el texto para
+ * conservar los offsets y los saltos de linea (los numeros de linea que reporta
+ * el guard siguen siendo correctos).
+ */
+function stripImports(code) {
+  const blank = (m) => m.replace(/[^\n]/g, ' ')
+  return code
+    .replace(/\bimport\b[\s\S]*?\bfrom\s*(['"])[^'"]*\1/g, blank)
+    .replace(/\bimport\s*(['"])[^'"]*\1/g, blank)
+}
+
 /** Nombres definidos a partir del código de <script setup>. */
-function extractDefinitions(script) {
-  const defs = new Set()
+/**
+ * Mapa de profundidad de llaves por indice (profundidad ANTES del caracter).
+ * Se usa para aceptar solo declaraciones de nivel superior: un `const x`
+ * dentro del cuerpo de una funcion no es visible desde el template, igual que
+ * un parametro de arrow (`x => ...` no abre llave, asi que la profundidad por
+ * si sola no alcanza para ese caso: ver mas abajo).
+ */
+function braceDepthMap(code) {
+  const depth = new Int32Array(code.length)
+  let d = 0
+  for (let i = 0; i < code.length; i++) {
+    depth[i] = d
+    const c = code[i]
+    if (c === '{') d++
+    else if (c === '}') d = d > 0 ? d - 1 : 0
+  }
+  return depth
+}
+
+export function extractDefinitions(script) {
+  // Dos conjuntos con requisitos OPUESTOS:
+  //  - `topLevel`: lo que un <template> puede ver (bindings de primer nivel).
+  //  - `lenient` : ademas incluye params de arrow/function, `catch (e)` y
+  //                variables de `for`, que SI son ambito valido dentro del script.
+  // Mezclarlos tapaba bugs reales: `t` en el template de CameraCapture.vue se
+  // daba por definido porque existia un `forEach(t => t.stop())` anidado, y el
+  // componente reventaba en runtime con `_ctx.t is not a function`.
+  const depth = braceDepthMap(script)
+  const topLevel = new Set()
+  const lenient = new Set()
+  const add = (name) => { topLevel.add(name); lenient.add(name) }
+  const addLenientOnly = (name) => { lenient.add(name) }
+  const defs = topLevel
+  // Solo las declaraciones de nivel superior alimentan el template. Los params
+  // de arrow/function, los `catch (e)` y las variables de `for` viven en su
+  // propio ambito y NUNCA son visibles desde el template: registrarlos como
+  // definiciones tapa bugs reales (CameraCapture.vue usaba `t` en el template
+  // thinking que venía de useI18n, cuando lo unico que existia era el arrow
+  // param `t => t.stop()` de un forEach).
+  // Ojo: `declRe` empieza su match en el `}` o `;` previo, que pertenece al
+  // scope que acaba de cerrar; hay que medir en la palabra clave (const/let/
+  // var/function), que si es de nivel superior.
+  const keywordIdx = (start, text) => {
+    const km = text.match(/(?:const|let|var|function)\b/)
+    return km ? start + km.index : start
+  }
+  // Se acepta el nivel superior si el indice es 0 en el mapa CRUDO **o** en el
+  // stripped. Ningun stripper es perfecto: una llave dentro de un literal rompe
+  // el crudo (falso positivo en ExportsView.vue) y un backtick/apostrofe puede
+  // romper el stripped (falso positivo en WarehouseReceiptsView.vue). OR cubre
+  // ambos casos. Esto NO debilita la deteccion de `t`: los params de arrow nunca
+  // entran en `topLevel`, independientemente del depth map.
+  const depthStripped = braceDepthMap(stripStrings(stripComments(stripRegexLiterals(script))))
+  const isTopLevel = (index) => (depth[index] ?? 0) === 0 || (depthStripped[index] ?? 0) === 0
+  const declIsTopLevel = (m) => isTopLevel(keywordIdx(m.index, m[0]))
 
   // imports — parser por formas (soporta saltos de línea dentro de los { })
   // 1) import { a, b as c } from 'x'   2) import d, { e } from 'x'
@@ -232,7 +309,7 @@ function extractDefinitions(script) {
     if (bare) continue
     // namespace: import * as ns
     const ns = rest.match(/^\s*\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)/)
-    if (ns) { defs.add(ns[1]); continue }
+    if (ns) { add(ns[1]); continue }
     // localiza el `from '...'` que cierra este import (sin cruzar otro import)
     fromRe.lastIndex = 0
     let f
@@ -250,13 +327,13 @@ function extractDefinitions(script) {
     if (braced) {
       for (const p of braced[1].split(',')) {
         const name = p.split(/\s+as\s+/).pop().trim()
-        if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) defs.add(name)
+        if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) add(name)
       }
     }
     const beforeBrace = braced ? spec.slice(0, spec.indexOf('{')) : spec
     for (const d of beforeBrace.split(',')) {
       const name = d.trim()
-      if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) defs.add(name)
+      if (name && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) add(name)
     }
   }
 
@@ -264,24 +341,33 @@ function extractDefinitions(script) {
   // const a = .. , const {b} = .. , let c .. , let d, e = ..
   const declRe = /(?:^|[\n;}])\s*(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*|\{[^}]*\}|\[[^\]]*\])\s*/g
   while ((m = declRe.exec(script))) {
-    for (const name of destructureNames(m[1])) defs.add(name)
+    for (const name of destructureNames(m[1])) {
+      if (declIsTopLevel(m)) add(name); else addLenientOnly(name)
+    }
   }
   // declaradores múltiples en una misma sentencia: let pcs = 0, gross = 0, tare = 0
+  // `let a = 1, b = 2`: la coma es el punto de medicion. Las claves de objeto
+  // (`{ a: 1, b: 2 }`) no llegan aqui porque no llevan `=`, asi que un objeto
+  // de primer nivel no falsea la profundidad.
   const multiDeclRe = /,\s*([A-Za-z_$][A-Za-z0-9_$]*|\{[^}]*\}|\[[^\]]*\])\s*=(?!=)/g
   while ((m = multiDeclRe.exec(script))) {
-    for (const name of destructureNames(m[1])) defs.add(name)
+    const target = isTopLevel(m.index) ? add : addLenientOnly
+    for (const name of destructureNames(m[1])) target(name)
   }
   // declaraciones tras for/while/catch/function( y operadores
   const declRe2 = /\b(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*|\{[^}]*\}|\[[^\]]*\])\s*(?==|[;,]\s*$|[;,]\s*(?:const|let|var|undefined|`))/g
   while ((m = declRe2.exec(script))) {
-    for (const name of destructureNames(m[1])) defs.add(name)
+    // m.index cae en la palabra clave (const/let/var): se mide ahi.
+    const target = isTopLevel(m.index) ? add : addLenientOnly
+    for (const name of destructureNames(m[1])) target(name)
   }
 
   // destructuring sin declarador: ({ a } = x) /  [a] = x
   const destrRe = /\b\s*(\{[^}]*\}\s*=\s*[^;]|\[[^\]]*\]\s*=\s*[^;])\b/g
   while ((m = destrRe.exec(script))) {
+    if (!declIsTopLevel(m)) continue
     const head = m[1].split('=')[0].trim()
-    for (const name of destructureNames(head)) defs.add(name)
+    for (const name of destructureNames(head)) add(name)
   }
 
   // props de defineProps({...}): claves de objeto de nivel superior + params de callback
@@ -295,46 +381,54 @@ function extractDefinitions(script) {
     if (inner.trim().startsWith('[')) {
       // forma array: defineProps(['a','b','c'])
       for (const q of inner.matchAll(/'([^']+)'|"([^"]+)"/g)) {
-        if (q[1]) defs.add(q[1])
+        if (q[1]) add(q[1])
       }
     } else {
-      for (const k of topLevelObjectKeys(inner)) defs.add(k)
+      for (const k of topLevelObjectKeys(inner)) add(k)
     }
   }
 
-  // params de arrow functions: (a, b) => ... y destructuring ({a},{b}) => ...
+  // Nota: los params de arrow (a, b) => y de function foo(a, b) NO se registran.
+  // Son ambito propio y el template no los ve. Registrarlos fue la causa de un
+  // falso negativo real: `t` en el template de CameraCapture.vue se daba por
+  // definido por un `forEach(t => t.stop())` anidado.
+  // function declarations (nombre) — el nombre SI es de nivel superior
+  const fnRe = /\bfunction\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g
+  while ((m = fnRe.exec(script))) {
+    // Una `function` nombrada anidada (p.ej. splitLine dentro de parseCsv) es
+    // valida en su ambito aunque no sea visible desde el template: sin la rama
+    // else sus propios usos se reportaban como simbolos inexistentes.
+    if (declIsTopLevel(m)) add(m[1])
+    else addLenientOnly(m[1])
+  }
+  // Params y variables de ambito propio: validos DENTRO del script, invisibles
+  // para el template. Solo alimentan el conjunto `lenient`.
   const paramsRe = /\(([^()]*)\)\s*=>/g
   while ((m = paramsRe.exec(script))) {
-    for (const p of splitParams(m[1])) defs.add(p)
+    for (const p of splitParams(m[1])) addLenientOnly(p)
   }
-  // params de function declarations: function foo(a, b) {
   const declParamsRe = /\bfunction\s+[A-Za-z_$][\w$]*\s*\(([^()]*)\)/g
   while ((m = declParamsRe.exec(script))) {
-    for (const p of splitParams(m[1])) defs.add(p)
+    for (const p of splitParams(m[1])) addLenientOnly(p)
   }
-  // function declarations (nombre)
-  const fnRe = /\bfunction\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g
-  while ((m = fnRe.exec(script))) defs.add(m[1])
-  // arrows de un solo parámetro (identificador simple): x => ...
   const oneParamRe = /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*=>/g
   while ((m = oneParamRe.exec(script))) {
     let j = m.index - 1
     while (j >= 0 && /\s/.test(script[j])) j--
     const prev = script[j] ?? ''
-    if (!/[a-zA-Z0-9_$.]/.test(prev)) defs.add(m[1])
+    if (!/[a-zA-Z0-9_$.]/.test(prev)) addLenientOnly(m[1])
   }
-  // catch (e) / for (const x = 0; ...) / for (const x of ...) / for (const x in ...) / for (let i = 0)
   const catchRe = /\bcatch\s*\(([^)]+)\)/g
   while ((m = catchRe.exec(script))) {
     const p = m[1].trim()
-    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p)) defs.add(p)
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(p)) addLenientOnly(p)
   }
   const forRe = /\bfor\s*\((?:(?:const|let|var)\s+)?([A-Za-z_$][A-Za-z0-9_$]*|\{[^}]*\}|\[[^\]]*\])\s*(?:in|of|=)/g
   while ((m = forRe.exec(script))) {
-    for (const name of destructureNames(m[1])) defs.add(name)
+    for (const name of destructureNames(m[1])) addLenientOnly(name)
   }
 
-  return defs
+  return { topLevel, lenient }
 }
 
 /** Nombres de una parte destructural: "{a, b}" / "[a, b]" / "a" -> Set de nombres. */
@@ -551,14 +645,19 @@ function analyseFile(file) {
 
   const setupCode = setupBlock[2]
   const setupStart = src.indexOf(setupCode)
-  const defined = extractDefinitions(setupCode)
+  const { topLevel: definedTop, lenient: definedLenient } = extractDefinitions(setupCode)
 
   // --- 1) referencias dentro del propio <script setup> ---
-  const cleanSetup = stripStrings(stripComments(stripRegexLiterals(setupCode)))
+  // OJO: los imports se eliminan ANTES de quitar los strings, porque el patron
+  // necesita las comillas del specifier (`from '...'`). `stripImports` solo
+  // cambia los caracteres por espacios, asi que los offsets no se mueven y los
+  // numeros de linea que reporta el guard siguen siendo exactos.
+  const setupNoImports = stripImports(setupCode)
+  const cleanSetup = stripStrings(stripComments(stripRegexLiterals(setupNoImports)))
   const setupStartLine = src.slice(0, setupStart).split('\n').length
   const setupCands = candidates(cleanSetup)
   for (const cand of setupCands) {
-    if (!defined.has(cand.name) && !globalBases.has(cand.name) && !cand.name.startsWith('$')) {
+    if (!definedLenient.has(cand.name) && !globalBases.has(cand.name) && !cand.name.startsWith('$')) {
       const line = lineOf(cleanSetup, setupStartLine, cand.index)
       issues.push({ file, line, kind: 'setup', symbol: cand.name })
     }
@@ -568,7 +667,7 @@ function analyseFile(file) {
   if (tpl) {
     const template = tpl.content
     const templateStart = tpl.start
-    const allowed = new Set([...defined, ...templateScope(template), ...globalBases])
+    const allowed = new Set([...definedTop, ...templateScope(template), ...globalBases])
 
     // mustache {{ ... }}
     const muRe = /{{([\s\S]*?)}}/g
@@ -615,19 +714,26 @@ function walk(dir, files = []) {
   return files
 }
 
-const files = walk(SRC_DIR)
-let totalIssues = 0
-for (const f of files) {
-  const issues = analyseFile(f)
-  for (const i of issues) {
-    totalIssues++
-    console.log(`${i.file}:${i.line}  [${i.kind}]  símbolo no definido: ${i.symbol}`)
-  }
-}
+/* Solo se escanea cuando el archivo se ejecuta como CLI. Importarlo desde un
+ * test (p.ej. tests/sfcRefGuard.spec.js) debe limitarse a exponer las funciones
+ * sin lanzar el escaneo de src/ ni tocar process.exit. */
+const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
-if (totalIssues === 0) {
-  console.log(`\ncheck-sfc-refs ✓ ${files.length} SFC analizados, 0 referencias no resueltas.`)
-} else {
-  console.log(`\ncheck-sfc-refs ✗ ${totalIssues} referencia(s) no resuelta(s) en ${files.length} SFC.`)
-  process.exit(1)
+if (isCli) {
+  const files = walk(SRC_DIR)
+  let totalIssues = 0
+  for (const f of files) {
+    const issues = analyseFile(f)
+    for (const i of issues) {
+      totalIssues++
+      console.log(`${i.file}:${i.line}  [${i.kind}]  símbolo no definido: ${i.symbol}`)
+    }
+  }
+
+  if (totalIssues === 0) {
+    console.log(`\ncheck-sfc-refs ✓ ${files.length} SFC analizados, 0 referencias no resueltas.`)
+  } else {
+    console.log(`\ncheck-sfc-refs ✗ ${totalIssues} referencia(s) no resuelta(s) en ${files.length} SFC.`)
+    process.exit(1)
+  }
 }

@@ -1,0 +1,153 @@
+{
+  "_meta": {
+    "placeholder": true,
+    "units": "lbs / inches",
+    "note": "PLACEHOLDER weight & balance data. Replace with operator/AFM figures before operational use. downWeightLbs=DOW, downWeightArmIn=DOW balance arm from reference datum, lemacIn/macIn define the %MAC scale, cgForwardLimitPctMac/cgAftLimitPctMac are the CG envelope, mainDeck positions interpolate armStartIn..armEndIn, stations hold explicit belly arms."
+  },
+  "aircraft": {
+    "B767": {
+      "label": "B767-300F",
+      "configured": true,
+      "downWeightLbs": 195000,
+      "downWeightArmIn": 1110.4,
+      "lemacIn": 1058.5,
+      "macIn": 199.7,
+      "cgForwardLimitPctMac": 14.0,
+      "cgAftLimitPctMac": 34.0,
+      "maxZeroFuelWeightLbs": 315000,
+      "maxTakeoffWeightLbs": 412000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 1100.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 960.0, "armEndIn": 1260.0 },
+      "stations": {
+        "10L": { "armIn": 880.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 880.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 940.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 940.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 1000.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 1000.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 1060.0, "maxWeightLbs": 3500.0 }
+      }
+    },
+    "B757": {
+      "label": "B757-200F",
+      "configured": true,
+      "downWeightLbs": 127000,
+      "downWeightArmIn": 954.7,
+      "lemacIn": 903.0,
+      "macIn": 199.0,
+      "cgForwardLimitPctMac": 14.0,
+      "cgAftLimitPctMac": 33.0,
+      "maxZeroFuelWeightLbs": 235000,
+      "maxTakeoffWeightLbs": 255000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 940.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 810.0, "armEndIn": 1100.0 },
+      "stations": {
+        "10L": { "armIn": 740.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 740.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 800.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 800.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 860.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 860.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 920.0, "maxWeightLbs": 3500.0 }
+      }
+    },
+    "A300": {
+      "label": "A300-600F",
+      "configured": true,
+      "downWeightLbs": 178000,
+      "downWeightArmIn": 1012.4,
+      "lemacIn": 951.0,
+      "macIn": 236.0,
+      "cgForwardLimitPctMac": 15.0,
+      "cgAftLimitPctMac": 33.0,
+      "maxZeroFuelWeightLbs": 295000,
+      "maxTakeoffWeightLbs": 375000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 1010.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 860.0, "armEndIn": 1165.0 },
+      "stations": {
+        "10L": { "armIn": 780.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 780.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 850.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 850.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 915.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 915.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 980.0, "maxWeightLbs": 3500.0 }
+      }
+    },
+    "B747": {
+      "label": "B747-400F",
+      "configured": true,
+      "downWeightLbs": 360000,
+      "downWeightArmIn": 1329.0,
+      "lemacIn": 1258.0,
+      "macIn": 273.0,
+      "cgForwardLimitPctMac": 14.0,
+      "cgAftLimitPctMac": 33.0,
+      "maxZeroFuelWeightLbs": 610000,
+      "maxTakeoffWeightLbs": 875000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 1330.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 1160.0, "armEndIn": 1500.0 },
+      "stations": {
+        "10L": { "armIn": 1080.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 1080.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 1150.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 1150.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 1220.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 1220.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 1290.0, "maxWeightLbs": 3500.0 }
+      }
+    },
+    "B777": {
+      "label": "B777F",
+      "configured": true,
+      "downWeightLbs": 315000,
+      "downWeightArmIn": 1413.2,
+      "lemacIn": 1337.0,
+      "macIn": 293.0,
+      "cgForwardLimitPctMac": 14.0,
+      "cgAftLimitPctMac": 33.0,
+      "maxZeroFuelWeightLbs": 550000,
+      "maxTakeoffWeightLbs": 766000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 1415.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 1240.0, "armEndIn": 1590.0 },
+      "stations": {
+        "10L": { "armIn": 1150.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 1150.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 1225.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 1225.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 1300.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 1300.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 1375.0, "maxWeightLbs": 3500.0 }
+      }
+    },
+    "MD11": {
+      "label": "MD-11F",
+      "configured": true,
+      "downWeightLbs": 240000,
+      "downWeightArmIn": 1259.5,
+      "lemacIn": 1188.0,
+      "macIn": 275.0,
+      "cgForwardLimitPctMac": 14.0,
+      "cgAftLimitPctMac": 33.0,
+      "maxZeroFuelWeightLbs": 440000,
+      "maxTakeoffWeightLbs": 610000,
+      "fuelLbs": 0.0,
+      "fuelArmIn": 1260.0,
+      "mainDeck": { "positions": ["P1", "P2", "P3", "P4", "P5", "P6", "P7"], "armStartIn": 1090.0, "armEndIn": 1430.0 },
+      "stations": {
+        "10L": { "armIn": 1010.0, "maxWeightLbs": 3200.0 },
+        "10R": { "armIn": 1010.0, "maxWeightLbs": 3200.0 },
+        "11L": { "armIn": 1080.0, "maxWeightLbs": 3200.0 },
+        "11R": { "armIn": 1080.0, "maxWeightLbs": 3200.0 },
+        "12L": { "armIn": 1150.0, "maxWeightLbs": 2800.0 },
+        "12R": { "armIn": 1150.0, "maxWeightLbs": 2800.0 },
+        "13":  { "armIn": 1220.0, "maxWeightLbs": 3500.0 }
+      }
+    }
+  }
+}

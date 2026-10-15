@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,7 +32,10 @@ public class WarehouseReceiptController {
     }
 
     @GetMapping
-    public List<WarehouseReceiptDTO> getAll() {
+    public List<WarehouseReceiptDTO> getAll(@RequestParam(required = false) OffsetDateTime since) {
+        if (since != null) {
+            return receiptService.getReceiptsSince(since);
+        }
         return receiptService.getAll();
     }
 

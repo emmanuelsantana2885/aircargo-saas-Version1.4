@@ -291,5 +291,5 @@ function handleExport() {
 useLiveRefresh(() => {
   if (!cols.value.length) return
   return loadData(true)
-}, { interval: 30000, pauses: [loading, () => resizeColIndex !== null] })
+}, { interval: 60000, pauses: [loading, () => resizeColIndex !== null] })
 </script>

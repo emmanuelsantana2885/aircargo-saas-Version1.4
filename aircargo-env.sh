@@ -8,7 +8,17 @@
 # ────────────────────────────────────────────────────────────────
 
 set -a
-AIR_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks before deriving AIR_ROOT. Without this, running via a symlink
+# such as ~/setup-aircargo.sh makes dirname(BASH_SOURCE[0]) = /home/manolov, so
+# AIR_ROOT points at $HOME and the real .env is never found.
+_self="${BASH_SOURCE[0]}"
+while [ -L "$_self" ]; do
+  _d="$(cd -P "$(dirname "$_self")" && pwd)"
+  _self="$(readlink "$_self")"
+  case "$_self" in /*) ;; *) _self="$_d/$_self" ;; esac
+done
+AIR_ROOT="$(cd -P "$(dirname "$_self")" && pwd)"
+unset _self _d   # unset because `set -a` above would otherwise export them
 if [ -f "$AIR_ROOT/.env" ]; then
   . "$AIR_ROOT/.env"
 fi

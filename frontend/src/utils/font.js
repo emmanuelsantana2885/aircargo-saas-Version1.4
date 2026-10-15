@@ -1,6 +1,6 @@
 const KEY = 'aircargo_font'
 const VALID = ['consolas', 'nerd', 'sans', 'cascadia', 'bodoni', 'combo']
-const DEFAULT = 'combo'
+const DEFAULT = 'sans'
 
 export function getFont() {
   const f = localStorage.getItem(KEY)

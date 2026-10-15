@@ -488,6 +488,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
 import { downloadCSV } from '../utils/csv'
+import { normalizeAwb as normAwb } from '../utils/awb'
+import {
+  mawbDispatchedWeightLbs as mawbDispatchWeightLbs,
+  dispatchedPiecesForMawb,
+} from '../utils/mawbDispatch'
 import FlightDetail from '../components/FlightDetail.vue'
 import { useCommodities } from '../composables/useCommodities'
 import { biApi } from '../api/bi'
@@ -789,41 +794,19 @@ watch(uldFlightSignature, () => _uldIdCache.clear())
 
 // Normalize AWB codes (covers historical labels with mixed formats:
 // "40605857585" vs "406-05857585" vs "406 05857585" vs "406/05857585")
-const normAwb = (raw) => String(raw || '').toUpperCase().replace(/[\s\-_/]/g, '')
-
-// Active (non-superseded) warehouse receipt for a MAWB, matched by mawbId or
-// normalized AWB number. Source of the REAL physical weight of the pieces.
-const activeReceiptForMawb = (mawb) => {
-  const awb = normAwb(mawb?.awbNumber)
-  return (appStore.receipts || []).find(r =>
-    !r.superseded &&
-    ((r.mawbId && r.mawbId === mawb?.id) || (r.mawbNumber && normAwb(r.mawbNumber) === awb))
-  )
-}
 
 // Dispatched weight per MAWB within a specific flight:
 // only counts ULD-AWB links whose ULD belongs to that flight.
-// Formula: (physicalWeight / receivedPieces) * dispatchedPieces
-// Basis: the receipt's ACTUAL weight (physical, in lbs) when a non-superseded
-// receipt exists; otherwise falls back to reported/chargeable kg from the MAWB
-// (declared weight — only a proxy when no physical receipt exists yet).
+// La lógica vive en utils/mawbDispatch.js y la comparte FlightDetail.vue: ambos
+// panels deben mostrar el mismo peso para la misma MAWB.
 function mawbDispatchedWeightLbs(mawb, flightId) {
-  const rec = activeReceiptForMawb(mawb)
-  let receivedLbs = 0
-  let receivedPcs = Number(mawb.pieces || 0)
-  if (rec && Number(rec.actualWeightLbs) > 0) {
-    receivedLbs = Number(rec.actualWeightLbs)
-    receivedPcs = Number(rec.pieceCount || receivedPcs)
-  } else {
-    const receivedKg = Number(mawb.reportedWeightKg || mawb.chargeableWeightKg || 0)
-    receivedLbs = receivedKg ? receivedKg * 2.20462 : 0
-  }
-  if (!receivedLbs || !receivedPcs) return 0
-  const uldIds = flightUldIdSet(flightId)
-  const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(mawb.awbNumber) && uldIds.has(l.uldId)) || []
-  const dispatchedPcs = Math.min(links.reduce((s, l) => s + (Number(l.pieces) || 0), 0), receivedPcs)
-  if (!dispatchedPcs) return 0
-  return (receivedLbs / receivedPcs) * dispatchedPcs
+  return mawbDispatchWeightLbs(mawb, appStore.uldAwbs, flightUldIdSet(flightId), appStore.receipts)
+}
+
+// Piezas despachadas SIN tope: para los commodities heredados (peso declarado
+// 0 pero piezas reales) el totalLegacy cuenta piezas, no libras.
+function rawDispatchedPieces(mawb, uldIds) {
+  return dispatchedPiecesForMawb(mawb, appStore.uldAwbs, uldIds, Number.MAX_SAFE_INTEGER)
 }
 
 // MAWBs that actually have pieces dispatched on this flight's ULDs
@@ -852,10 +835,8 @@ function commodityPayload(flightId, commodityType) {
   // For legacy/empty commodities (FCC, EMPTY_BAGS, NETS, etc.), weight is 0 but pieces exist
   if (totalLbs === 0 && LEGACY_COMMODITY_CODES.includes(commodityType)) {
     const uldIds = flightUldIdSet(flightId)
-    const totalPcs = items.reduce((s, m) => {
-      const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(m.awbNumber) && uldIds.has(l.uldId)) || []
-      return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
-    }, 0)
+    const totalPcs = items.reduce((s, m) =>
+      s + rawDispatchedPieces(m, uldIds), 0)
     return totalPcs > 0 ? { pcs: totalPcs } : null
   }
   return totalLbs > 0 ? Math.round(totalLbs) : null
@@ -867,10 +848,8 @@ function commodityTooltip(flightId, commodityType) {
   if (!items.length) return t('dashboard.tooltip.commodityZero', { label: COMMODITY_MAP.value[commodityType]?.label || commodityType })
   const totalLbs = items.reduce((s, m) => s + mawbDispatchedWeightLbs(m, flightId), 0)
   const uldIds = flightUldIdSet(flightId)
-  const totalPcs = items.reduce((s, m) => {
-    const links = appStore.uldAwbs?.filter?.(l => normAwb(l.mawbLabel) === normAwb(m.awbNumber) && uldIds.has(l.uldId)) || []
-    return s + links.reduce((ps, l) => ps + (Number(l.pieces) || 0), 0)
-  }, 0)
+  const totalPcs = items.reduce((s, m) =>
+    s + rawDispatchedPieces(m, uldIds), 0)
   const mawbCount = items.length
   return t('dashboard.tooltip.commodity', { label: COMMODITY_MAP.value[commodityType]?.label || commodityType, lbs: Math.round(totalLbs), pcs: totalPcs, n: mawbCount })
 }
@@ -1088,7 +1067,7 @@ useLiveRefresh(() => {
   ]
   if (activeTab.value === 'weight-report') tasks.push(loadWeightReport())
   return Promise.all(tasks)
-}, { interval: 30000 })
+}, { interval: 60000 })
 </script>
 
 <style scoped>

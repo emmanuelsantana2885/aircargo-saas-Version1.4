@@ -11,11 +11,12 @@
     </button>
     <div class="brand">
       <i class="pi pi-box"></i>
-      <span>AirCargo<small>{{ auth.selectedSite?.code || 'SDQ' }} · Ums</small></span>
+      <span>AirCargo<small>{{ auth.selectedSite?.code || 'SDQ' }} · {{ t('header.brandModule') }}</small></span>
     </div>
     <div class="spacer"></div>
     <div class="header-actions">
-      <span class="h-chip hide-sm"><i class="pi pi-globe"></i> {{ t('common.lang') }} · {{ auth.selectedSite?.code || 'SDQ' }}</span>
+      <LanguageSwitcher />
+      <span class="h-chip hide-sm"><i class="pi pi-globe"></i> {{ auth.selectedSite?.code || 'SDQ' }}</span>
       <span class="h-chip hide-sm"><i class="pi pi-user"></i> {{ auth.fullName || auth.email }} — {{ roleLabel }}</span>
       <button @click="toggleIconLib" class="ctrl-chip" :title="t('header.appearanceIconLib')">{{ iconCode }}</button>
       <button @click="cycleFont" class="ctrl-chip" :title="t('header.fontHint')">{{ fontLabel }}</button>
@@ -87,9 +88,9 @@
         </div>
         <div class="max-h-[70vh] overflow-y-auto px-3 py-3 flex flex-col gap-3"
           style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.25) transparent;">
-          <div class="grid grid-cols-5 gap-1.5">
+          <div class="grid grid-cols-6 gap-1.5">
             <button v-for="(th, key) in THEMES" :key="key" type="button"
-              class="h-9 rounded-lg ring-1 ring-inset ring-white/10 transition-all"
+              class="h-8 rounded-lg ring-1 ring-inset ring-white/10 transition-all"
               :class="themeKey === key ? 'ring-2 ring-white scale-105' : 'opacity-80 hover:opacity-100 hover:ring-white/50'"
               :style="{ background: accentFor(key, tone).acc }"
               :title="th.name + ' · ' + th.mode" :aria-label="th.name + ' · ' + th.mode"
@@ -132,21 +133,21 @@
             </button>
           </div>
           <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceIconLib') }}</span>
-            <button type="button" @click="pickIconLib('tabler')"
+            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceIconLib') }}</span>
+            <button v-for="lib in ICON_LIBS" :key="lib" type="button" @click="pickIconLib(lib)"
               class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
-              :class="iconLib === 'tabler' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
-              {{ t('header.appearanceIconTabler') }}
+              :class="iconLib === lib ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t(ICON_LIB_I18N[lib]) }}
             </button>
-            <button type="button" @click="pickIconLib('lucide')"
-              class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
-              :class="iconLib === 'lucide' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
-              {{ t('header.appearanceIconLucide') }}
-            </button>
-            <button type="button" @click="pickIconLib('mdi')"
-              class="px-2 py-1 rounded-md text-[10px] font-bold border transition"
-              :class="iconLib === 'mdi' ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
-              {{ t('header.appearanceIconMdi') }}
+          </div>
+          <!-- El peso solo aplica a Phosphor: es el unico set con grosor
+               enumerado. En las demas familias el grosor lo fija cada icono. -->
+          <div v-if="iconLib === 'phosphor'" class="flex items-center gap-1.5 flex-wrap">
+            <span class="shrink-0 text-[10px] font-bold uppercase tracking-widest mr-1" style="color: rgba(255,255,255,0.45)">{{ t('header.appearanceIconWeight') }}</span>
+            <button v-for="w in ICON_WEIGHTS" :key="w" type="button" @click="pickIconWeight(w)"
+              class="px-2 py-1 rounded-md text-[10px] font-bold border transition capitalize"
+              :class="iconWeight === w ? 'border-white text-white bg-white/15' : 'border-white/20 text-slate-300 hover:border-white/50'">
+              {{ t(ICON_WEIGHT_I18N[w]) }}
             </button>
           </div>
         </div>
@@ -159,10 +160,11 @@
 import { computed, ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import LanguageSwitcher from '../LanguageSwitcher.vue'
 import { getMode, setMode, setTheme, setTone, resetTheme, THEMES, TONE_NAMES, accentFor, getTheme, getTone } from '../../utils/theme'
 import { getFont, setFont } from '../../utils/font'
 import { getDensity, setDensity } from '../../utils/density'
-import { iconLib, toggleIconLib } from '../../utils/iconLib'
+import { iconLib, iconWeight, toggleIconLib, ICON_LIBS, ICON_WEIGHTS } from '../../utils/iconLib'
 import { useIcons } from '../../composables/useIcons'
 import { useNotificationsStore } from '../../stores/notifications'
 import { useAuthStore } from '../../stores/auth'
@@ -205,7 +207,12 @@ const roleLabel = computed(() => t(roleIcon.value.labelKey) || auth.role?.replac
 
 const FONT_ORDER = ['combo', 'cascadia', 'bodoni', 'consolas', 'nerd', 'sans']
 const FONT_LABEL = { combo: 'CMB', cascadia: 'CSC', bodoni: 'BDN', consolas: 'CON', nerd: 'NRD', sans: 'SNS' }
-const iconCode = computed(() => iconLib.value === 'tabler' ? 'TB' : iconLib.value === 'mdi' ? 'MD' : 'LC')
+const iconCode = computed(() => ({ tabler: 'TB', lucide: 'LC', mdi: 'MD', phosphor: 'PH' }[iconLib.value] || 'TB'))
+
+/* Las claves i18n se escriben literales, no se concatenan: asi las puede ver
+ * el chequeo de paridad ES/EN y no dependen de la capitalizacion del id. */
+const ICON_LIB_I18N = { tabler: 'header.appearanceIconTabler', lucide: 'header.appearanceIconLucide', mdi: 'header.appearanceIconMdi', phosphor: 'header.appearanceIconPhosphor' }
+const ICON_WEIGHT_I18N = { thin: 'header.appearanceWeightThin', light: 'header.appearanceWeightLight', regular: 'header.appearanceWeightRegular', bold: 'header.appearanceWeightBold' }
 const fontLabel = computed(() => FONT_LABEL[font.value] || 'FNT')
 const densityLabel = computed(() => density.value === 'compact' ? 'CMP' : 'COM')
 
@@ -282,6 +289,10 @@ function pickIconLib(lib) {
   iconLib.value = lib
 }
 
+function pickIconWeight(w) {
+  iconWeight.value = w
+}
+
 function resetAppearance() {
   themeKey.value = resetTheme()
   tone.value = getTone()
@@ -289,6 +300,7 @@ function resetAppearance() {
   font.value = setFont('combo')
   density.value = setDensity('comfortable')
   iconLib.value = 'tabler'
+  iconWeight.value = 'regular'
 }
 
 function openNotification(n) {

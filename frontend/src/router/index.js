@@ -1,3 +1,4 @@
+import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import i18n from '../i18n'
 import { canAccessView } from '../utils/rbac'
@@ -159,11 +160,21 @@ router.beforeEach((to) => {
 
 /* Aplica el título al navegar. Se lee i18n en cada salto para que un
  * cambio de idioma ya realizado se refleje sin recargar. */
-router.afterEach((to) => {
-  const key = to.meta?.titleKey
+function applyDocumentTitle(to) {
+  const key = to?.meta?.titleKey
   if (!key) return
   const label = i18n.global.t(key)
   document.title = `${label} · ${APP_NAME}`
-})
+}
+
+router.afterEach(applyDocumentTitle)
+
+/* El título se fija al navegar, así que cambiar el idioma sin cambiar de
+ * ruta lo dejaba en el idioma anterior (el tab seguía diciendo "Panel" con
+ * la interfaz ya en inglés). Lo reaplicamos en cada cambio de locale. */
+watch(
+  () => i18n.global.locale.value,
+  () => applyDocumentTitle(router.currentRoute.value)
+)
 
 export default router

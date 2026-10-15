@@ -19,5 +19,7 @@ export const authApi = {
     api.post('/auth/mfa/enroll/enable', { enrollToken, secret, totpCode }),
   mfaResetSelf: () => api.post('/auth/mfa/reset'),
   mfaResetUser: (userId) => api.post(`/auth/mfa/reset/${userId}`),
+  mfaRecoveryRequest: (email) => api.post('/auth/mfa/recovery/request', { email }),
+  mfaRecoveryConfirm: (email, code) => api.post('/auth/mfa/recovery/confirm', { email, code }),
   generateServiceToken: (email) => api.post('/auth/service-token', { email }),
 }

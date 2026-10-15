@@ -11,4 +11,9 @@ const i18n = createI18n({
   messages: { en, es },
 })
 
+/* Sincroniza `<html lang>` con el idioma activo. Sin esto el atributo se
+ * quedaba en el valor del index.html ("es") aunque el usuario estuviera en
+ * inglés, y el lector de pantalla anunciaba todo en español. */
+document.documentElement.setAttribute('lang', i18n.global.locale.value)
+
 export default i18n

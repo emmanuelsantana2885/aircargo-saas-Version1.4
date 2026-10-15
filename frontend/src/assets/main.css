@@ -41,20 +41,44 @@
   --ok-soft: #ecfdf5;
   --info: #2563eb;
   --info-soft: #dbeafe;
-  --bg-grad: linear-gradient(135deg, #eef2fb, #f6f8fd 55%, #eef2fb);
-  --sidebar-width: 230px;
+  --bg-grad: linear-gradient(160deg, #f6f8fd, #eef2fb);
+  --sidebar-width: 210px;
+  --sidebar-width-collapsed: 60px;
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
   --shadow-tint: #0f172a;
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px -16px rgba(15, 23, 42, 0.13);
   --shadow-lg: 0 12px 48px -16px rgba(15, 23, 42, 0.28);
   --shadow-glow: 0 8px 28px -8px color-mix(in srgb, var(--accent) 50%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-violet) 12%, transparent);
-  --gradient-accent: linear-gradient(135deg, #0d1f4d 0%, color-mix(in srgb, var(--accent-strong) 80%, #0b1a3d) 45%, var(--accent) 82%, var(--accent-cyan) 130%);
-  --gradient-title: linear-gradient(120deg, #0f172a 0%, color-mix(in srgb, var(--accent-strong) 78%, #0f172a) 60%, var(--accent-violet) 130%);
+  /* Fallbacks de 2 paradas, IGUALES a los que escribe theme.js. Antes eran de
+   * 3-4 paradas aqui y de 2 alla: durante el primer frame (antes de que
+   * corra initTheme) se veia el degrade ruidoso y luego saltaba al calmado. */
+  --gradient-accent: linear-gradient(135deg, #0d1f4d, #1d4ed8);
+  --gradient-title: linear-gradient(120deg, #0f172a, #1d4ed8);
   --bottom-nav-h: 0px;
-  /* Font selector (data-font on <html>): 'consolas' | 'nerd' | 'sans' | 'cascadia' | 'bodoni' | 'combo' */
-  --font-family-mono: 'JetBrains Mono', 'Courier New', monospace;
-  --font-family-sans: 'JetBrains Mono', 'Courier New', monospace;
-  --font-family: var(--font-family-mono);
+  /* ── Tipografia: dos primitivas, un perfil ──────────────────────────
+   * La app se renderizaba completa en monoespaciada porque `--font-family`
+   * (interfaz) y la clase `font-mono` (datos) resolvian al mismo token.
+   * Ahora el perfil activo SOLO reassigna dos primitivas:
+   *   --font-ui    pila de interfaz (lectura larga, proporcionada)
+   *   --font-data  pila de datos (numeros, codigos, identificadores)
+   * y los tres tokens publicos se derivan de ellas UNA sola vez, aqui:
+   *   --font-family      -> interfaz  (body, botones, titulos)
+   *   --font-family-mono -> datos     (clase Tailwind `font-mono`)
+   *   --font-family-sans -> alias de interfaz (retrocompatible)
+   * Por eso ningun perfil toca ya los tokens publicos: cambiar de fuente es
+   * cambiar dos lineas de primitivas y nada mas.
+   * `--font-family-sans-base` / `--font-data-base` son las pilas de reserva
+   * inmutables (los perfiles de lectura las reutilizan tal cual).
+   * Los perfiles monoespaciados (cascadia/consolas/nerd) siguen siendo 100%
+   * terminal a proposito; los perfiles de lectura (sans/combo/bodoni) usan
+   * cifras tabulares en vez de monoespaciada. */
+  --font-family-sans-base: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-data-base: 'JetBrains Mono', 'Cascadia Code', ui-monospace, 'Courier New', monospace;
+  --font-ui: var(--font-family-sans-base);
+  --font-data: var(--font-data-base);
+  --font-family-mono: var(--font-data);
+  --font-family-sans: var(--font-ui);
+  --font-family: var(--font-ui);
 }
 
 @media (max-width: 767px) {
@@ -63,39 +87,45 @@
   }
 }
 
-/* Font selector: Consolas */
-:root[data-font='consolas'] {
-  --font-family-mono: Consolas, 'JetBrains Mono', 'Courier New', monospace;
-  --font-family: var(--font-family-mono);
-}
-/* Font selector: Nerd Font (default monospace) */
-:root[data-font='nerd'] {
-  --font-family-mono: 'JetBrains Mono', 'JetBrainsMono Nerd Font', 'Courier New', monospace;
-  --font-family: var(--font-family-mono);
-}
-/* Font selector: Sans Serif */
+/* Font selector: Sans Serif — perfil de lectura (DEFAULT).
+ * Interfaz proporcional y datos tambien proporcionales, pero con cifras
+ * TABULARES: las columnas de numeros siguen alineadas sin obligar a leer
+ * 4.000 lineas de monoespaciada. */
 :root[data-font='sans'] {
-  --font-family-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
-  --font-family: var(--font-family-sans);
+  --font-ui: var(--font-family-sans-base);
+  --font-data: var(--font-ui);
 }
-/* Font selector: Cascadia Code SemiBold */
+/* Consolas — terminal clasico */
+:root[data-font='consolas'] {
+  --font-ui: Consolas, 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  --font-data: var(--font-ui);
+}
+/* Font selector: Nerd Font (terminal con glifos) */
+:root[data-font='nerd'] {
+  --font-ui: 'JetBrains Mono', 'JetBrainsMono Nerd Font', ui-monospace, 'Courier New', monospace;
+  --font-data: var(--font-ui);
+}
+/* Font selector: Cascadia Code SemiBold (terminal)
+ * El peso 600 solo existe aqui a proposito: al cambiar a otro perfil la regla
+ * sale del cascade, `--font-family-weight` queda undefined y el
+ * `var(--font-family-weight, 400)` de `body` devuelve el 400 normal. Por eso
+ * ningun otro perfil necesita un reset explicito. */
 :root[data-font='cascadia'] {
-  --font-family-mono: 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
-  --font-family-sans: 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
+  --font-ui: 'Cascadia Code', 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  --font-data: var(--font-ui);
   --font-family-weight: 600;
-  --font-family: var(--font-family-mono);
 }
-/* Font selector: Bodoni (serif editorial) */
+/* Font selector: Bodoni (serif editorial) — interfaz serif, datos Cascadia */
 :root[data-font='bodoni'] {
-  --font-family-sans: 'Bodoni Moda', 'Libre Bodoni', Georgia, 'Times New Roman', serif;
-  --font-family: var(--font-family-sans);
+  --font-ui: 'Bodoni Moda', 'Libre Bodoni', Georgia, 'Times New Roman', serif;
+  --font-data: 'Cascadia Code', 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
 }
-/* Font selector: Combo (Cascadia UI + Bodoni headings) */
+/* Font selector: Combo (interfaz sans + titulares Bodoni + datos Cascadia)
+ * El perfil "departamental": se lee sin monoespaciada y las cifras se
+ * distinguen de un vistazo, sin que la pantalla entera sea terminal. */
 :root[data-font='combo'] {
-  --font-family-mono: 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
-  --font-family-sans: 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
-  --font-family-weight: 600;
-  --font-family: var(--font-family-mono);
+  --font-ui: var(--font-family-sans-base);
+  --font-data: 'Cascadia Code', 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
 }
 :root[data-font='combo'] h1,
 :root[data-font='combo'] h2,
@@ -120,6 +150,13 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Cifras de ancho fijo por defecto: en tablas y KPIs los digitos deben
+   * ocupar el mismo ancho aunque la fuente sea proporcional. Los perfiles
+   * monoespaciados (consolas/cascadia/nerd) ya lo dan de forma nativa. */
+  font-variant-numeric: tabular-nums;
+  /* Altura de linea comoda: 14px sobre 1.55 deja respirar la retícula
+   * densa sin estirar las tablas. */
+  line-height: 1.55;
 }
 
 ::selection {
@@ -127,15 +164,21 @@ body {
   color: var(--text);
 }
 
-h1, h2, h3, h4, .title {
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
+/* Escala tipografica. Antes TODOS los titulares eran 14px uppercase con
+ * tracking: no habia jerarquia real, solo cuatro variantes de lo mismo. Ahora
+ * el tamano comunica el nivel y el uppercase queda para etiquetas cortas
+ * (cabeceras de tabla, tabs), donde si ayuda a escanear. */
+h1, .title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.005em; }
+h3 { font-size: 14.5px; font-weight: 650; }
+h4 { font-size: 13px; font-weight: 650; }
 
+/* `.font-mono` marca datos (numeros, AWB, codigos) y ahora resuelve al token
+ * de datos: monoespaciada real en los perfiles terminal, proporcional con
+ * cifras tabulares en los de lectura. */
 .font-mono {
-  font-family: var(--font-family);
+  font-family: var(--font-family-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .card {
@@ -161,9 +204,9 @@ table {
 }
 
 th {
-  font-weight: 700;
+  font-weight: 650;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   font-size: 11px;
 }
 
@@ -172,20 +215,24 @@ td, th {
   padding: 5px 7px;
 }
 
+/* Botones: se retira el uppercase forzado. Leer "Guardar" en sentence case es
+ * mas comodo que "GUARDAR" en pantalla completa durante 8 horas, y las
+ * etiquetas cortas de toolbar siguen viendose bien. Quien quiera uppercase
+ * lo pide explicito con la utilidad `uppercase` de Tailwind. */
 button, .btn {
   font-family: var(--font-family);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 input, select, textarea {
   font-family: var(--font-family);
-  font-size: 12px;
+  font-size: 13px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
-  padding: 4px 6px;
+  padding: 5px 8px;
   border-radius: 6px;
   max-width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -212,14 +259,16 @@ input:focus, select:focus, textarea:focus {
      * en la superficie mas visible de la app. */
     background-color: var(--bg);
     color: var(--text);
-    /* Aurora SIMETRICA (antes: 3 capas en esquinas opuestas, que descentraba la
-     * pagina) y trama de puntos derivada de --text, para que no quede un gris
-     * fijo flotando sobre los temas oscuros. */
+    /* Superficie calmada: UNA sola aurora muy tenue arriba y la trama de
+     * puntos al 2.5% (antes dos auroras al 9%/7% + puntos al 4%). Tres capas
+     * de color sobre la superficie mas visible de la app son ruido para
+     * quien pasa la jornada entera aqui; el relieve lo aportan las tarjetas,
+     * no el fondo. La trama se deriva de --text para no dejar un gris fijo
+     * flotando en los temas oscuros. */
     background-image:
-      radial-gradient(1000px 520px at 50% -12%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 62%),
-      radial-gradient(1000px 520px at 50% 112%, color-mix(in srgb, var(--accent-violet) 7%, transparent), transparent 62%),
-      radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1.5px);
-    background-size: auto, auto, 22px 22px;
+      radial-gradient(900px 460px at 50% -14%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 64%),
+      radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 2.5%, transparent) 1px, transparent 1.5px);
+    background-size: auto, 26px 26px;
   }
 
   /* App-shell: altura bloqueada al viewport, las secciones reparten con
@@ -245,32 +294,36 @@ input:focus, select:focus, textarea:focus {
     z-index: 10;
   }
 
-  /* ── Card (elevación en capas + hover lift) ─── */
+  /* ── Card (elevacion sobria, sin salto al hover) ─── */
   .ds-card {
-    @apply border px-3 py-2 rounded-xl transition-all duration-200;
+    @apply border px-3 py-2 rounded-xl transition-colors duration-150;
     background: var(--surface);
     border-color: var(--border);
-    box-shadow: var(--shadow-xs), 0 8px 24px -16px color-mix(in srgb, var(--shadow-tint) 14%, transparent);
+    box-shadow: var(--shadow-xs);
   }
+  /* El hover solo afina el borde y la sombra: el translateY(-1px) hacia que
+   * toda la retícula "respirara" al mover el raton, que es justo el efecto
+   * que mas cansa en una app de uso diario. Ademas el token correcto es
+   * --border-strong (--border-str no existe y caia a invalid). */
   .ds-card:hover {
-    transform: translateY(-1px);
-    border-color: var(--border-str);
-    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05), 0 16px 32px -18px color-mix(in srgb, var(--accent) 28%, transparent);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
   }
 
   .ds-card-label {
-    @apply text-[9.5px] font-mono font-semibold uppercase tracking-wide mb-0.5;
+    @apply text-[10.5px] font-semibold mb-0.5;
     color: var(--muted);
+    letter-spacing: 0.01em;
   }
 
   .ds-card-value {
-    @apply text-[15px] font-mono font-bold;
+    @apply text-[15px] font-mono font-semibold;
     color: var(--text);
   }
 
   /* ── Small info chip/badge ───────────────── */
   .ds-chip {
-    @apply text-[10px] font-mono px-1.5 py-0.5 rounded-full border;
+    @apply text-[11px] font-mono px-1.5 py-0.5 rounded-full border;
     background: var(--surface-2);
     color: var(--text-2);
     border-color: var(--border);
@@ -284,30 +337,33 @@ input:focus, select:focus, textarea:focus {
     box-shadow: var(--shadow-xs), 0 12px 32px -20px color-mix(in srgb, var(--shadow-tint) 18%, transparent);
   }
 
-  /* ── Table header row (dark bar + hairline) ── */
+  /* ── Table header row (barra oscura sobria + hairline) ── */
   .ds-table-header {
     @apply bg-slate-800 text-white text-[13px] font-bold uppercase
-           tracking-wider grid grid-cols-12 py-2 px-4 items-center
+           tracking-wide grid grid-cols-12 py-2 px-4 items-center
            shrink-0 font-mono;
+    /* Dos paradas en vez de tres: el barrido cromatico (marca -> acento violeta
+     * -> acento) competia con los badges de color de las filas. La barra sigue
+     * siendo el elemento mas oscuro de la app, que es lo que la hace legible
+     * como cabecera. */
     background-image: linear-gradient(140deg,
       color-mix(in srgb, var(--brand) 88%, #05070f) 0%,
-      color-mix(in srgb, color-mix(in srgb, var(--brand) 70%, #05070f) 86%, var(--accent) 14%) 55%,
-      color-mix(in srgb, color-mix(in srgb, var(--brand) 45%, #05070f) 70%, var(--accent) 30%) 128%);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 0 color-mix(in srgb, var(--shadow-tint) 25%, transparent);
+      color-mix(in srgb, var(--brand) 62%, #05070f) 130%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 0 color-mix(in srgb, var(--shadow-tint) 25%, transparent);
   }
 
   /* ── Table body row ───────────────────────── */
   .ds-table-row {
     @apply grid grid-cols-12 items-center py-1.5 px-4
-           transition-all duration-150 cursor-pointer border-b;
+           transition-colors duration-150 cursor-pointer border-b;
     background: var(--surface);
     border-color: var(--border);
   }
+  /* Se separa el color de la marca (antes transition-all animaba tambien el
+   * box-shadow en cada fila) y la barra de acento baja de 3px a 2px. */
   .ds-table-row:hover {
     background: var(--surface-3);
-  }
-  .ds-table-row:hover {
-    box-shadow: inset 3px 0 0 0 var(--accent);
+    box-shadow: inset 2px 0 0 0 var(--accent);
   }
 
   /* ── Data table (<table> real) ────────────────────────────────
@@ -337,13 +393,12 @@ input:focus, select:focus, textarea:focus {
     background: var(--surface-2);
     background-image: linear-gradient(140deg,
       color-mix(in srgb, var(--brand) 88%, #05070f) 0%,
-      color-mix(in srgb, color-mix(in srgb, var(--brand) 70%, #05070f) 86%, var(--accent) 14%) 55%,
-      color-mix(in srgb, color-mix(in srgb, var(--brand) 45%, #05070f) 70%, var(--accent) 30%) 128%);
+      color-mix(in srgb, var(--brand) 62%, #05070f) 130%);
     color: #ffffff;
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     padding: 8px 12px;
     text-align: left;
     border-bottom: 2px solid var(--border);
@@ -386,7 +441,9 @@ input:focus, select:focus, textarea:focus {
     border-radius: 10px;
     padding: 12px 14px;
     box-shadow: var(--shadow-xs);
-    transition: all 0.15s ease;
+    /* Solo color y sombra: `all` ademas animaba layout si alguien anadia
+     * padding/width, provoking micro-reflow al pasar el mouse. */
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
   .data-card:hover {
     border-color: var(--accent);
@@ -412,17 +469,19 @@ input:focus, select:focus, textarea:focus {
     font-family: var(--font-family);
   }
 
-  /* ── Primary button (gradiente + glow) ────── */
+  /* ── Primary button (gradiente sobrio, sin salto) ── */
   .ds-btn-primary {
     @apply flex items-center gap-1.5 text-[13px] px-3.5 py-1.5 rounded-xl
-           font-mono uppercase tracking-wider font-bold text-white whitespace-nowrap
-           transition-all active:scale-[0.97] disabled:opacity-50 disabled:pointer-events-none
-           hover:-translate-y-0.5;
+           font-semibold text-white whitespace-nowrap
+           transition-shadow active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
     background-image: var(--gradient-accent);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
+  /* El hover realza el borde de luz, no proyecta un halo: el glow de acento
+   * en cada boton repetido por toda la pantalla es el acento mas saturado
+   * de la interfaz y competia con los badges de estado. */
   .ds-btn-primary:hover {
-    box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
   .ds-btn-primary:focus-visible {
     outline: 2px solid var(--accent);
@@ -432,30 +491,28 @@ input:focus, select:focus, textarea:focus {
   /* ── Secondary button (outline claro) ─────── */
   .ds-btn-secondary {
     @apply flex items-center gap-1.5 text-[13px] px-3.5 py-1.5 rounded-xl
-           border font-mono uppercase tracking-wider font-bold whitespace-nowrap
-           transition-all active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none
-           hover:-translate-y-0.5;
+           border font-semibold whitespace-nowrap
+           transition-colors active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none;
     color: var(--text);
     border-color: var(--border);
-    background: linear-gradient(180deg, var(--surface), var(--surface-2));
+    background: var(--surface);
     box-shadow: var(--shadow-xs);
   }
   .ds-btn-secondary:hover {
     border-color: var(--border-strong);
-    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--shadow-tint) 25%, transparent);
+    background: var(--surface-2);
   }
 
   /* ── Danger button (soft rojo) ────────────── */
   .ds-btn-danger {
-    @apply flex items-center justify-center text-[12px] px-2.5 py-1.5 rounded-lg
-           font-mono font-bold uppercase tracking-wider whitespace-nowrap
+    @apply flex items-center justify-center text-[12.5px] px-2.5 py-1.5 rounded-lg
+           font-semibold whitespace-nowrap
            border border-rose-200 text-rose-700 bg-rose-50
-           transition-all active:scale-95 disabled:opacity-40 hover:-translate-y-0.5;
+           transition-colors active:scale-[0.98] disabled:opacity-40;
   }
   .ds-btn-danger:hover {
     background: #ffe4e6;
     border-color: #fecdd3;
-    box-shadow: 0 6px 16px -8px rgba(225, 29, 72, 0.4);
   }
 
   /* ── Modal backdrop (glass blur + entrada, safe-area nativo) ─── */
@@ -480,7 +537,7 @@ input:focus, select:focus, textarea:focus {
     background: var(--surface);
     border-color: var(--border);
     box-shadow: 0 24px 80px -24px color-mix(in srgb, var(--shadow-tint) 55%, transparent), inset 0 1px 0 color-mix(in srgb, var(--text) 10%, transparent);
-    animation: ds-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: ds-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /* ── Confirm dialog (cristal + pop) ───────── */
@@ -506,14 +563,14 @@ input:focus, select:focus, textarea:focus {
 
   /* ── Modal title ──────────────────────────── */
   .ds-modal-title {
-    @apply text-[15px] font-bold font-mono uppercase tracking-wider;
+    @apply text-[15px] font-bold;
     color: var(--text);
   }
 
-  /* ── Form input (foco con glow azul) ──────── */
+  /* ── Form input (foco con halo suave) ──────── */
   .ds-input {
-    @apply w-full text-[14px] font-mono px-3.5 py-2 rounded-xl
-           border outline-none transition-all shadow-sm;
+    @apply w-full text-[13px] px-3.5 py-2 rounded-xl
+           border outline-none transition-colors shadow-sm;
     border-color: var(--border);
     background: var(--surface);
     color: var(--text);
@@ -522,28 +579,29 @@ input:focus, select:focus, textarea:focus {
   .ds-input:hover { border-color: var(--border-strong); }
   .ds-input:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent), inset 0 1px 2px color-mix(in srgb, var(--shadow-tint) 3%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent), inset 0 1px 2px color-mix(in srgb, var(--shadow-tint) 3%, transparent);
   }
   .ds-input::placeholder { color: var(--muted); }
 
   /* ── Form label ───────────────────────────── */
   .ds-label {
-    @apply text-[13px] font-mono uppercase tracking-wider font-bold block mb-1.5;
+    @apply text-[11.5px] font-semibold block mb-1.5;
     color: var(--text-2);
+    letter-spacing: 0.01em;
   }
 
-  /* ── View title (gradiente tinta) ─────────── */
+  /* ── View title (tinta solida) ────────────── */
+  /* Era un degradado de tinta recortado sobre el texto. Sobre fondos oscuros
+   * el tramo violeta del final caia a contraste insuficiente y ademas "pintaba"
+   * el Titulo de cada vista. La jerarquia la dan el tamano y el peso. */
   .ds-title {
-    @apply text-[16px] font-bold tracking-tight uppercase font-mono;
-    background: var(--gradient-title);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    @apply text-[19px] font-bold tracking-tight;
+    color: var(--text);
   }
 
   /* ── View subtitle ────────────────────────── */
   .ds-subtitle {
-    @apply text-[13px] font-mono mt-0.5 uppercase tracking-wider font-bold;
+    @apply text-[13px] mt-0.5 font-medium;
     color: var(--muted);
   }
 
@@ -556,7 +614,7 @@ input:focus, select:focus, textarea:focus {
 
   /* ── Stats badge ──────────────────────────── */
   .ds-stat {
-    @apply flex items-center gap-1.5 text-[13px] font-mono font-bold;
+    @apply flex items-center gap-1.5 text-[13px] font-mono font-semibold;
     color: var(--text);
   }
 
@@ -568,12 +626,11 @@ input:focus, select:focus, textarea:focus {
 
   /* ── Empty state ──────────────────────────── */
   .ds-empty {
-    @apply flex-1 flex flex-col items-center justify-center gap-3
-           text-[14px] font-mono;
+    @apply flex-1 flex flex-col items-center justify-center gap-3 text-[14px];
     color: var(--muted);
   }
 
-  /* ── Tabs (subrayado gradiente, scroll nativo) ─ */
+  /* ── Tabs (subrayado sobrio, scroll nativo) ─ */
   .ds-tabs {
     @apply flex items-center gap-0.5 border-b shrink-0;
     border-color: var(--border);
@@ -583,17 +640,20 @@ input:focus, select:focus, textarea:focus {
   }
   .ds-tabs::-webkit-scrollbar { display: none; }
   .ds-tab {
-    @apply relative px-3.5 py-1.5 text-[13px] font-mono font-bold uppercase
-           tracking-widest transition-colors rounded-t-lg;
+    @apply relative px-3.5 py-1.5 text-[12.5px] font-semibold uppercase
+           tracking-wide transition-colors rounded-t-lg;
     color: var(--muted);
   }
   .ds-tab:hover { color: var(--text); background: var(--accent-soft); }
-  .ds-tab-active { color: var(--accent-strong); font-weight: 700; }
+  .ds-tab-active { color: var(--accent-strong); font-weight: 650; }
+  /* El subrayado activo era un degradado acento->violeta con un halo de 10px.
+   * Con el ancho completo de la barra de tabs (cada tab dura cientos de px)
+   * eso se leia como un resplandor, no como un indicador. Ahora es una linea
+   * de acento solida de 2px. */
   .ds-tab-active::after {
     content: '';
     @apply absolute bottom-0 left-2 right-2 h-0.5 rounded-full;
-    background: linear-gradient(90deg, var(--accent), var(--accent-violet));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent);
+    background: var(--accent);
   }
 
   /* ── Compact icon button (toolbars) ───────── */
@@ -608,7 +668,7 @@ input:focus, select:focus, textarea:focus {
   }
   .ds-icon-btn:hover {
     color: var(--text);
-    border-color: var(--border-str);
+    border-color: var(--border-strong);
     background: var(--surface-3);
   }
   .ds-icon-btn:focus-visible {
@@ -656,12 +716,12 @@ input:focus, select:focus, textarea:focus {
   .ds-split-detail {
     @apply flex-1 min-h-0 overflow-y-auto;
     background-color: var(--surface-2);
-    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 3.5%, transparent) 1px, transparent 1.5px);
-    background-size: 22px 22px;
+    background-image: radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 2.5%, transparent) 1px, transparent 1.5px);
+    background-size: 24px 24px;
   }
   .ds-list-card {
     @apply flex items-center gap-3 rounded-lg border cursor-pointer
-           transition-all px-3 py-2.5 select-none;
+           transition-colors px-3 py-2.5 select-none;
     background: var(--surface);
     border-color: var(--border);
     box-shadow: var(--shadow-xs);
@@ -682,16 +742,19 @@ input:focus, select:focus, textarea:focus {
     color: transparent;
   }
   .glow-accent { box-shadow: var(--shadow-glow); }
-  .glow-soft { box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.25); }
-  .shadow-lift { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  /* La sombra usaba rgba(15,23,42,.25) fijo: invisible sobre los temas
+   * oscuros (todo slate oscuro) y azulada sobre los claros. --shadow-tint
+   * ya es el color correcto por tema. */
+  .glow-soft { box-shadow: 0 4px 20px -10px color-mix(in srgb, var(--shadow-tint) 30%, transparent); }
+  /* Sin salto al hover: la sombra se profundiza, la tarjeta no se levanta. */
+  .shadow-lift { transition: box-shadow 0.18s ease; }
   .shadow-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px -16px color-mix(in srgb, var(--accent) 40%, transparent);
+    box-shadow: 0 8px 22px -14px color-mix(in srgb, var(--shadow-tint) 34%, transparent);
   }
   .bg-anim { background-size: 200% 200%; animation: ds-gradient-pan 8s ease infinite; }
   .animate-fade-up { animation: ds-fade-up 0.35s ease-out both; }
   .animate-pop { animation: ds-pop 0.2s ease-out both; }
-  .animate-pulse-dot { animation: ds-pulse 1.6s ease-inout infinite; }
+  .animate-pulse-dot { animation: ds-pulse 1.6s ease-in-out infinite; }
 
   /* ── Text color utilities (adapt to light/dark via CSS variables) ── */
   .text-primary { color: var(--text); }
@@ -722,29 +785,6 @@ input:focus, select:focus, textarea:focus {
   .border-default { border-color: var(--border); }
   .border-strong { border-color: var(--border-strong); }
 
-  .glass {
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-  }
-  .text-gradient {
-    background: var(--gradient-title);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .glow-accent { box-shadow: var(--shadow-glow); }
-  .glow-soft { box-shadow: 0 4px 20px -8px rgba(15, 23, 42, 0.25); }
-  .shadow-lift { transition: transform 0.18s ease, box-shadow 0.18s ease; }
-  .shadow-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 32px -16px color-mix(in srgb, var(--accent) 40%, transparent);
-  }
-  .bg-anim { background-size: 200% 200%; animation: ds-gradient-pan 8s ease infinite; }
-  .animate-fade-up { animation: ds-fade-up 0.35s ease-out both; }
-  .animate-pop { animation: ds-pop 0.2s ease-out both; }
-  .animate-pulse-dot { animation: ds-pulse 1.6s ease-in-out infinite; }
-
   /* ── Auth pages (login, MFA, passwords): shell+card consistentes ── */
   .auth-shell {
     min-height: 100vh;
@@ -768,19 +808,23 @@ input:focus, select:focus, textarea:focus {
     border: 1px solid var(--border);
     box-shadow: var(--shadow-lg), 0 0 0 1px color-mix(in srgb, var(--accent) 7%, transparent),
       inset 0 1px 0 rgba(255, 255, 255, 0.6);
-    animation: ds-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: ds-pop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
 /* ── Keyframes ────────────────────────────────── */
 @keyframes ds-spin { to { transform: rotate(360deg); } }
+/* Entrada de modal: desplazamiento y escalado mínimos. Con 14px + scale .96 el
+ * panel "saltaba" hacia el centro en cada apertura; en una app donde los
+ * modales se abren decenas de veces al dia, la aparicion debe ser un cambio de
+ * opacidad, no un movimiento perceptible. */
 @keyframes ds-pop {
-  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes ds-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ds-fade-up {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes ds-gradient-pan {
@@ -821,7 +865,7 @@ input:focus, select:focus, textarea:focus {
 :root[data-density='compact'] .ds-subtitle { display: none; }
 :root[data-density='compact'] .ds-table-header { padding: 4px 10px; font-size: 11px; }
 :root[data-density='compact'] .ds-table-row { padding: 2px 10px; }
-:root[data-density='compact'] .data-table thead th { padding: 5px 8px; font-size: 9.5px; }
+:root[data-density='compact'] .data-table thead th { padding: 5px 8px; font-size: 10.5px; }
 :root[data-density='compact'] .data-table tbody td { padding: 5px 8px; }
 :root[data-density='compact'] .data-card { padding: 8px 10px; }
 :root[data-density='compact'] .card-field { padding: 3px 0; }
@@ -891,10 +935,8 @@ input:focus, select:focus, textarea:focus {
 
 /* ── Responsive ──────────────────────────────── */
 
-/* Tablet landscape: sidebar collapses to icons */
-@media (min-width: 768px) and (max-width: 1023px) {
-  :root { --sidebar-width: 60px; }
-}
+/* El colapso del sidebar lo decide el usuario con el botón del header
+   (no por franja de ancho). Las anchuras viven en --sidebar-width. */
 
 /* Mobile: full-width sidebar overlay */
 @media (max-width: 767px) {
@@ -1036,7 +1078,7 @@ input:focus, select:focus, textarea:focus {
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 48px -16px rgba(0, 0, 0, 0.65);
   --shadow-glow: 0 8px 28px -8px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 0 1px color-mix(in srgb, var(--accent-violet) 14%, transparent);
-  --gradient-accent: linear-gradient(135deg, #101c34 0%, #141f3d 55%, color-mix(in srgb, var(--accent) 55%, #0b1220) 130%);
+  --gradient-accent: linear-gradient(135deg, #101c34, color-mix(in srgb, var(--accent) 55%, #0b1220));
   --gradient-title: linear-gradient(120deg, #f8fafc 0%, var(--accent) 70%, var(--accent-violet) 130%);
   color-scheme: dark;
 }
@@ -1044,7 +1086,9 @@ input:focus, select:focus, textarea:focus {
 /* ── Design system components ─────────────────────────── */
 /* Regla canónica del fondo de página en dark (ambas variantes de shell). */
 :root[data-theme='dark'] .ds-btn-primary { background-image: var(--gradient-accent); color: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-:root[data-theme='dark'] .ds-btn-primary:hover { box-shadow: var(--shadow-glow), inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+/* Sin --shadow-glow en el hover: en dark el halo de acento era el elemento
+ * mas brillante de la pantalla cada vez que el raton pasaba por un boton. */
+:root[data-theme='dark'] .ds-btn-primary:hover { box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14); }
 :root[data-theme='dark'] .ds-btn-primary:disabled { opacity: 0.4; }
 :root[data-theme='dark'] .ds-btn-danger { border-color: #7f1d1d; color: #fca5a5; background: rgb(127 29 29 / 0.2); }
 :root[data-theme='dark'] .ds-btn-danger:hover { background: rgb(127 29 29 / 0.35); border-color: #b91c1c; box-shadow: 0 6px 16px -8px rgba(185, 28, 28, 0.4); }
@@ -1054,7 +1098,7 @@ input:focus, select:focus, textarea:focus {
 
 /* ── Text-gradient Tokyo ─────────────────────────── */
 :root[data-theme='dark'] .text-gradient { background: var(--gradient-title); -webkit-background-clip: text; background-clip: text; color: transparent; }
-:root[data-theme='dark'] .shadow-lift:hover { box-shadow: 0 12px 32px -16px color-mix(in srgb, var(--accent) 40%, transparent); }
+:root[data-theme='dark'] .shadow-lift:hover { box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.6); }
 
 /* ── Backgrounds (light surfaces → dark) ──────────────── */
 :root[data-theme='dark'] .bg-white { background-color: #1e293b; }
@@ -1255,7 +1299,7 @@ input:focus, select:focus, textarea:focus {
   --chalk-amber-bg: #4a3a12;
   --chalk-amber-ink: #ffd97a;
   --chalk-green-ink: #7ee0c0;
-  /* Vuelo: azul desaturado, legible bajo el texto blanco en 9.5px. */
+  /* Vuelo: azul desaturado, legible bajo la tinta clara de la pizarra. */
   --chalk-fly: #2f4a63;
   --chalk-fly-on: #263d53;
   --chalk-fly-hover: #3a5a78;
@@ -1267,7 +1311,11 @@ input:focus, select:focus, textarea:focus {
    * apagada de la pizarra: es ausencia de dato, no un valor a leer. */
   --chalk-void-ink: #6b7a94;
 
-  background: linear-gradient(135deg, var(--chalk-bg) 0%, #1a202c 60%, #1e2532 100%);
+  /* Fondo de la pizarra: antes un degradado 135deg de tres paradas. Detras de
+   * ~400 celdas de color plano apenas se percebia, y hacia el borde inferior
+   * se comia el contraste de las ultimas filas. Ahora es un solo plano (el
+   * degradado queda solo como un velo casi imperceptible arriba). */
+  background: linear-gradient(180deg, color-mix(in srgb, #2a3a52 22%, var(--chalk-bg)) 0%, var(--chalk-bg) 260px);
 }
 
 /* Variante clara de la pizarra para la matriz MAWB */
@@ -1293,11 +1341,11 @@ input:focus, select:focus, textarea:focus {
   --chalk-void-bg: #f8fafc;
   --chalk-void-ink: #94a3b8;
 
-  background: linear-gradient(135deg, var(--chalk-bg) 0%, #e8efff 60%, #e0eaff 100%);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 55%, var(--chalk-bg)) 0%, var(--chalk-bg) 260px);
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #d0dbf7;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--chalk-frozen);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
 }
@@ -1348,10 +1396,10 @@ input:focus, select:focus, textarea:focus {
   top: 0;
   background: var(--chalk-head);
   color: var(--chalk-head-ink);
-  font-size: 9.5px;
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: .4px;
-  font-weight: 700;
+  letter-spacing: .35px;
+  font-weight: 600;
   padding: 7px 8px;
   text-align: center;
   border-bottom: 1px solid var(--chalk-line);
@@ -1374,7 +1422,7 @@ input:focus, select:focus, textarea:focus {
 .chalk td {
   background: var(--chalk-cell);
   color: var(--chalk-ink);
-  font-size: 11px;
+  font-size: 11.5px;
   padding: 6px 8px;
   text-align: center;
   white-space: nowrap;
@@ -1436,9 +1484,9 @@ input:focus, select:focus, textarea:focus {
   font-weight: 800;
 }
 .chalk .fly:hover { background: var(--chalk-fly-hover); }
-/* Vuelo resaltado: se oscurece en vez de aclararse porque la cabecera mide
- * 9.5px en mayúsculas y necesita MAS contraste que la base (tinta sobre
- * #263d53 = 11.2:1, frente a 9.2:1 de `.chalk .fly`). */
+/* Vuelo resaltado: se oscurece en vez de aclararse porque la celda marcada
+ * necesita separarse de `.fly` (comparte la misma tinta) sin subir la
+ * luminosidad del texto, que es lo que se lee a diario. */
 .chalk .fly-on {
   background: var(--chalk-fly-on);
   color: var(--chalk-ink);
@@ -1454,8 +1502,8 @@ input:focus, select:focus, textarea:focus {
  * (0,2,1) y devuelven el realce sin recurrir a `!important`. */
 .chalk td.ink-warn { color: var(--chalk-amber-ink); }
 .chalk .sub {
-  font-size: 9.5px;
-  opacity: .8;
+  font-size: 10.5px;
+  opacity: .75;
   display: block;
 }
 .mini-btn {
@@ -1495,12 +1543,16 @@ input:focus, select:focus, textarea:focus {
 }
 .chalk-resize:hover { background: var(--chalk-hover); }
 
-/* lp-grid for Load Planning */
+/* lp-grid for Load Planning
+   Igual que las utilidades App3 de abajo: esta grilla traia la paleta clara
+   fija (#fff / #f0f2f6) mas un verde de marca (#0d9488) que no existe en
+   ningun tema, y por eso se veia como una isla blanca en modo oscuro. Se
+   tokeniza; el verde pasa a `--accent` (rol: "color de dato destacado"). */
 .lp-wrap {
   overflow-x: auto;
-  border: 1px solid #e7e9ee;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
 }
 .lp-grid {
   display: grid;
@@ -1509,56 +1561,56 @@ input:focus, select:focus, textarea:focus {
 }
 .lp-grid > div {
   padding: 9px 10px;
-  font-size: 12px;
-  border-bottom: 1px solid #f0f2f6;
-  border-right: 1px solid #f0f2f6;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 .lp-grid.lp-head > div {
-  background: #0d3b37;
-  color: #eafaf7;
-  font-size: 10.5px;
-  font-weight: 800;
+  background: var(--gradient-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .4px;
+  letter-spacing: .35px;
   padding: 8px 10px;
 }
 .lp-grid > div.pos {
-  font-weight: 800;
-  color: #6d28d9;
+  font-weight: 700;
+  color: var(--accent);
   justify-content: center;
 }
 .lp-grid > div.uld {
-  font-weight: 700;
+  font-weight: 600;
 }
 .lp-grid .pct-track {
   flex: 1;
   height: 5px;
   border-radius: 99px;
-  background: #eef1f5;
+  background: var(--surface-2);
   overflow: hidden;
 }
 .lp-grid .pct-track i {
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: #0d9488;
+  background: var(--accent);
 }
 .float-zone {
-  border: 1.5px dashed #c0c9d5;
+  border: 1.5px dashed var(--border-strong);
   border-radius: 10px;
   padding: 10px;
-  background: #f8f9fb;
+  background: var(--surface-2);
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 .float-zone .hint {
-  font-size: 11px;
-  color: #94a3b8;
+  font-size: 11.5px;
+  color: var(--muted);
 }
 
 /* ═══ Tipo-global: escala estándar vistas/tablas ═══
@@ -1566,21 +1618,25 @@ input:focus, select:focus, textarea:focus {
    Los overrides de densidad compact usan selectores más
    específicos (:root[data-density='compact'] …) → siguen
    mandando cuando el usuario activa el modo compacto.      */
-.ds-title { font-size: 17px; }
-.ds-subtitle { font-size: 12.5px; }
-.ds-modal-title { font-size: 13.5px; }
-.ds-section-header > * { font-size: 13px; }
-.ds-stat { font-size: 12.5px; }
-.ds-tab { font-size: 12px; }
-.ds-table-header { font-size: 11px; }
-.ds-table-row { font-size: 12.5px; }
-.ds-table-section .ds-table-row > * { font-size: 12.5px; }
+.ds-title { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+.ds-subtitle { font-size: 13px; }
+.ds-modal-title { font-size: 15px; }
+.ds-section-header > * { font-size: 13.5px; }
+.ds-stat { font-size: 13px; }
+.ds-tab { font-size: 12.5px; }
+.ds-table-header { font-size: 11.5px; }
+.ds-table-row { font-size: 13px; }
+.ds-table-section .ds-table-row > * { font-size: 13px; }
 .ds-input { font-size: 13px; }
-.ds-label { font-size: 11px; }
-.ds-btn-primary, .ds-btn-secondary { font-size: 12.5px; }
-.ds-btn-danger { font-size: 12px; }
-.ds-stat-chip { font-size: 12px; }
+.ds-label { font-size: 11.5px; }
+.ds-btn-primary, .ds-btn-secondary { font-size: 13px; }
+.ds-btn-danger { font-size: 12.5px; }
+.ds-stat-chip { font-size: 12.5px; }
 .ds-toolbar { font-size: 13px; }
+/* Los rotulos cortos (columnas de tabla, tabs, celdas de tarjeta) suben a
+ * 11-11.5px: por debajo de 11px el texto deja de ser legible en pantalla
+ * real, y estas superficies concentran la lectura de toda la jornada. */
+.ds-card-label, .card-label, .ds-label, .ds-chip { font-size: 11px; }
 
 /* Tablas reales dentro de los wrappers de scroll */
 .table-scroll-wrapper table { font-size: 12.5px; }
@@ -1589,51 +1645,56 @@ input:focus, select:focus, textarea:focus {
 
 /* ═══ Utilidades de vista tipo App3 (unlayered) ═══
    Cabecera de vista + toolbar compacto + tiles de resumen.
-   Unlayered → gana a las utilidades de Tailwind (layered). */
+   Unlayered → gana a las utilidades de Tailwind (layered).
+   Estas reglas tenia la paleta CLARA fija (#fff / #0f172a / #e7e9ee / #0d9488):
+   en los 6 temas oscuros quedaban como un rectangulo blanco dentro de una
+   pagina negra, y el teal no existia en la paleta de marca. Ahora todo pasa
+   por los tokens, con `--accent` en el sitio del teal (rol: "color de
+   accion"), de modo que la vista se adapta sola a tema y modo. */
 .view-head { display: flex; align-items: center; gap: 12px; margin-bottom: 2px; flex-wrap: wrap; }
-.view-head h2 { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
-.view-head .crumb { font-size: 12px; color: #94a3b8; }
+.view-head h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+.view-head .crumb { font-size: 12px; color: var(--muted); }
 .view-head .spacer { flex: 1; }
 
 .card.toolbar.hdr {
   padding: 11px 16px;
-  background: #fcfcfd;
-  border-bottom: 1px solid #e7e9ee;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
-.card.toolbar.hdr .fin-label { font-size: 11px; font-weight: 800; color: #475569; white-space: nowrap; }
-.card.toolbar.hdr .vdiv { width: 1px; height: 24px; background: #e0e3e8; }
+.card.toolbar.hdr .fin-label { font-size: 11.5px; font-weight: 600; color: var(--text-2); white-space: nowrap; }
+.card.toolbar.hdr .vdiv { width: 1px; height: 24px; background: var(--border); }
 
 .sel {
-  border: 1px solid #d6d9e0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 7px 10px;
-  font-size: 12.5px;
-  background: #fff;
-  color: #0f172a;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
   font-family: inherit;
 }
-.sel:focus { outline: 2px solid rgba(13,148,136,.35); border-color: #0d9488; }
+.sel:focus { outline: 2px solid color-mix(in srgb, var(--accent) 35%, transparent); border-color: var(--accent); }
 
 .airline-block {
   display: flex;
   flex-direction: column;
-  line-height: 1.2;
+  line-height: 1.25;
   padding: 3px 10px;
-  border: 1px solid #e0e3e8;
+  border: 1px solid var(--border);
   border-radius: 9px;
-  background: #fff;
+  background: var(--surface);
   min-width: 88px;
 }
-.airline-block .meta { font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; }
-.airline-block .code { font-size: 16px; font-weight: 800; color: #31216b; }
-.airline-block.small .code { font-size: 12px; }
+.airline-block .meta { font-size: 10.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.airline-block .code { font-size: 16px; font-weight: 700; color: var(--text); }
+.airline-block.small .code { font-size: 12.5px; }
 
 .button {
   border: 0;
   border-radius: 8px;
   padding: 8px 15px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -1643,27 +1704,27 @@ input:focus, select:focus, textarea:focus {
 }
 .button:hover { filter: brightness(1.05); }
 .button:active { transform: translateY(1px); }
-.button.teal { background: #0d9488; color: #fff; box-shadow: 0 2px 6px rgba(13,148,136,.35); }
-.button.ghost { background: #fff; color: #0f172a; border: 1px solid #d6d9e0; }
+.button.teal { background: var(--accent); color: #fff; box-shadow: var(--shadow-xs); }
+.button.ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
 
-.badge.gy { background: #e2e8f0; color: #475569; }
+.badge.gy { background: var(--surface-2); color: var(--text-2); }
 
 .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 @media (max-width: 900px) { .grid4 { grid-template-columns: repeat(2, 1fr); } }
 
-.tile { background: #fff; border: 1px solid #e7e9ee; border-radius: 11px; padding: 12px; }
-.tile .num { font-size: 14px; font-weight: 800; color: #0f172a; }
-.tile .meta { font-size: 11px; color: #64748b; margin-top: 3px; }
-.tile .bar2 { height: 5px; border-radius: 99px; background: #eef1f5; margin-top: 8px; overflow: hidden; }
-.tile .bar2 i { display: block; height: 100%; background: #0d9488; border-radius: 99px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 12px; }
+.tile .num { font-size: 14px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.tile .meta { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.tile .bar2 { height: 5px; border-radius: 99px; background: var(--surface-2); margin-top: 8px; overflow: hidden; }
+.tile .bar2 i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
 
 .preview-note {
-  background: #f1f5f9;
-  border: 1px dashed #94a3b8;
-  color: #334155;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-2);
   border-radius: 10px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 12.5px;
   display: flex;
   gap: 8px;
   align-items: center;

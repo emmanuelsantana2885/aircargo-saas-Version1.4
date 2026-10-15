@@ -35,15 +35,18 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
     private final UldClient uldClient;
     private final MawbClient mawbClient;
     private final RabbitTemplate rabbitTemplate;
+    private final WeightBalanceService weightBalanceService;
 
     public LoadPlanningServiceImpl(FlightClient flightClient,
                                     UldClient uldClient,
                                     MawbClient mawbClient,
-                                    RabbitTemplate rabbitTemplate) {
+                                    RabbitTemplate rabbitTemplate,
+                                    WeightBalanceService weightBalanceService) {
         this.flightClient = flightClient;
         this.uldClient = uldClient;
         this.mawbClient = mawbClient;
         this.rabbitTemplate = rabbitTemplate;
+        this.weightBalanceService = weightBalanceService;
     }
 
     /**
@@ -138,6 +141,7 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
             result.setOrigin(flight.getOrigin());
             result.setDestination(flight.getDestination());
             result.setAircraftReg(flight.getAircraftReg());
+            result.setAircraftType(flight.getAircraftType());
             result.setFlightDate(flight.getFlightDate());
             result.setTotalPositions(flight.getTotalPositions());
             result.setMaxPayloadKg(flight.getMaxPayloadKg() != null
@@ -145,6 +149,11 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
             result.setUlds(uldDtos);
             result.setAirlineName(airlineName);
             result.setAirlineCode(airlineCode);
+            try {
+                result.setWeightBalance(weightBalanceService.compute(flight.getAircraftType(), uldDtos));
+            } catch (Exception e) {
+                log.warn("Weight & balance computation failed for flight {}: {}", flightId, e.getMessage());
+            }
             return Optional.of(result);
         } catch (Exception e) {
             return Optional.empty();

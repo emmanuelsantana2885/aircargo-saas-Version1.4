@@ -28,6 +28,10 @@ public class JwtGatewayFilter implements GlobalFilter, Ordered {
             "/api/auth/reset-password/",
             "/api/auth/refresh",
             "/api/auth/mfa/enroll/",
+            // Recuperación de MFA (usuario sin sesión perdió su autenticador):
+            // solicitud y verificación del código OTP por email. Públicos por diseño;
+            // el código es de un solo uso y expira.
+            "/api/auth/mfa/recovery/",
             "/api/catalog",
             "/fallback/",
             "/actuator/"

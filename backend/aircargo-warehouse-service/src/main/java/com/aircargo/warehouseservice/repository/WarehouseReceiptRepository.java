@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,9 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
 
     List<WarehouseReceipt> findBySupersededFalse();
     Page<WarehouseReceipt> findBySupersededFalse(Pageable pageable);
+
+    List<WarehouseReceipt> findByCreatedAtAfter(OffsetDateTime since);
+    Page<WarehouseReceipt> findByCreatedAtAfter(OffsetDateTime since, Pageable pageable);
 
     @Modifying
     @Query("UPDATE WarehouseReceipt r SET r.superseded = true WHERE r.mawbId = :mawbId AND r.id <> :excludeId")

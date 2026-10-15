@@ -24,6 +24,7 @@ public class LoadPlanningUldDTO {
     private String weighedBy;
     private String confirmedWith;
     private String completedAt;
+    private Double stationArmIn;
 
     public LoadPlanningUldDTO() {}
 
@@ -59,4 +60,6 @@ public class LoadPlanningUldDTO {
     public void setConfirmedWith(String confirmedWith) { this.confirmedWith = confirmedWith; }
     public String getCompletedAt() { return completedAt; }
     public void setCompletedAt(String completedAt) { this.completedAt = completedAt; }
+    public Double getStationArmIn() { return stationArmIn; }
+    public void setStationArmIn(Double stationArmIn) { this.stationArmIn = stationArmIn; }
 }
