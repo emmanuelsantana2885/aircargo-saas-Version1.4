@@ -46,14 +46,15 @@ REQUIRED_KEYS=(
   "RABBITMQ_HOST"
   "RABBITMQ_PORT"
   "APP_ENCRYPTION_KEY"
-  "SMTP_HOST"
-  "SMTP_PASSWORD"
+  "MAIL_ENABLED"
+  "MAIL_HOST"
+  "MAIL_PASS"
 )
 
 for key in "${REQUIRED_KEYS[@]}"; do
   kubectl get secret aircargo-secrets -n aircargo -o jsonpath="{.data.$key}" | base64 -d >/dev/null 2>&1 || { error "Key faltante en secret: $key"; exit 1; }
 done
-log "  Secret completo: 15/15 keys"
+log "  Secret completo: ${#REQUIRED_KEYS[@]}/${#REQUIRED_KEYS[@]} keys"
 
 # 5. NetworkPolicies count
 log "5/8 Verificando NetworkPolicies..."

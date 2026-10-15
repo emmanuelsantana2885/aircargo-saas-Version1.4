@@ -77,7 +77,12 @@ APP_ENCRYPTION_KEY=${ENC_KEY}
 FRONTEND_URL=http://${PUBLIC_IP}
 COOKIE_SECURE=false
 
-# ── SMTP (mail del cliente) ───────────────────────
+# ── SMTP / Mail (mail del cliente) ────────────────
+MAIL_ENABLED=false
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USER=noreply@example.com
+MAIL_PASS=CHANGE_ME
 SMTP_AUTH=true
 SMTP_STARTTLS=true
 

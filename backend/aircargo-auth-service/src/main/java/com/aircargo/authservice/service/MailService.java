@@ -31,6 +31,16 @@ public class MailService {
         this.from = (from == null || from.isBlank()) ? "no-reply@aircargo.local" : from;
     }
 
+    /**
+     * Indica si el correo puede entregarse de verdad: requiere
+     * {@code app.mail.enabled=true} Y un JavaMailSender disponible. Cuando es
+     * false los códigos de recuperación solo quedan en el log, así que la UI
+     * debe guiar al restablecimiento por administrador.
+     */
+    public boolean isDeliveryAvailable() {
+        return mailEnabled && mailSenderProvider.getIfAvailable() != null;
+    }
+
     public void sendMfaRecoveryCode(String to, String code, int expiryMinutes) {
         String subject = "AirCargo — Código de recuperación de acceso";
         String body = """

@@ -55,11 +55,11 @@ kubectl create secret generic aircargo-secrets -n aircargo \
   --from-literal=RABBITMQ_USER=aircargo \
   --from-literal=RABBITMQ_PASSWORD="$RABBITMQ_PASSWORD" \
   --from-literal=APP_ENCRYPTION_KEY="$APP_ENCRYPTION_KEY" \
-  --from-literal=SMTP_HOST=smtp.example.com \
-  --from-literal=SMTP_PORT=587 \
-  --from-literal=SMTP_USERNAME=noreply@example.com \
-  --from-literal=SMTP_PASSWORD=your-smtp-password \
-  --from-literal=SMTP_FROM=noreply@example.com \
+  --from-literal=MAIL_ENABLED=true \
+  --from-literal=MAIL_HOST=smtp.example.com \
+  --from-literal=MAIL_PORT=587 \
+  --from-literal=MAIL_USER=noreply@example.com \
+  --from-literal=MAIL_PASS=your-smtp-password \
   --from-literal=APP_MFA_MANDATORY=true \
   --from-literal=MFA_RESET_ON_STARTUP=false
 ```

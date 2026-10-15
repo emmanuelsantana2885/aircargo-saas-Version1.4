@@ -1488,6 +1488,7 @@ import: {
         sendCode: 'Enviar código',
         sending: 'Enviando...',
         sentMessage: 'Si el correo está registrado, enviamos un código de recuperación. Revisa tu bandeja.',
+        mailDisabled: 'El envío de correo no está configurado en este servidor, así que no se envió ningún código. Contacta a un administrador para que restablezca tu MFA desde Configuración → Usuarios.',
         codeLabel: 'Código de recuperación',
         confirm: 'Verificar y reconfigurar',
         confirming: 'Verificando...',

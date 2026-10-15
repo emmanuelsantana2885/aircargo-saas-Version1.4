@@ -37,7 +37,7 @@ echo "2. Checking secrets..."
 if kubectl get secret aircargo-secrets -n "$NAMESPACE" >/dev/null 2>&1; then
   pass "Secret 'aircargo-secrets' exists"
   # Verify required keys
-  for key in JWT_SECRET POSTGRES_PASSWORD RABBITMQ_PASSWORD APP_ENCRYPTION_KEY SMTP_HOST SMTP_PASSWORD; do
+  for key in JWT_SECRET POSTGRES_PASSWORD RABBITMQ_PASSWORD APP_ENCRYPTION_KEY MAIL_HOST MAIL_PASS; do
     if kubectl get secret aircargo-secrets -n "$NAMESPACE" -o jsonpath="{.data.$key}" | base64 -d >/dev/null 2>&1; then
       pass "  $key present"
     else

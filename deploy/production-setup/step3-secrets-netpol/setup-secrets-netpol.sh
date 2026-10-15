@@ -175,26 +175,26 @@ spec:
       remoteRef:
         key: aircargo/production/encryption
         property: APP_ENCRYPTION_KEY
-    - secretKey: SMTP_HOST
+    - secretKey: MAIL_ENABLED
       remoteRef:
         key: aircargo/production/smtp
-        property: SMTP_HOST
-    - secretKey: SMTP_PORT
+        property: MAIL_ENABLED
+    - secretKey: MAIL_HOST
       remoteRef:
         key: aircargo/production/smtp
-        property: SMTP_PORT
-    - secretKey: SMTP_USERNAME
+        property: MAIL_HOST
+    - secretKey: MAIL_PORT
       remoteRef:
         key: aircargo/production/smtp
-        property: SMTP_USERNAME
-    - secretKey: SMTP_PASSWORD
+        property: MAIL_PORT
+    - secretKey: MAIL_USER
       remoteRef:
         key: aircargo/production/smtp
-        property: SMTP_PASSWORD
-    - secretKey: SMTP_FROM
+        property: MAIL_USER
+    - secretKey: MAIL_PASS
       remoteRef:
         key: aircargo/production/smtp
-        property: SMTP_FROM
+        property: MAIL_PASS
     - secretKey: SMTP_AUTH
       remoteRef:
         key: aircargo/production/smtp

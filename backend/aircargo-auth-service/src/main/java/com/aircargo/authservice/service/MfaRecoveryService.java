@@ -41,6 +41,15 @@ public class MfaRecoveryService {
     }
 
     /**
+     * True si el código de recuperación puede entregarse por correo. Cuando es
+     * false (SMTP desactivado/sin configurar) el código solo queda en el log y
+     * la recuperación debe resolverse con un restablecimiento por administrador.
+     */
+    public boolean isDeliveryAvailable() {
+        return mailService.isDeliveryAvailable();
+    }
+
+    /**
      * Genera un código nuevo, invalida los pendientes anteriores del usuario y
      * lo envía por correo. Devuelve el código crudo SOLO si
      * {@code app.mfa.recovery.expose-code=true} (útil en desarrollo/tests).

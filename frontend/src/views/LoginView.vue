@@ -189,6 +189,14 @@
 
           <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
+          <div
+            v-if="!mfaRecoveryMailAvailable"
+            class="px-3 py-2.5 rounded-lg border text-xs leading-relaxed"
+            style="background: #fffbeb; border-color: #fcd34d; color: #92400e"
+          >
+            {{ t('login.mfa.recovery.mailDisabled') }}
+          </div>
+
           <button
             @click="backToMfa"
             type="button"
@@ -201,6 +209,14 @@
 
         <form v-else @submit.prevent="handleRecoveryConfirm" class="space-y-4">
           <div
+            v-if="!mfaRecoveryMailAvailable"
+            class="px-3 py-2.5 rounded-lg border text-xs leading-relaxed"
+            style="background: #fffbeb; border-color: #fcd34d; color: #92400e"
+          >
+            {{ t('login.mfa.recovery.mailDisabled') }}
+          </div>
+          <div
+            v-else
             class="px-3 py-2.5 rounded-lg border text-xs leading-relaxed"
             style="background: var(--bg); border-color: var(--border); color: var(--muted)"
           >
@@ -453,6 +469,7 @@ const mfaReenrollmentNeeded = ref(false)
 const mfaRecoveryEmail = ref('')
 const mfaRecoveryCode = ref('')
 const mfaRecoveryPhase = ref('request')
+const mfaRecoveryMailAvailable = ref(true)
 
 const selectedSiteLabel = computed(() => {
   if (!selectedSite.value) return ''
@@ -687,6 +704,7 @@ function openMfaRecovery() {
   mfaRecoveryEmail.value = loginEmail.value || pendingEmail.value || ''
   mfaRecoveryCode.value = ''
   mfaRecoveryPhase.value = 'request'
+  mfaRecoveryMailAvailable.value = true
   errorMsg.value = ''
   step.value = 'mfa-recovery'
 }
@@ -702,10 +720,15 @@ async function handleRecoveryRequest() {
   loading.value = true
   try {
     const res = await authApi.mfaRecoveryRequest(mfaRecoveryEmail.value)
-    if (res.data?.devCode) {
-      mfaRecoveryCode.value = res.data.devCode
+    const mailEnabled = res.data?.mailEnabled !== false
+    const devCode = res.data?.devCode || ''
+    mfaRecoveryMailAvailable.value = mailEnabled
+    if (devCode) {
+      mfaRecoveryCode.value = devCode
     }
-    mfaRecoveryPhase.value = 'confirm'
+    if (mailEnabled || devCode) {
+      mfaRecoveryPhase.value = 'confirm'
+    }
   } catch (e) {
     toast.error(extractError(e))
     errorMsg.value = t('login.mfa.recovery.failed')

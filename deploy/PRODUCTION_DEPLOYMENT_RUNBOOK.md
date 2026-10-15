@@ -106,22 +106,22 @@ dig +short yourdomain.com
 ```bash
 cd /home/manolov/Projects/Rannik/aircargo-saas-Version1.3/deploy
 
-# Option A: Interactive (prompts for SMTP)
+# Option A: Interactive (prompts for mail/SMTP)
 ./generate-secrets.sh - \
-  --smtp-host smtp.yourprovider.com \
-  --smtp-port 587 \
-  --smtp-user noreply@yourdomain.com \
-  --smtp-pass "YOUR_SMTP_PASSWORD" \
-  --smtp-from noreply@yourdomain.com \
+  --mail-enabled true \
+  --mail-host smtp.yourprovider.com \
+  --mail-port 587 \
+  --mail-user noreply@yourdomain.com \
+  --mail-pass "YOUR_SMTP_PASSWORD" \
   | kubectl apply -f -
 
 # Option B: With S3 backup offsite
 ./generate-secrets.sh - \
-  --smtp-host smtp.yourprovider.com \
-  --smtp-port 587 \
-  --smtp-user noreply@yourdomain.com \
-  --smtp-pass "YOUR_SMTP_PASSWORD" \
-  --smtp-from noreply@yourdomain.com \
+  --mail-enabled true \
+  --mail-host smtp.yourprovider.com \
+  --mail-port 587 \
+  --mail-user noreply@yourdomain.com \
+  --mail-pass "YOUR_SMTP_PASSWORD" \
   --aws-key "AKIA..." \
   --aws-secret "SECRET..." \
   --aws-bucket "aircargo-backups-prod" \
@@ -132,7 +132,7 @@ cd /home/manolov/Projects/Rannik/aircargo-saas-Version1.3/deploy
 kubectl get secret aircargo-secrets -n aircargo -o yaml
 ```
 
-**Required secret keys**: `JWT_SECRET`, `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD`, `APP_ENCRYPTION_KEY`, `SMTP_*`, `APP_MFA_MANDATORY=true` (default), `MFA_RESET_ON_STARTUP=false`
+**Required secret keys**: `JWT_SECRET`, `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD`, `APP_ENCRYPTION_KEY`, `MAIL_ENABLED=true`, `MAIL_HOST`, `MAIL_USER`, `MAIL_PASS` (mail optional — leave `MAIL_ENABLED=false` to use admin MFA reset), `APP_MFA_MANDATORY=true` (default), `MFA_RESET_ON_STARTUP=false`
 
 ---
 

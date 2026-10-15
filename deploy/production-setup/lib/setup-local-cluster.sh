@@ -166,11 +166,11 @@ create_secrets() {
     --from-literal=RABBITMQ_USER="aircargo" \
     --from-literal=RABBITMQ_PASSWORD="${LOCAL_RABBITMQ_PASSWORD}" \
     --from-literal=APP_ENCRYPTION_KEY="${LOCAL_ENCRYPTION_KEY}" \
-    --from-literal=SMTP_HOST="smtp.example.com" \
-    --from-literal=SMTP_PORT="587" \
-    --from-literal=SMTP_USERNAME="noreply@example.com" \
-    --from-literal=SMTP_PASSWORD="changeme" \
-    --from-literal=SMTP_FROM="noreply@example.com" \
+    --from-literal=MAIL_ENABLED="false" \
+    --from-literal=MAIL_HOST="smtp.example.com" \
+    --from-literal=MAIL_PORT="587" \
+    --from-literal=MAIL_USER="noreply@example.com" \
+    --from-literal=MAIL_PASS="changeme" \
     --from-literal=SMTP_AUTH="true" \
     --from-literal=SMTP_STARTTLS="true" \
     --from-literal=CORS_ORIGINS="https://aircargo.localhost,https://api.aircargo.localhost" \

@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # Generate production secrets for Aircargo
-# Usage: ./generate-secrets.sh [output-file] [--smtp-host HOST] [--smtp-port PORT] [--smtp-user USER] [--smtp-pass PASS] [--smtp-from FROM] [--aws-key ID] [--aws-secret KEY] [--aws-bucket BUCKET] [--aws-region REGION]
+# Usage: ./generate-secrets.sh [output-file] [--mail-enabled true|false] [--mail-host HOST] [--mail-port PORT] [--mail-user USER] [--mail-pass PASS] [--aws-key ID] [--aws-secret KEY] [--aws-bucket BUCKET] [--aws-region REGION]
 #        ./generate-secrets.sh - | kubectl apply -f -   (stream to kubectl, no file written)
 
 set -euo pipefail
 
 # Defaults
 OUTPUT_FILE="${1:-aircargo-secrets-generated.yml}"
-SMTP_HOST="${SMTP_HOST:-smtp.example.com}"
-SMTP_PORT="${SMTP_PORT:-587}"
-SMTP_USERNAME="${SMTP_USERNAME:-noreply@example.com}"
-SMTP_PASSWORD="${SMTP_PASSWORD:-CHANGE_ME}"
-SMTP_FROM="${SMTP_FROM:-noreply@example.com}"
+MAIL_ENABLED="${MAIL_ENABLED:-false}"
+MAIL_HOST="${MAIL_HOST:-smtp.example.com}"
+MAIL_PORT="${MAIL_PORT:-587}"
+MAIL_USER="${MAIL_USER:-noreply@example.com}"
+MAIL_PASS="${MAIL_PASS:-CHANGE_ME}"
 AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
 AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
@@ -21,11 +21,11 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 shift || true
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --smtp-host) SMTP_HOST="$2"; shift 2 ;;
-    --smtp-port) SMTP_PORT="$2"; shift 2 ;;
-    --smtp-user) SMTP_USERNAME="$2"; shift 2 ;;
-    --smtp-pass) SMTP_PASSWORD="$2"; shift 2 ;;
-    --smtp-from) SMTP_FROM="$2"; shift 2 ;;
+    --mail-enabled) MAIL_ENABLED="$2"; shift 2 ;;
+    --mail-host) MAIL_HOST="$2"; shift 2 ;;
+    --mail-port) MAIL_PORT="$2"; shift 2 ;;
+    --mail-user) MAIL_USER="$2"; shift 2 ;;
+    --mail-pass) MAIL_PASS="$2"; shift 2 ;;
     --aws-key) AWS_ACCESS_KEY_ID="$2"; shift 2 ;;
     --aws-secret) AWS_SECRET_ACCESS_KEY="$2"; shift 2 ;;
     --aws-bucket) AWS_S3_BUCKET="$2"; shift 2 ;;
@@ -67,12 +67,13 @@ stringData:
   # AES-256-GCM Encryption Key (32 bytes base64) - for MFA secrets, ID docs, signatures
   APP_ENCRYPTION_KEY: "${APP_ENCRYPTION_KEY}"
   
-  # SMTP (REQUIRED for MFA emails, notifications, backup alerts)
-  SMTP_HOST: "${SMTP_HOST}"
-  SMTP_PORT: "${SMTP_PORT}"
-  SMTP_USERNAME: "${SMTP_USERNAME}"
-  SMTP_PASSWORD: "${SMTP_PASSWORD}"
-  SMTP_FROM: "${SMTP_FROM}"
+  # Mail (enables MFA recovery emails, notifications, backup alerts)
+  # Names MUST match the env vars read by auth/notification services.
+  MAIL_ENABLED: "${MAIL_ENABLED}"
+  MAIL_HOST: "${MAIL_HOST}"
+  MAIL_PORT: "${MAIL_PORT}"
+  MAIL_USER: "${MAIL_USER}"
+  MAIL_PASS: "${MAIL_PASS}"
   
   # MFA Policy
   APP_MFA_MANDATORY: "true"
@@ -90,13 +91,13 @@ if [[ "$OUTPUT_FILE" != "-" ]]; then
   echo "Generated $OUTPUT_FILE"
   echo ""
   echo "⚠️  IMPORTANT:"
-  echo "1. Review SMTP credentials (current: ${SMTP_HOST}:${SMTP_PORT})"
+  echo "1. Review mail credentials (enabled=${MAIL_ENABLED}, server: ${MAIL_HOST}:${MAIL_PORT})"
   echo "2. Update AWS credentials if using S3 backups"
   echo "3. Apply with: kubectl apply -f $OUTPUT_FILE"
   echo "4. DELETE THIS FILE after applying (contains secrets!)"
   echo ""
   echo "To apply directly without saving to disk:"
-  echo "  $0 - --smtp-host ... | kubectl apply -f -"
+  echo "  $0 - --mail-enabled true --mail-host ... | kubectl apply -f -"
 else
   echo "Streamed to stdout (no file written)"
 fi

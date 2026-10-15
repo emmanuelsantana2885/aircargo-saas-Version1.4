@@ -1489,6 +1489,7 @@ export default {
         sendCode: 'Send code',
         sending: 'Sending...',
         sentMessage: 'If the email is registered, we sent a recovery code. Check your inbox.',
+        mailDisabled: 'Email delivery is not configured on this server, so no code was sent. Contact an administrator to reset your MFA from Settings → Users.',
         codeLabel: 'Recovery code',
         confirm: 'Verify and reconfigure',
         confirming: 'Verifying...',

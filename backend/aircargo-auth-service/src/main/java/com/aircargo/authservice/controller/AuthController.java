@@ -617,14 +617,21 @@ public class AuthController {
     /**
      * PASO 1 de la recuperación de MFA (público): el usuario que perdió su
      * autenticador solicita un código OTP por correo. Responde SIEMPRE 200 con
-     * un mensaje genérico para no revelar si el correo existe.
+     * un mensaje genérico para no revelar si el correo existe. Incluye
+     * {@code mailEnabled} (capacidad global del servidor) para que la UI avise
+     * cuando el correo no está configurado y guíe al reset por administrador.
      */
     @PostMapping("/mfa/recovery/request")
     public ResponseEntity<?> requestMfaRecovery(@RequestBody(required = false) Map<String, String> body,
                                                 HttpServletRequest servletRequest) {
+        // Capacidad global del servidor (no por usuario): no revela si el correo existe.
+        boolean mailEnabled = mfaRecoveryService.isDeliveryAvailable();
         Map<String, Object> ok = Map.of(
-                "message", "Si el correo está registrado, enviaremos un código de recuperación.",
-                "sent", true);
+                "message", mailEnabled
+                        ? "Si el correo está registrado, enviaremos un código de recuperación."
+                        : "El envío de correo no está configurado. Contacta a un administrador para restablecer tu MFA.",
+                "sent", mailEnabled,
+                "mailEnabled", mailEnabled);
         String email = body != null ? body.get("email") : null;
         if (email == null || email.isBlank()) {
             return ResponseEntity.ok(ok);
@@ -641,7 +648,8 @@ public class AuthController {
         if (exposed.isPresent()) {
             // Solo en desarrollo (app.mfa.recovery.expose-code=true)
             return ResponseEntity.ok(Map.of(
-                    "message", ok.get("message"), "sent", true, "devCode", exposed.get()));
+                    "message", ok.get("message"), "sent", true,
+                    "mailEnabled", mailEnabled, "devCode", exposed.get()));
         }
         return ResponseEntity.ok(ok);
     }
