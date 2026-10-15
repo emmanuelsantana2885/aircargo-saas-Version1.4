@@ -75,6 +75,26 @@
           <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.mfa.subtitle') }}</p>
         </div>
 
+        <div
+          v-if="mfaReenrollmentNeeded"
+          class="mb-4 px-3 py-2.5 rounded-lg border text-xs leading-relaxed"
+          :style="{
+            background: 'var(--warn-bg, rgba(245,158,11,0.12))',
+            borderColor: 'rgba(245,158,11,0.4)',
+            color: 'var(--warn-text, #92610a)'
+          }"
+        >
+          <div class="flex items-start gap-2">
+            <component :is="icons.ShieldAlert" :size="18" color="#d97706" :stroke-width="2" class="shrink-0 mt-px" />
+            <div>
+              <p class="font-semibold mb-0.5" style="color: #92400e">{{ t('login.mfa.reenrollWarning') }}</p>
+              <p>
+                {{ mfaReason === 'reset' ? t('login.mfa.reasonReset') : t('login.mfa.reasonExpired') }}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <form @submit.prevent="handleMfa" class="space-y-4">
           <div>
             <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.codeLabel') }}</label>

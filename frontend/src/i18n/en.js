@@ -1479,6 +1479,9 @@ export default {
       verifying: 'Verifying...',
       verify: 'Verify',
       lostDevice: 'Lost your phone? Recover access',
+      reenrollWarning: 'Reconfiguration required',
+      reasonReset: 'The application was updated or restarted. Verify your current code; then you must configure a new authenticator (MFA).',
+      reasonExpired: 'Your two-factor authentication (MFA) expired. Verify your current code; then you must configure it again. If you lost your authenticator, use "Recover access".',
       recovery: {
         title: 'Recover access',
         subtitle: 'We will email you a code to reconfigure your authenticator',

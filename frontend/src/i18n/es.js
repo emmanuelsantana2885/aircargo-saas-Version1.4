@@ -1478,6 +1478,9 @@ import: {
       verifying: 'Verificando...',
       verify: 'Verificar',
       lostDevice: '¿Perdiste tu teléfono? Recuperar acceso',
+      reenrollWarning: 'Reconfiguración requerida',
+      reasonReset: 'La aplicación fue actualizada o reiniciada. Verifica tu código actual; luego deberás configurar un nuevo autenticador (MFA).',
+      reasonExpired: 'Tu verificación en dos pasos (MFA) caducó. Verifica tu código actual; luego deberás configurarla nuevamente. Si perdiste tu autenticador, usa "Recuperar acceso".',
       recovery: {
         title: 'Recuperar acceso',
         subtitle: 'Te enviaremos un código a tu correo para reconfigurar tu autenticador',
