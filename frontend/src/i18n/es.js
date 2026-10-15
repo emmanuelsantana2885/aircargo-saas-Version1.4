@@ -418,6 +418,7 @@ import: {
       within: 'dentro de límites',
       outside: 'FUERA DE LÍMITES',
       placeholder: 'DATOS PLACEHOLDER',
+      placeholderNote: 'Los valores de peso y balance provienen de datos de referencia placeholder. No usar para decisiones operativas hasta reemplazarlos por las cifras del AFM/operador.',
       dow: 'Peso vacío (DOW)',
       payload: 'Carga útil',
       zfw: 'Peso sin combustible (ZFW)',

@@ -99,6 +99,10 @@
 
     <!-- Weight & Balance / CG envelope -->
     <section v-if="wb && wb.configured" class="wb-panel card">
+      <div v-if="wb.placeholder" class="wb-alert">
+        <component :is="icons.AlertTriangle" :size="15" :stroke-width="2.5" />
+        <span><strong>{{ t('loadPlanning.wb.placeholder') }}</strong> — {{ t('loadPlanning.wb.placeholderNote') }}</span>
+      </div>
       <div class="wb-head">
         <span class="wb-title">{{ t('loadPlanning.wb.title') }}</span>
         <span class="wb-ac">{{ wb.aircraftLabel || aircraftType }}</span>
@@ -1516,6 +1520,15 @@ watch(calculatedTotals, (t) => {
 
 /* ── Weight & Balance / CG envelope ── */
 .wb-panel { padding: 12px 14px; margin-bottom: 12px; }
+.wb-alert {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 10px; padding: 8px 10px; border-radius: 8px;
+  font-size: 11.5px; font-weight: 600; line-height: 1.35;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+}
+.wb-alert strong { font-weight: 800; }
 .wb-head { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text); }
 .wb-title { font-weight: 700; }
 .wb-ac { font-size: 11px; font-weight: 600; color: var(--text-3); font-family: var(--font-data); }

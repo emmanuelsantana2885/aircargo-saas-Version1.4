@@ -418,6 +418,7 @@ export default {
       within: 'within limits',
       outside: 'OUT OF LIMITS',
       placeholder: 'PLACEHOLDER DATA',
+      placeholderNote: 'Weight & balance values come from placeholder reference data. Do not use for operational decisions until replaced with AFM/operator figures.',
       dow: 'Dry operating weight (DOW)',
       payload: 'Payload',
       zfw: 'Zero fuel weight (ZFW)',
