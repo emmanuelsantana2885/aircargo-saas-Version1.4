@@ -30,10 +30,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private static final long REVOCATION_CACHE_MS = 30_000;
+    // Rutas sin sesión. En ellas NO se valida el token: si no se saltaran, una cookie
+    // httpOnly caducada (o firmada con otro secreto) haría fallar el parseo y el filtro
+    // abortaría con 401 en endpoints que deben ser públicos — dejando al usuario sin poder
+    // iniciar sesión ni recuperar su MFA. Debe mantenerse alineada con la lista del
+    // JwtGatewayFilter (gateway JwtGatewayFilter.PUBLIC_PATHS).
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login", "/api/auth/set-password", "/api/auth/set-password-token",
             "/api/auth/reset-password/", "/api/auth/refresh", "/api/auth/heartbeat",
-            "/api/auth/mfa/enroll/"
+            "/api/auth/mfa/enroll/", "/api/auth/mfa/recovery/"
     );
 
     private final JwtUtil jwtUtil;
@@ -71,7 +76,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
 
         // Endpoints públicos: skip JWT validation (permitAll en SecurityConfig se encarga)
-        if (PUBLIC_PATHS.stream().anyMatch(uri::startsWith)) {
+        if (isPublicPath(uri)) {
             chain.doFilter(request, response);
             return;
         }
@@ -147,6 +152,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         chain.doFilter(request, response);
+    }
+
+    /** ¿La ruta es pública (no debe validarse el token aunque venga una cookie caducada)? */
+    static boolean isPublicPath(String uri) {
+        return uri != null && PUBLIC_PATHS.stream().anyMatch(uri::startsWith);
     }
 
     /** Bearer header tiene prioridad; fallback a cookie httpOnly. */

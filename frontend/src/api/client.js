@@ -83,6 +83,11 @@ const NO_REFRESH_ON_401 = [
   '/auth/change-password',
   '/auth/reset-password/validate',
   '/auth/mfa/enroll/',
+  // Recuperación de MFA: son endpoints públicos sin sesión. Un 401 aquí es la
+  // respuesta real (p. ej. gateway de un despliegue aún sin la ruta pública) y
+  // NO debe provocar un refresh —que también fallaría— ni limpiar la sesión:
+  // eso convertía un error visible y accionable en un bucle silencioso de 401.
+  '/auth/mfa/recovery/',
 ]
 
 // Limpia y notifica al handler global (SPA navigation, no hard reload).
