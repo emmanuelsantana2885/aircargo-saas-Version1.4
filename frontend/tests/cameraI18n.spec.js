@@ -6,6 +6,16 @@ import ScanPanel from '@/components/ScanPanel.vue'
 import es from '@/i18n/es'
 import en from '@/i18n/en'
 
+/* ScanPanel resuelve el catalogo ULD al montarse (uldTypeCatalogApi.getAll en el
+ * setup). Sin mock, happy-dom intenta conectar a su origen por defecto
+ * (http://localhost:3000) y el run escupe "ECONNREFUSED" (el .catch(() => {})
+ * del componente lo traga, por eso los tests igual pasan, pero ensucia la
+ * salida). Lo mockeamos a una lista vacia para que el fallback legacy siga
+ * cubierto por los tests. */
+vi.mock('@/api/uldTypeCatalog', () => ({
+  uldTypeCatalogApi: { getAll: vi.fn().mockResolvedValue({ data: [] }) },
+}))
+
 /* Regresion de los crashes que arranco `check-sfc-refs.mjs` a detectar:
  * ambos componentes usaban `t('common.close')` en el template sin declarar
  * `t`. El guard lo daba por bueno porque existia un `t => t.stop()` anidado
