@@ -20,6 +20,16 @@ public final class ChargeableCalculator {
     private ChargeableCalculator() {
     }
 
+    /** Normaliza a no-negativo (null → ZERO). Pesos, dimensiones y volúmenes no admiten negativos. */
+    public static BigDecimal nonNegative(BigDecimal value) {
+        return (value == null || value.signum() < 0) ? BigDecimal.ZERO : value;
+    }
+
+    /** Divisor volumétrico seguro (nunca 0 ni negativo); defensa ante parámetros inválidos. */
+    private static BigDecimal divisor(int factor) {
+        return BigDecimal.valueOf(Math.max(1, factor));
+    }
+
     public static BigDecimal roundUp(BigDecimal value, BigDecimal step) {
         if (value == null) return BigDecimal.ZERO;
         if (step == null || step.signum() <= 0) return value;
@@ -36,22 +46,26 @@ public final class ChargeableCalculator {
         if (piece == null || piece.getLengthIn() == null || piece.getWidthIn() == null || piece.getHeightIn() == null) {
             return null;
         }
-        BigDecimal pieces = piece.getPieces() != null ? BigDecimal.valueOf(piece.getPieces()) : BigDecimal.ONE;
-        return piece.getLengthIn().multiply(piece.getWidthIn()).multiply(piece.getHeightIn()).multiply(pieces);
+        int pieces = piece.getPieces() != null ? Math.max(0, piece.getPieces()) : 1;
+        return nonNegative(piece.getLengthIn())
+                .multiply(nonNegative(piece.getWidthIn()))
+                .multiply(nonNegative(piece.getHeightIn()))
+                .multiply(BigDecimal.valueOf(pieces));
     }
 
     /** Aplica el cálculo completo a una pieza (dim, cobrable kg/lbs) mutando el DTO. */
     public static void apply(ReceiptPieceDTO piece, CalcParams params) {
-        BigDecimal scaleLbs = piece.getScaleWeightLbs() != null ? piece.getScaleWeightLbs() : BigDecimal.ZERO;
-        BigDecimal scaleKg = piece.getScaleWeightKg() != null ? piece.getScaleWeightKg()
+        BigDecimal scaleLbs = nonNegative(piece.getScaleWeightLbs());
+        BigDecimal scaleKg = piece.getScaleWeightKg() != null
+                ? nonNegative(piece.getScaleWeightKg())
                 : scaleLbs.divide(LBS_PER_KG, 3, RoundingMode.HALF_UP);
 
         BigDecimal dimWeightLbs = null;
         BigDecimal dimWeightKg = null;
         BigDecimal volume = volume(piece);
         if (volume != null) {
-            dimWeightLbs = volume.divide(BigDecimal.valueOf(params.dimFactorDom()), 2, RoundingMode.HALF_UP);
-            dimWeightKg = volume.divide(BigDecimal.valueOf(params.dimFactorIntl()), 3, RoundingMode.HALF_UP);
+            dimWeightLbs = nonNegative(volume.divide(divisor(params.dimFactorDom()), 2, RoundingMode.HALF_UP));
+            dimWeightKg = nonNegative(volume.divide(divisor(params.dimFactorIntl()), 3, RoundingMode.HALF_UP));
         }
         piece.setDimWeightLbs(dimWeightLbs);
         piece.setDimWeightKg(dimWeightKg);
@@ -59,13 +73,14 @@ public final class ChargeableCalculator {
         BigDecimal dimLbs = dimWeightLbs != null ? dimWeightLbs : BigDecimal.ZERO;
         BigDecimal dimKg = dimWeightKg != null ? dimWeightKg : BigDecimal.ZERO;
 
-        BigDecimal chargeableLbs = params.method().base(scaleLbs, dimLbs);
-        BigDecimal chargeableKg = params.method().base(scaleKg, dimKg);
+        BigDecimal chargeableLbs = nonNegative(params.method().base(scaleLbs, dimLbs));
+        BigDecimal chargeableKg = nonNegative(params.method().base(scaleKg, dimKg));
 
         // round-up → mínimo, por pieza (linear lbs ↔ kg para no desincronizar)
-        BigDecimal roundedLbs = roundUp(applyMin(chargeableLbs, params.minChargeableLbs()), params.roundUpLbs());
+        BigDecimal roundedLbs = nonNegative(
+                roundUp(applyMin(chargeableLbs, params.minChargeableLbs()), params.roundUpLbs()));
         BigDecimal roundedKg = chargeableLbs.equals(scaleLbs) && chargeableKg.equals(scaleKg)
-                ? roundUp(applyMin(chargeableKg, params.minChargeableKg()), params.roundUpKg())
+                ? nonNegative(roundUp(applyMin(chargeableKg, params.minChargeableKg()), params.roundUpKg()))
                 : roundedLbs.multiply(KGS_PER_LB).setScale(3, RoundingMode.HALF_UP);
 
         piece.setChargeableLbs(roundedLbs);
@@ -78,23 +93,24 @@ public final class ChargeableCalculator {
             return new CalcTotals(0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
 
-        int pieceCount = pieces.stream().mapToInt(p -> p.getPieces() != null ? p.getPieces() : 1).sum();
+        int pieceCount = pieces.stream().mapToInt(p -> p.getPieces() != null ? Math.max(0, p.getPieces()) : 1).sum();
 
         BigDecimal totalScaleLbs = pieces.stream()
-                .map(p -> p.getScaleWeightLbs() != null ? p.getScaleWeightLbs() : BigDecimal.ZERO)
+                .map(p -> nonNegative(p.getScaleWeightLbs()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal totalScaleKg = pieces.stream()
-                .map(p -> p.getScaleWeightKg() != null ? p.getScaleWeightKg()
-                        : (p.getScaleWeightLbs() != null
-                            ? p.getScaleWeightLbs().divide(LBS_PER_KG, 3, RoundingMode.HALF_UP)
-                            : BigDecimal.ZERO))
+                .map(p -> p.getScaleWeightKg() != null
+                        ? nonNegative(p.getScaleWeightKg())
+                        : p.getScaleWeightLbs() != null
+                            ? nonNegative(p.getScaleWeightLbs()).divide(LBS_PER_KG, 3, RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal chargeableLbs = pieces.stream()
-                .map(p -> p.getChargeableLbs() != null ? p.getChargeableLbs() : BigDecimal.ZERO)
+                .map(p -> nonNegative(p.getChargeableLbs()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal chargeableKg = pieces.stream()
-                .map(p -> p.getChargeableKg() != null ? p.getChargeableKg() : BigDecimal.ZERO)
+                .map(p -> nonNegative(p.getChargeableKg()))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // round-up → mínimo aplicado sobre el total cobrable
@@ -102,9 +118,9 @@ public final class ChargeableCalculator {
                 pieceCount,
                 totalScaleLbs.setScale(2, RoundingMode.HALF_UP),
                 totalScaleKg.setScale(3, RoundingMode.HALF_UP),
-                roundUp(applyMin(chargeableLbs, params.minChargeableLbs()), params.roundUpLbs())
+                nonNegative(roundUp(applyMin(chargeableLbs, params.minChargeableLbs()), params.roundUpLbs()))
                         .setScale(2, RoundingMode.HALF_UP),
-                roundUp(applyMin(chargeableKg, params.minChargeableKg()), params.roundUpKg())
+                nonNegative(roundUp(applyMin(chargeableKg, params.minChargeableKg()), params.roundUpKg()))
                         .setScale(3, RoundingMode.HALF_UP));
     }
 

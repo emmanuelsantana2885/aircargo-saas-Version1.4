@@ -1,5 +1,6 @@
 package com.aircargo.warehouseservice.service;
 
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
@@ -9,6 +10,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.lang.reflect.Method;
@@ -49,8 +54,27 @@ class WarehouseReceiptServiceImplTest {
     }
 
     @Test
-    void getById_mapsEntity() {
-        WarehouseReceipt r = sampleReceipt();
+    void getAll_paginated_mapsPageMetadata() {
+        WarehouseReceipt r1 = sampleReceipt();
+        WarehouseReceipt r2 = sampleReceipt();
+        Page<WarehouseReceipt> page = new PageImpl<>(List.of(r1, r2), PageRequest.of(0, 2), 5);
+        when(receiptRepository.findBySupersededFalse(any(Pageable.class))).thenReturn(page);
+
+        PageResponse<WarehouseReceiptDTO> result = service.getAll(0, 2);
+
+        assertEquals(2, result.getContent().size());
+        assertEquals(0, result.getPage());
+        assertEquals(2, result.getSize());
+        assertEquals(5, result.getTotalElements());
+        assertEquals(3, result.getTotalPages());
+        assertTrue(result.isFirst());
+        assertFalse(result.isLast());
+        verify(receiptRepository).findBySupersededFalse(any(Pageable.class));
+        verify(receiptRepository, never()).findBySupersededFalse();
+    }
+
+    @Test
+    void getById_mapsEntity() {        WarehouseReceipt r = sampleReceipt();
         when(receiptRepository.findById(r.getId())).thenReturn(Optional.of(r));
 
         Optional<WarehouseReceiptDTO> result = service.getById(r.getId());

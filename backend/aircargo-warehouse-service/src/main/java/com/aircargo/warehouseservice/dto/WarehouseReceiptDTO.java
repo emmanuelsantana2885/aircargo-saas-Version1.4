@@ -1,5 +1,8 @@
 package com.aircargo.warehouseservice.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.PositiveOrZero;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -18,8 +21,11 @@ public class WarehouseReceiptDTO {
     private String agentName;
     private String origin;
     private String destination;
+    @PositiveOrZero
     private Integer awbReportedPieces;
+    @PositiveOrZero
     private BigDecimal mawbWeightGreatest;
+    @PositiveOrZero
     private BigDecimal shipperReportedWeight;
     private OffsetDateTime startDatetime;
     private OffsetDateTime receiptDate;
@@ -29,17 +35,26 @@ public class WarehouseReceiptDTO {
     private Boolean customsCompleted;
     private Boolean preBuilt;
     private Boolean looseTender;
+    @PositiveOrZero
     private Integer pieceCount;
     private Integer dimFactorDom;
     private Integer dimFactorIntl;
     private String chargeableMethod;
+    @PositiveOrZero
     private BigDecimal roundUpKg;
+    @PositiveOrZero
     private BigDecimal roundUpLbs;
+    @PositiveOrZero
     private BigDecimal minChargeableKg;
+    @PositiveOrZero
     private BigDecimal minChargeableLbs;
+    @PositiveOrZero
     private BigDecimal actualWeightLbs;
+    @PositiveOrZero
     private BigDecimal actualWeightKg;
+    @PositiveOrZero
     private BigDecimal chargeableWeightLbs;
+    @PositiveOrZero
     private BigDecimal chargeableWeightKg;
     private String shipperComment;
     private String observations;
@@ -69,6 +84,7 @@ public class WarehouseReceiptDTO {
     private Boolean superseded;
     private String correctionReason;
     private String correctedByName;
+    @Valid
     private List<ReceiptPieceDTO> pieces;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

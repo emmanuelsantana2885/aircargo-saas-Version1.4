@@ -4,6 +4,7 @@ import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.service.WarehouseReceiptService;
 import com.aircargo.common.audit.AuditService;
 import com.aircargo.common.auth.UserPrincipal;
+import com.aircargo.common.dto.PageResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -37,6 +38,18 @@ public class WarehouseReceiptController {
             return receiptService.getReceiptsSince(since);
         }
         return receiptService.getAll();
+    }
+
+    /**
+     * Variante paginada: solo se activa si el cliente envía page y size.
+     * Sin esos parámetros, {@link #getAll(OffsetDateTime)} sigue devolviendo una
+     * lista plana (compatibilidad con consumidores que esperan un array).
+     */
+    @GetMapping(params = {"page", "size"})
+    public PageResponse<WarehouseReceiptDTO> getAllPaginated(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return receiptService.getAll(page, size);
     }
 
     @GetMapping("/{id}")

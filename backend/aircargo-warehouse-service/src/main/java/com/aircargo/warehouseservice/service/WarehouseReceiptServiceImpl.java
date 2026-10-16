@@ -1,10 +1,13 @@
 package com.aircargo.warehouseservice.service;
 
+import com.aircargo.common.dto.PageResponse;
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -27,6 +30,20 @@ public class WarehouseReceiptServiceImpl implements WarehouseReceiptService {
         return receiptRepository.findBySupersededFalse().stream()
                 .map(WarehouseReceiptDTO::fromEntity)
                 .toList();
+    }
+
+    @Override
+    @Cacheable(value = "warehouse-receipts", key = "'page:' + #page + ':' + #size")
+    public PageResponse<WarehouseReceiptDTO> getAll(int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 1000);
+        Page<WarehouseReceipt> result =
+                receiptRepository.findBySupersededFalse(PageRequest.of(safePage, safeSize));
+        return PageResponse.of(
+                result.getContent().stream().map(WarehouseReceiptDTO::fromEntity).toList(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements());
     }
 
     @Override

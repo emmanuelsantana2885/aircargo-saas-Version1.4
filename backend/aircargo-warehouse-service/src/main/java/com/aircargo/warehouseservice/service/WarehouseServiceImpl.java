@@ -4,6 +4,7 @@ import com.aircargo.warehouseservice.calc.CalcParams;
 import com.aircargo.warehouseservice.calc.CalcParamsResolver;
 import com.aircargo.warehouseservice.calc.ChargeableCalculator;
 import com.aircargo.warehouseservice.dto.ReceiptPieceDTO;
+import com.aircargo.common.error.ResourceNotFoundException;
 import com.aircargo.warehouseservice.dto.WarehouseReceiptDTO;
 import com.aircargo.warehouseservice.entity.ReceiptPiece;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
@@ -127,6 +128,8 @@ public class WarehouseServiceImpl implements WarehouseService {
             existing.setConsigneeName(dto.getConsigneeName());
             existing.setOrigin(dto.getOrigin());
             existing.setDestination(dto.getDestination());
+            // Re-resolve MAWB number so the re-published event carries a usable AWB for booking sync
+            existing.setMawbNumber(mawbNumberResolver.resolve(existing.getMawbId(), existing.getMawbNumber()));
             existing.setAwbReportedPieces(dto.getAwbReportedPieces());
             existing.setMawbWeightGreatest(dto.getMawbWeightGreatest());
             existing.setShipperReportedWeight(dto.getShipperReportedWeight());
@@ -191,6 +194,11 @@ public class WarehouseServiceImpl implements WarehouseService {
             // Regenerate artifacts
             generatePersistedArtifacts(existing.getId());
 
+            // Re-publish receipt.created so downstream sync (booking AWB, MAWB BOOKED→RECEIVED)
+            // also fires when a receipt is completed via edit rather than on first emit.
+            // Consumers are idempotent: booking only fills a blank AWB, mawb only moves BOOKED→RECEIVED.
+            publishReceiptCreatedEvent(saved);
+
             return WarehouseReceiptDTO.fromEntity(saved);
         });
     }
@@ -223,7 +231,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public String getSupportingDocsHtml(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
 
         String rawDocs = receipt.getSupportingDocs();
         if (rawDocs == null || rawDocs.isBlank() || "[]".equals(rawDocs)) {
@@ -302,7 +310,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public byte[] getSupportingDocsPdf(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
 
         StringBuilder sb = new StringBuilder();
         sb.append("<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'/>");

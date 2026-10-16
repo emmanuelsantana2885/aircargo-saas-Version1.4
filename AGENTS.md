@@ -1,5 +1,24 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 15, 2026 — Formulario/recibo: shell del wizard modernizado + endurecimiento de cálculo + contrato API/DTO del warehouse)
+
+**Contexto**: pedido "improve the receipt form and flow process" en `frontend/src/views/WarehouseReceiptsView.vue` + workstream backend completo (cálculo/validación, sync recibo↔MAWB/Booking, contrato API/DTO, tests). 7 workstreams, todos cerrados.
+
+| File | Change |
+|------|--------|
+| `frontend/src/views/WarehouseReceiptsView.vue` | **Shell del wizard tokenizado** (L3401-3477): `.ops-overlay`/`.ops-modal`/header/steps/footer, `.ops-sdot`, `.ops-err`/`.ops-warn`, `.btn-ok`/`.btn-ghost` usan tokens del tema (`var(--accent-band, #0d3b37)` + `var(--accent-ink, #fff)` — sin fallback en `:root`, los setea `theme.js`). `.pipe`/`.seg` intactos. Esc listener arreglado (module-level `_onGlobalKeydown` + `onMounted`/`onUnmounted`); footer recap (`ops-recap`); bug de form que desaparecía en `renderMawbs`/`useLiveRefresh` corregido |
+| `backend/.../warehouseservice/calc/{ChargeableCalculator,CalcParams,CalcParamsResolver,ChargeableMethod}.java` | **Endurecimiento**: clamps de negativos/divisor cero en `ChargeableCalculator` (`roundUp` null→ZERO, step≤0 sin cambio, `applyMin` solo si `min.signum()>0`); `CalcParams` compact ctor normaliza; `CalcParamsResolver` precedencia DTO > entity > DB profile > constantes |
+| `backend/.../warehouseservice/dto/{ReceiptPieceDTO,WarehouseReceiptDTO,ReceiptCalcConfigDTO}.java` + `controller/ReceiptCalcConfigController.java` | **Validación**: `@PositiveOrZero`/`@Valid` en piezas y recibo; `@Valid` en los `@RequestBody` del PUT de config de cálculo |
+| `backend/.../warehouseservice/service/WarehouseServiceImpl.java` | **Sync**: `updateReceipt` ahora publica `receipt.created` (call site L197, además de `emitReceipt`) → los listeners de booking/mawb re-sincronizan en cada edición; 2 rutas "recibo no encontrado" → `ResourceNotFoundException` |
+| `backend/aircargo-common/.../error/ResourceNotFoundException.java` | **NEW** — excepción 404 (distinta de `IllegalArgumentException`→400) para recursos inexistentes (evidencias/PDF/Excel de recibo) |
+| `backend/aircargo-common/.../error/GlobalExceptionHandler.java` | **NEW** `handleResourceNotFound` → **404** `{timestamp,status,error:"Not Found",message,path}`; regresión de `IllegalArgumentException`→400 conservada |
+| `backend/.../warehouseservice/service/{WarehouseServiceImpl,ReceiptFullPdfService,ReceiptExportService}.java` | 7 sitios `IllegalArgumentException("Recibo no encontrado: …")` → `ResourceNotFoundException` (2+2+3) + imports |
+| `backend/.../warehouseservice/service/WarehouseReceiptService.java` + `...Impl.java` + `controller/WarehouseReceiptController.java` | **Paginación como overload**: `PageResponse<WarehouseReceiptDTO> getAll(int page,int size)` con `@Cacheable(key="'page:'+#page+':'+#size")` (clamps page≥0, 1≤size≤1000) y `@GetMapping(params={"page","size"}) getAllPaginated(page=0,size=50)`. El path sin params sigue devolviendo `List` (compat con `App.vue checkNewReceipts` que espera array); `stores/app.js loadReceipts` (manda page+size) usa el paginado |
+| `backend/.../warehouseservice/test/...` | **Tests**: `CalcParamsTest` 5, `ReceiptPieceValidationTest` 8, `ChargeableCalculatorTest` 20, `ReceiptCalcConfigValidationTest` 6, `ReceiptCalcConfigServiceImplTest` 11, `WarehouseReceiptServiceImplTest` 6 (+1 paginación), `WarehouseServiceImplTest` 2 (incl. `updateReceipt_publishesReceiptCreatedEvent`) |
+| `backend/aircargo-common/src/test/.../error/GlobalExceptionHandlerTest.java` | **NEW (2)** — 404 para `ResourceNotFoundException`; 400 para `IllegalArgumentException` (regresión) |
+
+**Verificación**: `mvn -o -pl aircargo-warehouse-service -am test` → **BUILD SUCCESS**, warehouse **64/64**; `mvn -o -pl aircargo-common test` → common **30/30** (incluye `GlobalExceptionHandlerTest` 2/2). Frontend `npm run lint` EXIT 0 (check:refs 48 SFC, i18n 1357/1357, contrast) y `npm run build` EXIT 0. Sin commit/push (no solicitado).
+
 ## Recent session changes (Sep 15, 2026 (2) — Fase 3 completada: consumidor AMQP de auditoría verificado E2E + fix del probe de puerto RabbitMQ en start-backend.sh)
 
 **Contexto**: cerrar la "Pendiente" de la sesión previa (Fase 3). Las dos mitades: (a) el consumidor AMQP de **auth-service** (`aircargo.auth.audit-log`, gateado por `app.rabbitmq.enabled=${RABBITMQ_ENABLED:true}` en `RabbitConfig` + `AuditLogListener`) y (b) exportar en el arranque `POSTGRES_*`, `JWT_SECRET`, `RABBITMQ_*`, `REDIS_HOST/PORT`. El E2E previo (recibo→MAWB RECEIVED) ya había probado booking/mawb/notification consumiendo; faltaba verificar el consumidor de auditoría y el arranque.

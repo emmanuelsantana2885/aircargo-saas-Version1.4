@@ -4,6 +4,7 @@ import com.aircargo.warehouseservice.entity.ReceiptPiece;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.ReceiptPieceRepository;
 import com.aircargo.warehouseservice.repository.WarehouseReceiptRepository;
+import com.aircargo.common.error.ResourceNotFoundException;
 import com.aircargo.common.util.TextUtil;
 import com.aircargo.feign.client.MawbClient;
 import com.aircargo.feign.dto.HawbDTO;
@@ -41,7 +42,7 @@ public class ReceiptFullPdfService {
     @Transactional
     public byte[] generateReceiptPdf(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
 
         if (receipt.getPdfData() != null && receipt.getPdfData().length > 0) {
             log.info("Receipt {} served from persisted PDF ({}KB)", receiptId, receipt.getPdfData().length / 1024);
@@ -62,7 +63,7 @@ public class ReceiptFullPdfService {
     @Transactional(readOnly = true)
     public byte[] generateReceiptPdfFresh(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
         List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receiptId);
         String html = buildReceiptHtml(receipt, pieces);
         return pdfService.generatePdf(html);

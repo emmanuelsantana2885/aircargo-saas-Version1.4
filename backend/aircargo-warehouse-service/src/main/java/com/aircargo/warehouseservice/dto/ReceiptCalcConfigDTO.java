@@ -3,6 +3,7 @@ package com.aircargo.warehouseservice.dto;
 import com.aircargo.warehouseservice.calc.CalcParams;
 import com.aircargo.warehouseservice.calc.ChargeableMethod;
 import com.aircargo.warehouseservice.entity.ReceiptCalcConfig;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -13,11 +14,19 @@ public class ReceiptCalcConfigDTO {
     private UUID id;
     private UUID airlineId;
     private String chargeableMethod;
+
+    // 0/null means "use the built-in default factor" (see applyTo), so only reject negatives.
+    @PositiveOrZero
     private Integer dimFactorDom;
+    @PositiveOrZero
     private Integer dimFactorIntl;
+    @PositiveOrZero
     private BigDecimal roundUpKg;
+    @PositiveOrZero
     private BigDecimal roundUpLbs;
+    @PositiveOrZero
     private BigDecimal minChargeableKg;
+    @PositiveOrZero
     private BigDecimal minChargeableLbs;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

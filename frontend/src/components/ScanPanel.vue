@@ -151,10 +151,17 @@ let lastDetectedCode = ''
 let lastDetectedAt = 0
 // Los detectores corren en setInterval, pero scanImageData() es async y usa un
 // lector WASM singleton: si un tick entra antes de que termine el anterior,
-// el lector se reentra y ZBar lanza "Cannot read properties of undefined
-// (reading 'startTime')" desde reportAllChanges() en un timer interno (error NO
-// capturado por el try/catch, porque ocurre fuera de la promesa awaited).
-// scanBusy serializa los ticks; scanGeneration invalida ticks de sesiones viejas.
+// el lector se reentra y puede corromper su estado interno (el fallo ocurre
+// fuera del try/catch, porque sucede en el timer interno, no en la promesa
+// awaited). scanBusy serializa los ticks; scanGeneration invalida ticks de
+// sesiones viejas.
+//
+// NOTA: el error "Cannot read properties of undefined (reading 'startTime')"
+// desde reportAllChanges() NO proviene de ZBar ni de esta vista: es un bug de
+// Chrome DevTools (regresión en Chrome 152) en su script inyectado de Live
+// Metrics (web-vitals/INP) que revienta en navegaciones SPA con DevTools
+// abierto. Ver issues.chromium.org/555794190 y /554790587 — no es corregible
+// desde la aplicación.
 let scanBusy = false
 let scanGeneration = 0
 

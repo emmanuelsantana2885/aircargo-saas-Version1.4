@@ -1,5 +1,6 @@
 package com.aircargo.warehouseservice.service;
 
+import com.aircargo.common.error.ResourceNotFoundException;
 import com.aircargo.warehouseservice.entity.ReceiptPiece;
 import com.aircargo.warehouseservice.entity.WarehouseReceipt;
 import com.aircargo.warehouseservice.repository.ReceiptPieceRepository;
@@ -77,7 +78,7 @@ public class ReceiptExportService {
         log.debug("Exporting receipt {} to XLSX (template mode)", receiptId);
 
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
 
         List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receiptId);
         byte[] data = buildFromTemplate(receipt, pieces);
@@ -92,7 +93,7 @@ public class ReceiptExportService {
     @Transactional(readOnly = true)
     public byte[] generateBytes(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
         List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receiptId);
         return buildFromTemplate(receipt, pieces);
     }
@@ -100,7 +101,7 @@ public class ReceiptExportService {
     @Transactional
     public byte[] generateAndPersistExcel(UUID receiptId) {
         WarehouseReceipt receipt = receiptRepository.findById(receiptId)
-                .orElseThrow(() -> new IllegalArgumentException("Recibo no encontrado: " + receiptId));
+                .orElseThrow(() -> new ResourceNotFoundException("Recibo no encontrado: " + receiptId));
 
         List<ReceiptPiece> pieces = pieceRepository.findByReceiptId(receiptId);
         byte[] data = buildFromTemplate(receipt, pieces);

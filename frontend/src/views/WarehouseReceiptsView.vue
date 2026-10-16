@@ -108,9 +108,9 @@
         </div>
       </div>
       <EmptyState v-if="store.mawbs.length === 0" :title="t('warehouse.empty')" :hint="t('warehouse.emptyHint')" :icon="icons.FileInvoice" />
-      <EmptyState v-else-if="filteredMawbs.length === 0" :title="t('warehouse.emptyFilter')" :hint="t('warehouse.emptyHint')" :icon="icons.Search" />
+      <EmptyState v-else-if="renderMawbs.length === 0" :title="t('warehouse.emptyFilter')" :hint="t('warehouse.emptyHint')" :icon="icons.Search" />
       <div v-else class="divide-y divide-[var(--border-2)] text-[12.5px] text-[var(--text)] overflow-y-auto flex-1 min-h-0 thin-scrollbar">
-        <template v-for="m in filteredMawbs" :key="m.id">
+        <template v-for="m in renderMawbs" :key="m.id">
           <div v-if="tableMode === 'byFlight' && flightGroupStarts().has(m.id)" class="fl-group-hd"
             :class="{ closed: isCollapsedGroup(flightKeyOf(m)) }" @click="toggleGroup(flightKeyOf(m))">
             <span class="fl-chip">{{ fmtFlight(m) }}</span>
@@ -118,7 +118,7 @@
             <span class="fl-count">{{ groupByKey(flightKeyOf(m))?.mawbs.length || 0 }}</span>
             <span class="fl-caret">{{ isCollapsedGroup(flightKeyOf(m)) ? '&#9656;' : '&#9662;' }}</span>
           </div>
-          <div v-if="tableMode === 'master' || !isCollapsedGroup(flightKeyOf(m))" class="flex flex-col">
+          <div v-if="tableMode === 'master' || !isCollapsedGroup(flightKeyOf(m)) || expandedId === m.id" class="flex flex-col">
           <div class="overflow-x-auto">
           <div class="grid grid-cols-12 items-center py-1 px-4 transition-all duration-150 cursor-pointer border-t hover:bg-[var(--surface-2)]"
             :class="[
@@ -205,8 +205,8 @@
           </div>
           </div>
 
-          <Teleport to="body">
-          <div v-if="expandedId === m.id && receiptForms[m.id]" class="ops-overlay" @click.self="cancelForm">
+<Teleport to="body">
+  <div v-if="expandedId === m.id && receiptForms[m.id]" class="ops-overlay" @click.self="cancelForm">
             <div class="ops-modal" role="dialog" aria-modal="true">
               <div class="ops-hdr">
                 <div class="ops-fl">
@@ -221,15 +221,21 @@
 
               <div class="ops-steps">
                 <div v-for="(step, si) in steps" :key="si" class="ops-step">
-                  <div class="ops-sdot" :class="{ on: localStep === si + 1, dn: stepDone(si) }"
-                    @click="localStep = si + 1">
+                  <div class="ops-sdot" :class="{ on: localStep === si + 1, dn: stepDone(si), er: stepError(si) }"
+                    @click="goToStep(si + 1)">
                     <span v-if="stepDone(si)">&#10003;</span>
                     <span v-else-if="stepError(si)">&#33;</span>
                     <span v-else>{{ si + 1 }}</span>
                   </div>
-                  <span class="ops-slbl" @click="localStep = si + 1">{{ step }}</span>
+                  <span class="ops-slbl" @click="goToStep(si + 1)">{{ step }}</span>
                   <div v-if="si < steps.length - 1" class="ops-sln" :class="{ dn: stepDone(si) || localStep > si + 1 }"></div>
                 </div>
+              </div>
+
+              <!-- Aviso de validación (bloqueante) y advertencias de integridad (no bloquean) -->
+              <div v-if="stepErrorMsg" class="ops-err" role="alert">&#9888; {{ stepErrorMsg }}</div>
+              <div v-else-if="stepWarnings.length" class="ops-warn">
+                <span v-for="(w, wi) in stepWarnings" :key="wi">&#9888; {{ w }}</span>
               </div>
 
               <!-- ═══ Scrollable step content ═══ -->
@@ -244,7 +250,7 @@
                         class="ds-input uppercase" />
                     </div>
                     <div>
-                      <label class="ds-label">{{ t('warehouse.form.shipperName') }}</label>
+                      <label class="ds-label">{{ t('warehouse.form.shipperName') }} <span class="req">*</span></label>
                       <div class="flex gap-2 items-center">
                         <input v-model="receiptForms[m.id].shipperName" type="text" placeholder="Shipper"
                           class="ds-input flex-1"
@@ -784,6 +790,7 @@
                 <div class="ops-fl">
                   <button class="btn-ghost" @click="prevStep" :disabled="localStep === 1">&#9664; Atras</button>
                   <button class="btn-ghost danger" @click="cancelForm">&#10005; Cancelar</button>
+                  <span v-if="stepRecap" class="ops-recap">{{ stepRecap.pcs }} pzs · {{ stepRecap.kg }} kg</span>
                   <span v-if="successMsg" class="ops-ok">{{ successMsg }}</span>
                 </div>
                 <div v-if="localStep < 5" class="ops-fr">
@@ -1281,6 +1288,10 @@ const expiredPendingIds = computed(() => new Set(store.mawbs.filter(isExpiredPen
 const expandedId = ref(localStorage.getItem('WAREHOUSE_EXPANDED_MAWB') || null)
 const queueExpanded = ref(true)
 const localStep = ref(1)
+// Validación por paso: `touchedSteps[si]` se marca al intentar avanzar (guía al operador sin
+// marcar en rojo un formulario recién abierto). `stepErrorMsg` es el primer error visible.
+const touchedSteps = reactive([false, false, false, false, false])
+const stepErrorMsg = ref('')
 const submitting = ref(false)
 const successMsg = ref('')
 const showConfirmModal = ref(false)
@@ -1642,6 +1653,20 @@ const filteredMawbs = computed(() => {
     if (pa !== pb) return pa - pb
     return (b.awbNumber || '').localeCompare(a.awbNumber || '')
   })
+})
+
+// Keep the MAWB whose receipt form is open in the rendered list even when a
+// filter/refresh would otherwise drop it. The Teleport holding the form lives
+// inside this v-for, so if the row leaves the list the form unmounts and
+// disappears mid-edit.
+const renderMawbs = computed(() => {
+  const list = filteredMawbs.value
+  const id = expandedId.value
+  if (id && !list.some(x => x.id === id)) {
+    const extra = (store.mawbs || []).find(x => x.id === id)
+    if (extra) return [extra, ...list]
+  }
+  return list
 })
 
 function applyFilter(m, ft) {
@@ -2115,6 +2140,7 @@ function cancelForm() {
   localStep.value = 1
   generatedReceiptId.value = null
   lastDraftSave.value = ''
+  resetStepValidation()
 }
 
 // Step validation helpers for progress bar
@@ -2134,9 +2160,111 @@ function stepDone(si) {
   return false
 }
 
-function stepError(_si) {
-  return false // could add backend validation errors here
+function stepError(si) {
+  return touchedSteps[si] && validateStep(si).length > 0
 }
+
+// ── Validación e integridad del recibo (guía al operador) ──────────────────
+function hawbKey(s) {
+  return String(s || '').replace(/[\s\-_/]/g, '').toUpperCase()
+}
+function hasAnyDim(p) {
+  return !!(Number(p.lengthIn) || Number(p.widthIn) || Number(p.heightIn))
+}
+function hasAllDims(p) {
+  return !!(Number(p.lengthIn) && Number(p.widthIn) && Number(p.heightIn))
+}
+function hasPartialDims(p) {
+  return hasAnyDim(p) && !hasAllDims(p)
+}
+function activePieces(d) {
+  return (d.pieces || []).filter(p => (Number(p.pieces) || 0) > 0 || hasAnyDim(p) || Number(p.scaleWeightLbs) > 0)
+}
+
+// Errores bloqueantes por paso (0-indexed)
+function validateStep(si) {
+  const d = stepData(expandedId.value)
+  const errs = []
+  if (!d) return errs
+  if (si === 0) {
+    if (!String(d.shipperName || '').trim()) errs.push('Shipper Name es obligatorio')
+    if (!String(d.consigneeName || '').trim()) errs.push('Consignee Name es obligatorio')
+    if (String(d.origin || '').trim().length !== 3) errs.push('Origin debe tener 3 letras (ej. SDQ)')
+    if (String(d.destination || '').trim().length !== 3) errs.push('Destination debe tener 3 letras (ej. MIA)')
+  } else if (si === 1) {
+    const pieces = activePieces(d)
+    if (pieces.length === 0) errs.push('Ingresa al menos una pieza con dimensiones o peso')
+    const partial = pieces.filter(hasPartialDims).length
+    if (partial > 0) errs.push(partial + ' pieza(s) con dimensiones incompletas (L × W × H)')
+    if (pieces.some(p => Number(p.pieces) < 0 || Number(p.scaleWeightLbs) < 0)) errs.push('No se permiten valores negativos en piezas o pesos')
+  } else if (si === 4) {
+    if (!String(d.printName || '').trim() && !d.dockSignature) errs.push('Firma de quien entrega o nombre impreso es obligatorio')
+  }
+  return errs
+}
+
+// Advertencias de integridad (no bloquean el guardado)
+function warnStep(si) {
+  const d = stepData(expandedId.value)
+  const warns = []
+  if (!d) return warns
+  if (si === 0) {
+    const seen = new Set(); const dups = new Set()
+    for (const e of (d.hawbEntries || [])) {
+      const k = hawbKey(e.hawbNumber)
+      if (!k) continue
+      if (seen.has(k)) dups.add(e.hawbNumber); seen.add(k)
+    }
+    if (dups.size) warns.push('HAWB duplicado: ' + [...dups].join(', '))
+    const blankWithPieces = (d.hawbEntries || []).filter(e => !hawbKey(e.hawbNumber) && Number(e.pieces) > 0).length
+    if (blankWithPieces) warns.push(blankWithPieces + ' HAWB sin número pero con piezas')
+  } else if (si === 1) {
+    const sum = (d.hawbEntries || []).reduce((s, e) => s + (Number(e.pieces) || 0), 0)
+    const rep = Number(d.awbReportedPieces) || 0
+    if (rep > 0 && sum > 0 && sum !== rep) warns.push('Piezas HAWB (' + sum + ') no coinciden con AWB reportado (' + rep + ')')
+    const pcs = (d.pieces || []).reduce((s, p) => s + (Number(p.pieces) || 1), 0)
+    if (sum > 0 && pcs !== sum) warns.push('Piezas en detalle (' + pcs + ') no coinciden con HAWBs (' + sum + ')')
+  }
+  return warns
+}
+
+const stepWarnings = computed(() => warnStep(localStep.value - 1))
+
+function firstInvalidStep() {
+  for (let s = 0; s < 5; s++) { if (validateStep(s).length) return s }
+  return -1
+}
+
+function resetStepValidation() {
+  for (let i = 0; i < 5; i++) touchedSteps[i] = false
+  stepErrorMsg.value = ''
+}
+
+// Navegación guiada: avanzar valida; saltar hacia adelante valida los pasos previos.
+function goToStep(target) {
+  const mId = expandedId.value
+  if (!receiptForms[mId]) return
+  if (target <= localStep.value) { stepErrorMsg.value = ''; localStep.value = target; return }
+  for (let s = localStep.value - 1; s < target - 1; s++) {
+    touchedSteps[s] = true
+    const errs = validateStep(s)
+    if (errs.length) {
+      stepErrorMsg.value = 'Paso ' + (s + 1) + ': ' + errs[0]
+      localStep.value = s + 1
+      return
+    }
+  }
+  stepErrorMsg.value = ''
+  localStep.value = target
+}
+
+const stepRecap = computed(() => {
+  const d = stepData(expandedId.value)
+  if (!d) return null
+  const pcs = (d.pieces || []).reduce((s, p) => s + (Number(p.pieces) || 1), 0)
+  const kg = (d.pieces || []).reduce((s, p) => s + (Number(p.chargeableKg) || 0), 0)
+  return { pcs, kg: Math.round(kg * 10) / 10 }
+})
 
 async function toggleExpand(m) {
   if (expandedId.value === m.id) {
@@ -2145,6 +2273,7 @@ async function toggleExpand(m) {
     expandedId.value = m.id
     localStep.value = 1
     generatedReceiptId.value = null
+    resetStepValidation()
     initForm(m)
     applyDraftToForm(m.id)
     try {
@@ -2205,8 +2334,22 @@ async function toggleExpand(m) {
   }
 }
 
-function nextStep() { if (localStep.value < 5) localStep.value++ }
-function prevStep() { if (localStep.value > 1) localStep.value-- }
+function nextStep() {
+  if (localStep.value >= 5) return
+  goToStep(localStep.value + 1)
+}
+function prevStep() {
+  if (localStep.value <= 1) return
+  stepErrorMsg.value = ''
+  localStep.value--
+}
+
+// Esc cierra primero el modal de confirmación / gestor de evidencias y si no, el wizard.
+function onGlobalEsc() {
+  if (showConfirmModal.value) { showConfirmModal.value = false; return }
+  if (mawbEvidenceMgr.show) { closeMawbEvidenceMgr(); return }
+  if (expandedId.value) cancelForm()
+}
 
 /* ══════════════════════════════════════════════════════════════════
    EVIDENCIAS — captura de foto/cámara + subida de archivos
@@ -2478,10 +2621,17 @@ function openConfirmModal(m) {
   const f = receiptForms[m.id]
   if (!f) return
   f.pieces = f.pieces.filter(p => p.hawbId != null || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
-  if (f.pieces.length === 0) {
-    toast.warning('Ingresa al menos una pieza')
+  // Validación completa de todos los pasos antes de confirmar
+  for (let s = 0; s < 5; s++) touchedSteps[s] = true
+  const bad = firstInvalidStep()
+  if (bad !== -1) {
+    const errs = validateStep(bad)
+    stepErrorMsg.value = 'Paso ' + (bad + 1) + ': ' + errs[0]
+    localStep.value = bad + 1
+    toast.warning(stepErrorMsg.value)
     return
   }
+  stepErrorMsg.value = ''
   pendingSubmitMawb.value = m
   showConfirmModal.value = true
 }
@@ -3042,6 +3192,11 @@ onMounted(async () => {
   }
 })
 
+// Esc global handler for wizard / confirm modal / evidence manager
+function _onGlobalKeydown(e) { if (e.key === 'Escape') onGlobalEsc() }
+onMounted(() => window.addEventListener('keydown', _onGlobalKeydown))
+onUnmounted(() => window.removeEventListener('keydown', _onGlobalKeydown))
+
 watch(expandedId, async (id) => {
   if (id) {
     localStorage.setItem('WAREHOUSE_EXPANDED_MAWB', id)
@@ -3124,7 +3279,7 @@ async function refreshData() {
 }
 
 useLiveRefresh(refreshData,
-{ interval: 45000, pauses: [submitting, showConfirmModal, showBookingCorrectionModal, () => capture.open] })
+{ interval: 45000, pauses: [submitting, showConfirmModal, showBookingCorrectionModal, () => capture.open, () => !!expandedId.value] })
 </script>
 
 <style scoped>
@@ -3243,69 +3398,83 @@ useLiveRefresh(refreshData,
 }
 
 /* ── OPS modal wizard (OPS-RCA-v6) ─────────────────────────────── */
-.ops-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(24,25,42,.55);
-  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+.ops-overlay { position: fixed; inset: 0; z-index: 60;
+  background: color-mix(in srgb, var(--shadow-tint, #0f172a) 55%, transparent);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; padding: 18px; }
 .ops-modal { width: min(940px,100%); height: auto; max-width: calc(100vw - 36px); max-height: calc(100dvh - 36px);
   min-width: 560px; min-height: 380px; display: flex; flex-direction: column;
-  background: #F2F4F8; border: 1px solid #DDE1EC; border-top: 3px solid #2B5CE6;
-  border-radius: 10px; box-shadow: 0 24px 60px rgba(15,23,42,.35);
+  background: var(--surface-2, #f6f8fd); border: 1px solid var(--border, #e2e8f0);
+  border-top: 3px solid var(--accent, #3e7bfa);
+  border-radius: 12px; box-shadow: var(--shadow-lg, 0 24px 60px -24px rgba(15,23,42,.35));
   position: relative; overflow: hidden; resize: both; }
 .ops-modal::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 14px; height: 14px;
-  background: linear-gradient(135deg, transparent 0, transparent 5px, #C3C9DA 5px, #C3C9DA 7px, transparent 7px, transparent 12px, #C3C9DA 12px, #C3C9DA 14px);
+  background: linear-gradient(135deg, transparent 0, transparent 5px, var(--border-strong, #cbd5e1) 5px, var(--border-strong, #cbd5e1) 7px, transparent 7px, transparent 12px, var(--border-strong, #cbd5e1) 12px, var(--border-strong, #cbd5e1) 14px);
   opacity: .6; pointer-events: none; }
 
-.ops-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
-  background: #fff; border-bottom: 1px solid #ECEEF5; }
-.ops-tt { font-size: 15px; font-weight: 800; color: #0B1220; line-height: 1.2; }
-.ops-sub { font-size: 11px; font-family: var(--font-family-mono, monospace); color: #9298AF; }
+.ops-hdr { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px;
+  background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e2e8f0); }
+.ops-tt { font-size: 15px; font-weight: 800; color: var(--text, #0f172a); line-height: 1.2; }
+.ops-sub { font-size: 11px; font-family: var(--font-family-mono, monospace); color: var(--muted, #5b6b85); }
 .xbtn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-  border-radius: 7px; border: 1px solid #ECEEF5; background: #F8F9FC; color: #5B6275;
-  font-size: 15px; cursor: pointer; transition: background .12s, color .12s; }
-.xbtn:hover { background: #FDE8E8; color: #C2372F; }
+  border-radius: 8px; border: 1px solid var(--border, #e2e8f0); background: var(--surface-2, #f6f8fd);
+  color: var(--text-2, #475569); font-size: 15px; cursor: pointer; transition: background .12s, color .12s, border-color .12s; }
+.xbtn:hover { background: var(--danger-soft, #fef2f2); color: var(--danger, #dc2626); border-color: color-mix(in srgb, var(--danger, #dc2626) 35%, transparent); }
 
-.ops-steps { display: flex; align-items: center; gap: 0; flex-wrap: wrap; padding: 10px 16px;
-  background: #fff; border-bottom: 1px solid #ECEEF5; }
+.ops-steps { display: flex; align-items: center; gap: 0; flex-wrap: wrap; padding: 11px 18px;
+  background: var(--surface, #fff); border-bottom: 1px solid var(--border, #e2e8f0); }
 .ops-step { display: flex; align-items: center; gap: 8px; }
 .ops-sdot { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
-  border-radius: 50%; background: #E8EAF2; border: 1.5px solid #DDE1EC; color: #9298AF;
-  font-size: 12px; font-weight: 700; cursor: pointer; user-select: none; transition: all .12s; }
-.ops-sdot.on { background: #2B5CE6; border-color: #2B5CE6; color: #fff; box-shadow: 0 0 0 3px rgba(43,92,230,.15); }
-.ops-sdot.dn { background: #1F9E5A; border-color: #1F9E5A; color: #fff; }
+  border-radius: 50%; background: var(--surface-3, #f1f5f9); border: 1.5px solid var(--border, #e2e8f0);
+  color: var(--muted, #5b6b85); font-size: 12px; font-weight: 700; cursor: pointer; user-select: none; transition: all .12s; }
+.ops-sdot.on { background: var(--accent, #3e7bfa); border-color: var(--accent, #3e7bfa); color: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(62,123,250,.12)); }
+.ops-sdot.dn { background: var(--ok, #059669); border-color: var(--ok, #059669); color: #fff; }
+.ops-sdot.er { background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger, #dc2626) 18%, transparent); }
 .ops-slbl { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
-  color: #9298AF; cursor: pointer; transition: color .12s; }
-.ops-sdot.on + .ops-slbl { color: #2B5CE6; }
-.ops-sln { width: 26px; height: 2px; background: #DDE1EC; margin: 0 4px; border-radius: 2px; }
-.ops-sln.dn { background: #1F9E5A; }
+  color: var(--muted, #5b6b85); cursor: pointer; transition: color .12s; }
+.ops-sdot.on + .ops-slbl { color: var(--accent, #3e7bfa); }
+.ops-sln { width: 26px; height: 2px; background: var(--border, #e2e8f0); margin: 0 4px; border-radius: 2px; }
+.ops-sln.dn { background: var(--ok, #059669); }
 
-.ops-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 16px; }
+.ops-err { display: flex; align-items: center; gap: 6px; margin: 10px 18px 0; padding: 8px 11px;
+  border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--danger, #dc2626);
+  background: var(--danger-soft, #fef2f2); border: 1px solid color-mix(in srgb, var(--danger, #dc2626) 32%, transparent); }
+.ops-warn { display: flex; flex-direction: column; gap: 2px; margin: 10px 18px 0; padding: 8px 11px;
+  border-radius: 8px; font-size: 11px; font-weight: 600; color: var(--warn, #b45309);
+  background: var(--warn-bg, #fffbeb); border: 1px solid color-mix(in srgb, var(--warn, #b45309) 38%, transparent); }
+
+.ops-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 16px 18px; }
 
 .ops-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  padding: 12px 16px; background: #fff; border-top: 1px solid #ECEEF5; }
+  padding: 12px 18px; background: var(--surface, #fff); border-top: 1px solid var(--border, #e2e8f0); }
 .ops-fl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ops-fr { display: flex; align-items: center; gap: 8px; }
-.ops-ok { font-size: 12px; font-family: var(--font-family-mono, monospace); color: #1F9E5A; }
+.ops-ok { font-size: 12px; font-family: var(--font-family-mono, monospace); color: var(--ok, #059669); }
+.ops-recap { font-size: 12px; font-family: var(--font-family-mono, monospace); color: var(--text-2, #475569); }
 
 .btn-ok { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none;
-  border-radius: 7px; background: #2B5CE6; color: #fff; font-size: 13px; font-weight: 700;
+  border-radius: 8px; background: var(--accent, #3e7bfa); color: #fff; font-size: 13px; font-weight: 700;
   cursor: pointer; transition: background .12s, box-shadow .12s; }
-.btn-ok:hover { background: #4A74F0; box-shadow: 0 6px 16px rgba(43,92,230,.35); }
+.btn-ok:hover { background: var(--accent-strong, #2b5fd9); box-shadow: var(--shadow-glow, 0 6px 16px rgba(62,123,250,.3)); }
 .btn-ok:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
-.btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #DDE1EC;
-  border-radius: 7px; background: #fff; color: #5B6275; font-size: 13px; font-weight: 700;
+.btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px; background: var(--surface, #fff); color: var(--text-2, #475569); font-size: 13px; font-weight: 700;
   cursor: pointer; transition: all .12s; }
-.btn-ghost:hover { background: #F4F6FB; color: #2B5CE6; }
-.btn-ghost.danger:hover { background: #FDE8E8; color: #C2372F; border-color: #F3C7C3; }
+.btn-ghost:hover { background: var(--accent-soft, rgba(62,123,250,.1)); color: var(--accent, #3e7bfa); }
+.btn-ghost.danger:hover { background: var(--danger-soft, #fef2f2); color: var(--danger, #dc2626); border-color: color-mix(in srgb, var(--danger, #dc2626) 32%, transparent); }
 .btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Restyling of the shared form pieces inside the wizard body */
-.ops-body .ds-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: #9298AF; }
-.ops-body .ds-input { background: transparent; border: none; border-bottom: 1.5px solid #DDE1EC;
+.ops-body .ds-label { font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted, #5b6b85); }
+.req { color: var(--danger, #dc2626); font-weight: 700; }
+.ops-body .ds-input { background: transparent; border: none; border-bottom: 1.5px solid var(--border, #e2e8f0);
   border-radius: 0; padding: 4px 2px; font-size: 13px; }
-.ops-body .ds-input:focus { border-bottom-color: #2B5CE6; box-shadow: none; }
-.ops-body thead tr { background: #2B5CE6; }
-.ops-body thead th { color: #fff; }
-.ops-body tfoot tr { background: #EAF0FF; }
+.ops-body .ds-input:focus { border-bottom-color: var(--accent, #3e7bfa); box-shadow: none; }
+.ops-body thead tr { background: var(--accent-band, #0d3b37); }
+.ops-body thead th { color: var(--accent-ink, #fff); }
+.ops-body tfoot tr { background: var(--accent-soft, #eaf0ff); }
 
 /* ——— Mockup App3 pasada: pipeline (s1) + teal ——— */
 .pipe { background: var(--surface-0, #fff); border: 1px solid var(--border); }
@@ -3324,13 +3493,6 @@ useLiveRefresh(refreshData,
 .seg-l { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
   color: var(--muted); text-align: center; white-space: nowrap; }
 .seg-bar { height: 3px; border-radius: 2px; margin-top: 2px; }
-/* Wizard teal pass (reemplaza el azul #2B5CE6 del boceto) */
-.ops-sdot.on { background: #0d9488; border-color: #0d9488; box-shadow: 0 0 0 3px rgba(13,148,136,.15); }
-.ops-sdot.on + .ops-slbl { color: #0d9488; }
-.ops-body thead tr { background: #0d3b37; }
-.btn-ok { background: #0d9488; }
-.btn-ok:hover { background: #0f766e; box-shadow: 0 6px 16px rgba(13,148,136,.35); }
-.btn-ghost:hover { color: #0d9488; }
 
 @media (max-width: 640px) {
   .ops-overlay { padding: 8px; }
@@ -3339,6 +3501,7 @@ useLiveRefresh(refreshData,
   .ops-slbl { display: none; }
   .ops-sdot { width: 24px; height: 24px; font-size: 11px; }
   .ops-body { padding: 10px 12px; }
+  .ops-err, .ops-warn { margin-left: 12px; margin-right: 12px; }
   .ops-hdr { padding: 10px 12px; }
   .ops-foot { padding: 10px 12px; }
 }

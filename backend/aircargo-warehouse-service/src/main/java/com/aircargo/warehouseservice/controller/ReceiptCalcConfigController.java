@@ -6,6 +6,7 @@ import com.aircargo.warehouseservice.calc.CalcParams;
 import com.aircargo.warehouseservice.dto.ReceiptCalcConfigDTO;
 import com.aircargo.warehouseservice.service.ReceiptCalcConfigService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -42,7 +43,7 @@ public class ReceiptCalcConfigController {
     }
 
     @PutMapping("/default")
-    public ResponseEntity<ReceiptCalcConfigDTO> saveDefault(@RequestBody ReceiptCalcConfigDTO dto,
+    public ResponseEntity<ReceiptCalcConfigDTO> saveDefault(@Valid @RequestBody ReceiptCalcConfigDTO dto,
                                                             @AuthenticationPrincipal UserPrincipal principal,
                                                             HttpServletRequest request) {
         ReceiptCalcConfigDTO saved = service.saveDefault(dto);
@@ -60,7 +61,7 @@ public class ReceiptCalcConfigController {
 
     @PutMapping("/airline/{airlineId}")
     public ResponseEntity<ReceiptCalcConfigDTO> saveForAirline(@PathVariable UUID airlineId,
-                                                               @RequestBody ReceiptCalcConfigDTO dto,
+                                                               @Valid @RequestBody ReceiptCalcConfigDTO dto,
                                                                @AuthenticationPrincipal UserPrincipal principal,
                                                                HttpServletRequest request) {
         ReceiptCalcConfigDTO saved = service.saveForAirline(airlineId, dto);

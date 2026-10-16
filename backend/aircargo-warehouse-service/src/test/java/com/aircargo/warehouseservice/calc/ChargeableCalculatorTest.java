@@ -8,6 +8,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ChargeableCalculatorTest {
 
@@ -166,5 +167,38 @@ class ChargeableCalculatorTest {
         assertEquals(0, t.pieceCount());
         assertEquals(BigDecimal.ZERO, t.actualWeightLbs());
         assertEquals(BigDecimal.ZERO, t.chargeableWeightKg());
+    }
+
+    @Test
+    void apply_negativeScaleClampedToZero_neverNegative() {
+        ReceiptPieceDTO p = piece(1, null, "-50", "-20");
+        ChargeableCalculator.apply(p, CalcParams.defaults());
+        assertEquals(0, BigDecimal.ZERO.compareTo(p.getChargeableLbs()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(p.getChargeableKg()));
+    }
+
+    @Test
+    void apply_negativeDimsClampedToZero() {
+        ReceiptPieceDTO p = piece(1, "-20", "0", null);
+        ChargeableCalculator.apply(p, CalcParams.defaults());
+        assertEquals(0, BigDecimal.ZERO.compareTo(p.getDimWeightLbs()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(p.getDimWeightKg()));
+    }
+
+    @Test
+    void volume_negativePiecesClampedToZero() {
+        assertEquals(0, BigDecimal.ZERO.compareTo(ChargeableCalculator.volume(piece(-2, "20", null, null))));
+    }
+
+    @Test
+    void totals_negativePiecesCountedAsZero() {
+        ReceiptPieceDTO p = piece(-5, null, "50", null);
+        ChargeableCalculator.apply(p, CalcParams.defaults());
+
+        ChargeableCalculator.CalcTotals t = ChargeableCalculator.totals(List.of(p), CalcParams.defaults());
+
+        assertEquals(0, t.pieceCount());
+        assertEquals(0, new BigDecimal("50.00").compareTo(t.chargeableWeightLbs()));
+        assertTrue(t.chargeableWeightLbs().signum() >= 0);
     }
 }

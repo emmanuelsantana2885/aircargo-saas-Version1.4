@@ -1,5 +1,7 @@
 package com.aircargo.warehouseservice.dto;
 
+import jakarta.validation.constraints.PositiveOrZero;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -12,11 +14,17 @@ public class ReceiptPieceDTO {
     private UUID receiptId;
     private UUID hawbId;
     private Integer pieceNumber;
+    @PositiveOrZero
     private Integer pieces;
+    @PositiveOrZero
     private BigDecimal lengthIn;
+    @PositiveOrZero
     private BigDecimal widthIn;
+    @PositiveOrZero
     private BigDecimal heightIn;
+    @PositiveOrZero
     private BigDecimal scaleWeightLbs;
+    @PositiveOrZero
     private BigDecimal scaleWeightKg;
     private BigDecimal dimWeightLbs;
     private BigDecimal dimWeightKg;
