@@ -1,5 +1,31 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 16, 2026 — Load planning: recuperar un plan despachado SOLO ante excepción (snapshot de ULD))
+
+**Contexto**: pedido del usuario — *"si un load planning es despachado este se pueda recuperar solo si se crea una excepcion por un problema de vuelo o temas de desviacion de la operacion. Crea una opcion para esto."* Al despachar un vuelo los ULDs se liberan (`flight_id=null`) para volver al pool reutilizable; recuperar el plan debe restaurar **todos** esos ULDs al vuelo original, pero únicamente cuando se documenta una excepción.
+
+**Diseño (Opción A — snapshot en columnas)**: el load-planning es *stateless* (sin BD), así que el snapshot vive en el ULD-service (con BD, schema `uld`). Al despachar se guarda `dispatched_flight_id` + `status_before_dispatch`; la recuperación reasigna `flight_id` y restaura el estado previo.
+
+| File | Change |
+|------|--------|
+| `backend/aircargo-uld-service/.../db/migration/V12__add_dispatch_snapshot_to_uld.sql` ≡ raíz `database/migrations/V69__add_dispatch_snapshot_to_uld.sql` | **NEW** — añade a `uld.uld` `dispatched_flight_id UUID` + `status_before_dispatch VARCHAR(20)` + índice `idx_uld_dispatched_flight` + `COMMENT ON COLUMN` (español); **idempotente** (`IF NOT EXISTS`, totalmente cualificado al schema `uld` tras el pivot V11) |
+| `backend/aircargo-uld-service/.../entity/Uld.java` + `dto/UldDTO.java` + feign `dto/UldDTO.java` | Campos `dispatchedFlightId`/`statusBeforeDispatch` + `fromEntity`/`toEntity` (contrato feign en sync) |
+| `backend/aircargo-uld-service/.../repository/UldRepository.java` | `findByDispatchedFlightId(UUID)` |
+| `backend/aircargo-uld-service/.../service/UldService.java` + `UldServiceImpl.java` | **`dispatchFlight(flightId)`**: snapshot del estado, fija `LOADED` (salvo `OFFLOADED`/`LEFT_BEHIND`), `dispatchedFlightId=flightId`, `flightId=null`, publica `uld.updated`; **`recoverFlight(flightId)`**: `findByDispatchedFlightId`, restaura `statusBeforeDispatch` (fallback `SEALED` + warn si desconocido), `flightId=flightId`, limpia snapshot, `ensureFlightOperatorCopy`, publica `uld.updated`; ambos `@Transactional @CacheEvict({"ulds","uld-awbs"}, allEntries=true)`. La limpieza del snapshot también ocurre en `transferUld` (incondicional) y `assignFlight` (solo con `flightId != null`) |
+| `backend/aircargo-uld-service/.../controller/UldController.java` | `POST /api/ulds/flight/{flightId}/dispatch` → `{success,flightId,dispatched}`; `POST /api/ulds/flight/{flightId}/recover` → `{success,flightId,recovered}` |
+| `backend/aircargo-feign-clients/.../client/UldClient.java` + `fallback/UldClientFallbackFactory.java` | `dispatchFlight(flightId)` y `recoverFlight(flightId)` → `Map<String,Object>` + fallbacks |
+| `backend/aircargo-load-planning-service/.../dto/RecoverLoadPlanRequest.java` | **NEW** — `record (String exceptionType, String reason)` |
+| `backend/aircargo-load-planning-service/.../service/LoadPlanningService.java` + `LoadPlanningServiceImpl.java` | **`recoverLoadPlan`**: valida vuelo (404), `exceptionType` normalizado ∈ `ALLOWED_RECOVERY_EXCEPTION_TYPES` = `{FLIGHT_PROBLEM, OPERATIONAL_DEVIATION, OTHER}` (si no → 400), `reason` no vacío (400) y estado del vuelo == `DEPARTED` (400); revierte `DEPARTED→SCHEDULED`, MAWBs `DEPARTED→MANIFESTED` y llama `uldClient.recoverFlight` (best-effort); log-only WARN con la excepción (sin tabla/evento). **`closeLoadPlan` rework**: además de marcar `DEPARTED`, ejecuta un `uldClient.dispatchFlight(flightId)` **bulk** best-effort (no rompe el cierre si falla) |
+| `backend/aircargo-load-planning-service/.../controller/LoadPlanningController.java` | `POST /api/load-planning/flight/{flightId}/recover` (body `RecoverLoadPlanRequest`) |
+| `frontend/src/views/LoadPlanningView.vue` | Botón **Recuperar** (visible si `status === 'DEPARTED'`) + modal (select de tipo de excepción + motivo) → `POST …/recover`; refs `recoverModalOpen`/`recoverExceptionType`/`recoverReason`/`recovering`; `openRecoverModal`/`cancelRecover`/`confirmRecover` |
+| `frontend/src/i18n/es.js` + `en.js` | Claves `loadPlanning.recover*` (título, ayuda, tipo, motivo, confirmar, etc.) + toasts `recovered`/`recoverError` |
+| `backend/aircargo-uld-service/.../test/.../UldServiceImplTest.java` | **+7 tests** dispatch/recover (null-flight→0, sin ULDs→0, libera+snapshot del estado previo, preserva `OFFLOADED`, restaura estado+reasigna vuelo, fallback `SEALED` con snapshot desconocido, null-flight→0) → **22 total** |
+| `backend/aircargo-load-planning-service/.../test/.../LoadPlanningServiceImplTest.java` | **NEW (12 tests)** — `recoverLoadPlan` (excepción faltante/inválida/motivo faltante/vuelo no-`DEPARTED`→400, happy-path que revierte vuelo+MAWBs+ULDs, 404 vuelo inexistente, tipo en minúsculas aceptado) + `closeLoadPlan` (despacho masivo, 404) |
+
+**Decisiones de diseño**: (1) snapshot en columnas del ULD (no tabla nueva ni reutilizar `uld_flight_operator`) — la fuente de verdad del estado del ULD ya vive en `uld.uld`; (2) la recuperación **exige** excepción documentada (`exceptionType` + `reason`) y vuelo en `DEPARTED`; (3) la excepción se registra **solo en log WARN** (sin tabla ni evento AMQP) por decisión explícita; (4) despacho y recuperación son bulk y best-effort en la orquestación (un fallo de ULDs no rompe el cierre) pero devuelven el conteo afectado.
+
+**Verificación**: `mvn -o test` reactor completo → **BUILD SUCCESS, 244 tests, 0 fallos** (common 30, gateway 3, auth 72, flight 11, booking 7, mawb 10, warehouse 64, uld 24, load-planning 23). Frontend `npm run lint` ✓ (check:refs 48 SFC, i18n 1371/1371), `npm test` ✓ 272 tests, `npm run build` ✓. Migraciones V12/V69 revisadas idempotentes y cualificadas al schema `uld`. Sin despliegue E2E del stack en esta sesión.
+
 ## Recent session changes (Oct 15, 2026 — Formulario/recibo: shell del wizard modernizado + endurecimiento de cálculo + contrato API/DTO del warehouse)
 
 **Contexto**: pedido "improve the receipt form and flow process" en `frontend/src/views/WarehouseReceiptsView.vue` + workstream backend completo (cálculo/validación, sync recibo↔MAWB/Booking, contrato API/DTO, tests). 7 workstreams, todos cerrados.

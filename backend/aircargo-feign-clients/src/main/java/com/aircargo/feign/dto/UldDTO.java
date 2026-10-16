@@ -27,6 +27,8 @@ public class UldDTO {
     private String confirmedWith;
     private String completedAt;
     private List<UldAwbDTO> awbs;
+    private UUID dispatchedFlightId;
+    private String statusBeforeDispatch;
     private boolean skipOperatorValidation;
 
     public UldDTO() {}
@@ -75,6 +77,10 @@ public class UldDTO {
     public void setCompletedAt(String completedAt) { this.completedAt = completedAt; }
     public List<UldAwbDTO> getAwbs() { return awbs; }
     public void setAwbs(List<UldAwbDTO> awbs) { this.awbs = awbs; }
+    public UUID getDispatchedFlightId() { return dispatchedFlightId; }
+    public void setDispatchedFlightId(UUID dispatchedFlightId) { this.dispatchedFlightId = dispatchedFlightId; }
+    public String getStatusBeforeDispatch() { return statusBeforeDispatch; }
+    public void setStatusBeforeDispatch(String statusBeforeDispatch) { this.statusBeforeDispatch = statusBeforeDispatch; }
     public boolean isSkipOperatorValidation() { return skipOperatorValidation; }
     public void setSkipOperatorValidation(boolean skipOperatorValidation) { this.skipOperatorValidation = skipOperatorValidation; }
 }

@@ -324,6 +324,9 @@ public class UldServiceImpl implements UldService {
         Uld uld = uldRepository.findById(uldId)
                 .orElseThrow(() -> new IllegalArgumentException("ULD not found: " + uldId));
         uld.setFlightId(destinationFlightId);
+        // Reasignar el ULD a un vuelo destino invalida cualquier recuperación pendiente.
+        uld.setDispatchedFlightId(null);
+        uld.setStatusBeforeDispatch(null);
         String timestamp = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         String note = "[" + timestamp + "] Transferido a " + destinationFlightId + ": " + (reason != null ? reason : "");
@@ -344,6 +347,11 @@ public class UldServiceImpl implements UldService {
         Uld uld = uldRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("ULD not found: " + id));
         uld.setFlightId(flightId);
+        // Reasignar a un vuelo (no liberar) invalida cualquier recuperación pendiente.
+        if (flightId != null) {
+            uld.setDispatchedFlightId(null);
+            uld.setStatusBeforeDispatch(null);
+        }
         Uld saved = uldRepository.save(uld);
         ensureFlightOperatorCopy(saved);
         publishUldUpdated(saved);
@@ -383,6 +391,58 @@ public class UldServiceImpl implements UldService {
             case BUILT, SEALED, LOADED, OFFLOADED, LEFT_BEHIND -> true;
             default -> false;
         };
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
+    public int dispatchFlight(UUID flightId) {
+        if (flightId == null) return 0;
+        List<Uld> ulds = uldRepository.findByFlightId(flightId);
+        int count = 0;
+        for (Uld uld : ulds) {
+            uld.setDispatchedFlightId(flightId);
+            uld.setStatusBeforeDispatch(uld.getStatus() != null ? uld.getStatus().name() : null);
+            if (uld.getStatus() != UldStatus.OFFLOADED && uld.getStatus() != UldStatus.LEFT_BEHIND) {
+                uld.setStatus(UldStatus.LOADED);
+            }
+            uld.setFlightId(null);
+            Uld saved = uldRepository.save(uld);
+            publishUldUpdated(saved);
+            count++;
+        }
+        log.info("Dispatched flight {}: {} ULD(s) released and snapshotted for potential recovery", flightId, count);
+        return count;
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"ulds", "uld-awbs"}, allEntries = true)
+    public int recoverFlight(UUID flightId) {
+        if (flightId == null) return 0;
+        List<Uld> ulds = uldRepository.findByDispatchedFlightId(flightId);
+        int count = 0;
+        for (Uld uld : ulds) {
+            UldStatus restored = null;
+            if (uld.getStatusBeforeDispatch() != null) {
+                try {
+                    restored = UldStatus.valueOf(uld.getStatusBeforeDispatch());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Estado previo desconocido '{}' para ULD {}, se restaura SEALED",
+                            uld.getStatusBeforeDispatch(), uld.getUldNumber());
+                }
+            }
+            uld.setFlightId(flightId);
+            uld.setStatus(restored != null ? restored : UldStatus.SEALED);
+            uld.setDispatchedFlightId(null);
+            uld.setStatusBeforeDispatch(null);
+            Uld saved = uldRepository.save(uld);
+            ensureFlightOperatorCopy(saved);
+            publishUldUpdated(saved);
+            count++;
+        }
+        log.info("Recovered flight {}: {} ULD(s) restored to the manifest", flightId, count);
+        return count;
     }
 
     @Override

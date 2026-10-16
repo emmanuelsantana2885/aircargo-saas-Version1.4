@@ -37,6 +37,11 @@ public class UldDTO {
     private OffsetDateTime updatedAt;
     private List<UldAwbDTO> awbs;
 
+    /** Vuelo del que este ULD fue despachado (para poder recuperar el load planning). Null si no está pendiente de recuperación. */
+    private UUID dispatchedFlightId;
+    /** Estado del ULD antes de despachar, para restaurarlo en la recuperación. */
+    private String statusBeforeDispatch;
+
     /** Transitorio: true => se omite la validación obligatoria de operadores (auto-save del escáner). No se persiste. */
     private boolean skipOperatorValidation;
 
@@ -70,6 +75,8 @@ public class UldDTO {
         dto.setCompletedAt(entity.getCompletedAt());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        dto.setDispatchedFlightId(entity.getDispatchedFlightId());
+        dto.setStatusBeforeDispatch(entity.getStatusBeforeDispatch());
         return dto;
     }
 
@@ -154,6 +161,10 @@ public class UldDTO {
     public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
     public List<UldAwbDTO> getAwbs() { return awbs; }
     public void setAwbs(List<UldAwbDTO> awbs) { this.awbs = awbs; }
+    public UUID getDispatchedFlightId() { return dispatchedFlightId; }
+    public void setDispatchedFlightId(UUID dispatchedFlightId) { this.dispatchedFlightId = dispatchedFlightId; }
+    public String getStatusBeforeDispatch() { return statusBeforeDispatch; }
+    public void setStatusBeforeDispatch(String statusBeforeDispatch) { this.statusBeforeDispatch = statusBeforeDispatch; }
     public boolean isSkipOperatorValidation() { return skipOperatorValidation; }
     public void setSkipOperatorValidation(boolean skipOperatorValidation) { this.skipOperatorValidation = skipOperatorValidation; }
 }

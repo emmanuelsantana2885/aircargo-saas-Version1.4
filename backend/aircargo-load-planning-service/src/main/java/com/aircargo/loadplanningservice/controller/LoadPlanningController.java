@@ -78,6 +78,19 @@ public class LoadPlanningController {
         }
     }
 
+    @PostMapping("/flight/{flightId}/recover")
+    public ResponseEntity<?> recoverLoadPlan(@PathVariable java.util.UUID flightId,
+                                             @RequestBody(required = false) com.aircargo.loadplanningservice.dto.RecoverLoadPlanRequest request) {
+        try {
+            String exceptionType = request != null ? request.exceptionType() : null;
+            String reason = request != null ? request.reason() : null;
+            LoadPlanningDTO result = loadPlanningService.recoverLoadPlan(flightId, exceptionType, reason);
+            return ResponseEntity.ok(result);
+        } catch (Exception ex) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", ex.getMessage()));
+        }
+    }
+
     @GetMapping("/flight/{flightId}")
     public ResponseEntity<?> getLoadPlanningByFlight(@PathVariable java.util.UUID flightId) {
         return loadPlanningService.getByFlightId(flightId)

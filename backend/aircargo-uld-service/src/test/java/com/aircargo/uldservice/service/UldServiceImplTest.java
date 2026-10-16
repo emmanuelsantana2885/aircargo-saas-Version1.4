@@ -311,4 +311,112 @@ class UldServiceImplTest {
         assertFalse(service.delete(id));
         verify(uldRepository, never()).deleteById(any());
     }
+
+    @Test
+    void dispatchFlight_nullFlight_returnsZero() {
+        assertEquals(0, service.dispatchFlight(null));
+        verifyNoInteractions(uldRepository);
+    }
+
+    @Test
+    void dispatchFlight_noUlds_returnsZero() {
+        UUID flightId = UUID.randomUUID();
+        when(uldRepository.findByFlightId(flightId)).thenReturn(List.of());
+
+        assertEquals(0, service.dispatchFlight(flightId));
+        verify(uldRepository, never()).save(any(Uld.class));
+    }
+
+    @Test
+    void dispatchFlight_releasesUldsAndSnapshotsPreviousStatus() {
+        UUID flightId = UUID.randomUUID();
+        Uld sealed = UldDTO.toEntity(sampleDto());
+        sealed.setId(UUID.randomUUID());
+        sealed.setFlightId(flightId);
+        sealed.setStatus(UldStatus.SEALED);
+        Uld built = UldDTO.toEntity(sampleDto());
+        built.setId(UUID.randomUUID());
+        built.setFlightId(flightId);
+        built.setStatus(UldStatus.BUILT);
+        when(uldRepository.findByFlightId(flightId)).thenReturn(List.of(sealed, built));
+        when(uldRepository.save(any(Uld.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        int count = service.dispatchFlight(flightId);
+
+        assertEquals(2, count);
+        assertEquals("SEALED", sealed.getStatusBeforeDispatch());
+        assertEquals("BUILT", built.getStatusBeforeDispatch());
+        assertEquals(UldStatus.LOADED, sealed.getStatus());
+        assertEquals(UldStatus.LOADED, built.getStatus());
+        assertNull(sealed.getFlightId());
+        assertNull(built.getFlightId());
+        assertEquals(flightId, sealed.getDispatchedFlightId());
+        assertEquals(flightId, built.getDispatchedFlightId());
+    }
+
+    @Test
+    void dispatchFlight_preservesOffloadedStatusButStillReleases() {
+        UUID flightId = UUID.randomUUID();
+        Uld offloaded = UldDTO.toEntity(sampleDto());
+        offloaded.setId(UUID.randomUUID());
+        offloaded.setFlightId(flightId);
+        offloaded.setStatus(UldStatus.OFFLOADED);
+        when(uldRepository.findByFlightId(flightId)).thenReturn(List.of(offloaded));
+        when(uldRepository.save(any(Uld.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        int count = service.dispatchFlight(flightId);
+
+        assertEquals(1, count);
+        assertEquals(UldStatus.OFFLOADED, offloaded.getStatus());
+        assertEquals("OFFLOADED", offloaded.getStatusBeforeDispatch());
+        assertNull(offloaded.getFlightId());
+        assertEquals(flightId, offloaded.getDispatchedFlightId());
+    }
+
+    @Test
+    void recoverFlight_nullFlight_returnsZero() {
+        assertEquals(0, service.recoverFlight(null));
+        verifyNoInteractions(uldRepository);
+    }
+
+    @Test
+    void recoverFlight_restoresStatusAndReassignsFlight() {
+        UUID flightId = UUID.randomUUID();
+        Uld uld = UldDTO.toEntity(sampleDto());
+        uld.setId(UUID.randomUUID());
+        uld.setFlightId(null);
+        uld.setStatus(UldStatus.LOADED);
+        uld.setDispatchedFlightId(flightId);
+        uld.setStatusBeforeDispatch("SEALED");
+        when(uldRepository.findByDispatchedFlightId(flightId)).thenReturn(List.of(uld));
+        when(uldRepository.save(any(Uld.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(uldFlightOperatorRepository.findByUldIdAndFlightId(any(), any())).thenReturn(Optional.empty());
+
+        int count = service.recoverFlight(flightId);
+
+        assertEquals(1, count);
+        assertEquals(flightId, uld.getFlightId());
+        assertEquals(UldStatus.SEALED, uld.getStatus());
+        assertNull(uld.getDispatchedFlightId());
+        assertNull(uld.getStatusBeforeDispatch());
+    }
+
+    @Test
+    void recoverFlight_fallsBackToSealed_whenSnapshotUnknown() {
+        UUID flightId = UUID.randomUUID();
+        Uld uld = UldDTO.toEntity(sampleDto());
+        uld.setId(UUID.randomUUID());
+        uld.setFlightId(null);
+        uld.setStatus(UldStatus.LOADED);
+        uld.setDispatchedFlightId(flightId);
+        uld.setStatusBeforeDispatch("NOT_A_STATUS");
+        when(uldRepository.findByDispatchedFlightId(flightId)).thenReturn(List.of(uld));
+        when(uldRepository.save(any(Uld.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(uldFlightOperatorRepository.findByUldIdAndFlightId(any(), any())).thenReturn(Optional.empty());
+
+        service.recoverFlight(flightId);
+
+        assertEquals(UldStatus.SEALED, uld.getStatus());
+        assertEquals(flightId, uld.getFlightId());
+    }
 }

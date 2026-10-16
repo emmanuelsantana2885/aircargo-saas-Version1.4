@@ -39,6 +39,12 @@
         <component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.5" />
         <span class="hidden xl:inline">{{ t('loadPlanning.dispatchFlight') }}</span>
       </button>
+      <button v-if="activeFlightMeta.id && activeFlightMeta.status === 'DEPARTED'"
+        @click="openRecoverModal" :title="t('loadPlanning.recoverPlan')"
+        class="button amber">
+        <component :is="icons.Refresh" :size="16" :stroke-width="2.5" />
+        <span class="hidden xl:inline">{{ t('loadPlanning.recoverPlan') }}</span>
+      </button>
       <button @click="triggerImport" :title="t('loadPlanning.uploadManifest')"
         class="button ghost">
         <component :is="icons.FileUpload" :size="16" :stroke-width="2" />
@@ -353,6 +359,46 @@
         </div>
       </div>
     </div>
+
+    <!-- Recovery dialog (recover a dispatched load plan under an exception) -->
+    <div v-if="recoverModalOpen"
+      class="ds-modal-backdrop"
+      @click.self="cancelRecover">
+      <div class="ds-modal-panel max-w-md p-5">
+        <h3 class="ds-modal-title mb-2">
+          {{ t('loadPlanning.recoverPlan') }}
+        </h3>
+        <p class="text-[13px] text-primary mb-4">
+          {{ t('loadPlanning.recoverHelp') }}
+        </p>
+        <label class="ds-label">
+          {{ t('loadPlanning.recoverExceptionType') }} *
+        </label>
+        <select v-model="recoverExceptionType"
+          class="ds-input cursor-pointer mb-3">
+          <option value="" disabled>{{ t('loadPlanning.recoverSelectException') }}</option>
+          <option value="FLIGHT_PROBLEM">{{ t('loadPlanning.recoverException.flightProblem') }}</option>
+          <option value="OPERATIONAL_DEVIATION">{{ t('loadPlanning.recoverException.operationalDeviation') }}</option>
+          <option value="OTHER">{{ t('loadPlanning.recoverException.other') }}</option>
+        </select>
+        <label class="ds-label">
+          {{ t('loadPlanning.recoverReason') }} *
+        </label>
+        <textarea v-model="recoverReason" rows="3" :placeholder="t('loadPlanning.recoverReasonPlaceholder')"
+          class="ds-input resize-none mb-4"></textarea>
+        <div class="flex justify-end gap-2">
+          <button @click="cancelRecover"
+            class="ds-btn-secondary"
+            :disabled="recovering">
+            {{ t('common.cancel') }}
+          </button>
+          <button @click="confirmRecover" :disabled="!recoverExceptionType || !recoverReason.trim() || recovering"
+            class="ds-btn-primary">
+            {{ recovering ? t('loadPlanning.recovering') : t('loadPlanning.recoverConfirmBtn') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -410,6 +456,12 @@ const isDragging = ref(false)
 // Transfer state (with reason)
 const pendingTransfer = ref(null) // { uldId, fromFlightId, toFlightId, uldNumber }
 const transferReason = ref('')
+
+// Recovery state (a dispatched load plan can only be recovered under an exception)
+const recoverModalOpen = ref(false)
+const recoverExceptionType = ref('')
+const recoverReason = ref('')
+const recovering = ref(false)
 
 const fromFlightLabel = computed(() => {
   if (!pendingTransfer.value?.fromFlightId) return null
@@ -956,6 +1008,45 @@ async function confirmTransfer() {
     loadAllUlds() // non-blocking refresh
   } catch (e) {
     toast.error('Error transfiriendo ULD: ' + (e.response?.data?.error || e.response?.data?.message || e.message))
+  }
+}
+
+function openRecoverModal() {
+  if (!selectedFlightId.value) return
+  recoverExceptionType.value = ''
+  recoverReason.value = ''
+  recoverModalOpen.value = true
+}
+
+function cancelRecover() {
+  recoverModalOpen.value = false
+  recoverExceptionType.value = ''
+  recoverReason.value = ''
+}
+
+async function confirmRecover() {
+  if (!selectedFlightId.value || !recoverExceptionType.value || !recoverReason.value.trim()) return
+  const ok = await confirm({ message: t('loadPlanning.recoverConfirm'), danger: true })
+  if (!ok) return
+  recovering.value = true
+  try {
+    await api.post(`/load-planning/flight/${selectedFlightId.value}/recover`, {
+      exceptionType: recoverExceptionType.value,
+      reason: recoverReason.value.trim()
+    })
+    toast.success(t('loadPlanning.toast.recovered'))
+    recoverModalOpen.value = false
+    recoverExceptionType.value = ''
+    recoverReason.value = ''
+    await Promise.all([
+      uldsStore.loadUldsForFlight(selectedFlightId.value),
+      fetchLoadPlan(selectedFlightId.value),
+      uldsStore.loadFlights()
+    ])
+  } catch (e) {
+    toast.error(t('loadPlanning.toast.recoverError') + ' ' + (e.response?.data?.error || e.response?.data?.message || e.message))
+  } finally {
+    recovering.value = false
   }
 }
 

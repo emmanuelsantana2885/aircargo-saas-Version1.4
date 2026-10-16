@@ -34,6 +34,12 @@ public interface UldClient {
     @PostMapping("/api/ulds/{id}/release")
     UldDTO releaseFromFlight(@PathVariable UUID id);
 
+    @PostMapping("/api/ulds/flight/{flightId}/dispatch")
+    java.util.Map<String, Object> dispatchFlight(@PathVariable UUID flightId);
+
+    @PostMapping("/api/ulds/flight/{flightId}/recover")
+    java.util.Map<String, Object> recoverFlight(@PathVariable UUID flightId);
+
     @GetMapping("/api/uld-awbs")
     List<UldAwbDTO> getUldAwbs(@RequestParam(required = false) UUID uldId,
                                 @RequestParam(required = false) UUID mawbId);

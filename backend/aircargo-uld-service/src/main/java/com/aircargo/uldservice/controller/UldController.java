@@ -126,6 +126,22 @@ public class UldController {
         }
     }
 
+    @PostMapping("/flight/{flightId}/dispatch")
+    public ResponseEntity<Map<String, Object>> dispatchFlight(@PathVariable UUID flightId,
+                                                              @AuthenticationPrincipal UserPrincipal principal,
+                                                              HttpServletRequest request) {
+        int count = uldService.dispatchFlight(flightId);
+        return ResponseEntity.ok(Map.of("success", true, "flightId", flightId, "dispatched", count));
+    }
+
+    @PostMapping("/flight/{flightId}/recover")
+    public ResponseEntity<Map<String, Object>> recoverFlight(@PathVariable UUID flightId,
+                                                             @AuthenticationPrincipal UserPrincipal principal,
+                                                             HttpServletRequest request) {
+        int count = uldService.recoverFlight(flightId);
+        return ResponseEntity.ok(Map.of("success", true, "flightId", flightId, "recovered", count));
+    }
+
     @PostMapping("/{uldId}/transfer")
     public ResponseEntity<?> transferUld(@PathVariable UUID uldId, @Valid @RequestBody TransferRequest transferRequest,
                                           @AuthenticationPrincipal UserPrincipal principal,

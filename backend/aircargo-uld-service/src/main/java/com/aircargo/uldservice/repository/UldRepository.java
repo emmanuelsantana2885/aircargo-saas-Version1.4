@@ -17,4 +17,5 @@ public interface UldRepository extends JpaRepository<Uld, UUID> {
     Page<Uld> findByAirlineId(UUID airlineId, Pageable pageable);
     List<Uld> findByStatus(UldStatus status);
     Optional<Uld> findByUldNumber(String uldNumber);
+    List<Uld> findByDispatchedFlightId(UUID dispatchedFlightId);
 }

@@ -86,6 +86,14 @@ public class Uld {
     @Column(name = "completed_at")
     private OffsetDateTime completedAt;
 
+    /** Vuelo del que el ULD fue liberado al despachar (snapshot de recuperación). */
+    @Column(name = "dispatched_flight_id")
+    private UUID dispatchedFlightId;
+
+    /** Estado del ULD antes del despacho; se restaura al recuperar el load planning. */
+    @Column(name = "status_before_dispatch", length = 20)
+    private String statusBeforeDispatch;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false, nullable = false)
     private OffsetDateTime createdAt;
@@ -144,6 +152,10 @@ public class Uld {
     public void setConfirmedWith(String confirmedWith) { this.confirmedWith = confirmedWith; }
     public OffsetDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(OffsetDateTime completedAt) { this.completedAt = completedAt; }
+    public UUID getDispatchedFlightId() { return dispatchedFlightId; }
+    public void setDispatchedFlightId(UUID dispatchedFlightId) { this.dispatchedFlightId = dispatchedFlightId; }
+    public String getStatusBeforeDispatch() { return statusBeforeDispatch; }
+    public void setStatusBeforeDispatch(String statusBeforeDispatch) { this.statusBeforeDispatch = statusBeforeDispatch; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

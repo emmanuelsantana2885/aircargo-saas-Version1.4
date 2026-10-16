@@ -20,7 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,14 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LoadPlanningServiceImpl.class);
 
     private static final String FLIGHT_DEPARTED_KEY = "flight.departed";
+
+    /**
+     * Motivos validos para recuperar un load planning ya despachado. La
+     * recuperacion es una excepcion: solo se autoriza ante un problema de
+     * vuelo o una desviacion de la operacion, nunca como cierre normal.
+     */
+    private static final Set<String> ALLOWED_RECOVERY_EXCEPTION_TYPES =
+            Set.of("FLIGHT_PROBLEM", "OPERATIONAL_DEVIATION", "OTHER");
 
     private final FlightClient flightClient;
     private final UldClient uldClient;
@@ -171,14 +182,9 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
         flightClient.updateFlightStatus(flightId, "DEPARTED");
         publishFlightDeparted(flight);
 
+        // Marca todas las MAWB del vuelo como DEPARTED antes de liberar los ULDs.
         List<UldDTO> ulds = uldClient.getUlds(null, flightId);
         for (UldDTO uld : ulds) {
-            if (!"OFFLOADED".equals(uld.getStatus()) && !"LEFT_BEHIND".equals(uld.getStatus())) {
-                UldDTO update = new UldDTO();
-                update.setStatus("LOADED");
-                uldClient.updateUld(uld.getId(), update);
-            }
-
             List<UldAwbDTO> links = uld.getAwbs();
             if (links == null) {
                 links = uldClient.getUldAwbs(uld.getId(), null);
@@ -193,8 +199,14 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
             }
         }
 
-        for (UldDTO uld : ulds) {
-            uldClient.releaseFromFlight(uld.getId());
+        // Libera todos los ULDs en una sola operacion atomica. El ULD service
+        // guarda un snapshot (vuelo + estado previo) por ULD para poder
+        // recuperar el despacho si despues se levanta una excepcion operativa.
+        try {
+            Map<String, Object> dispatched = uldClient.dispatchFlight(flightId);
+            log.info("Close load plan {}: dispatched ULDs -> {}", flightId, dispatched);
+        } catch (Exception e) {
+            log.warn("Failed to dispatch ULDs for flight {}: {}", flightId, e.getMessage());
         }
 
         return getByFlightId(flightId)
@@ -245,6 +257,77 @@ public class LoadPlanningServiceImpl implements LoadPlanningService {
 
         return getByFlightId(flightId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load plan not found after hold"));
+    }
+
+    /**
+     * Recupera un load planning ya despachado ante una excepcion operativa.
+     * Es la unica via para reincorporar al plan los ULDs que el despacho libero:
+     * exige un tipo de excepcion y un motivo, revierte el vuelo a SCHEDULED,
+     * devuelve las MAWB a MANIFESTED y restaura todos los ULDs del vuelo con su
+     * estado previo al despacho (mediante el snapshot guardado en el ULD service).
+     */
+    @Override
+    @CacheEvict(value = "load-plans", key = "#flightId")
+    public LoadPlanningDTO recoverLoadPlan(UUID flightId, String exceptionType, String reason) {
+        FlightDTO flight = flightClient.getFlightById(flightId);
+        if (flight == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Flight not found: " + flightId);
+        }
+
+        String type = (exceptionType == null || exceptionType.isBlank())
+                ? null : exceptionType.trim().toUpperCase(Locale.ROOT);
+        if (type == null || !ALLOWED_RECOVERY_EXCEPTION_TYPES.contains(type)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A valid exceptionType is required to recover a dispatched load plan "
+                            + "(FLIGHT_PROBLEM, OPERATIONAL_DEVIATION, OTHER)");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A reason is required to recover a dispatched load plan");
+        }
+
+        String current = flight.getStatus();
+        if (!"DEPARTED".equals(current)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Only DEPARTED flights can be recovered (current status: " + current + ")");
+        }
+
+        log.warn("Recovering dispatched load plan for flight {} {} - exception={} reason={}",
+                flight.getFlightNumber(), flightId, type, reason.trim());
+
+        flightClient.updateFlightStatus(flightId, "SCHEDULED");
+
+        int reverted = 0;
+        try {
+            List<MawbDTO> mawbs = mawbClient.getMawbsByFlight(flightId);
+            for (MawbDTO mawb : mawbs) {
+                if (mawb.getId() == null) continue;
+                if (!"DEPARTED".equals(mawb.getStatus())) continue;
+                try {
+                    mawbClient.updateMawbStatus(mawb.getId(), "MANIFESTED");
+                    reverted++;
+                } catch (Exception e) {
+                    log.warn("Failed to revert MAWB {} to MANIFESTED: {}", mawb.getId(), e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not revert MAWBs for flight {}: {}", flightId, e.getMessage());
+        }
+
+        int recoveredUlds = 0;
+        try {
+            Map<String, Object> recovered = uldClient.recoverFlight(flightId);
+            Object count = recovered != null ? recovered.get("recovered") : null;
+            recoveredUlds = count instanceof Number n ? n.intValue() : 0;
+        } catch (Exception e) {
+            log.warn("Failed to recover ULDs for flight {}: {}", flightId, e.getMessage());
+        }
+
+        log.info("Recovered load plan for flight {}: {} MAWB(s) reverted, {} ULD(s) restored",
+                flightId, reverted, recoveredUlds);
+
+        return getByFlightId(flightId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Load plan not found after recovery"));
     }
 
     private void publishFlightDeparted(FlightDTO flight) {

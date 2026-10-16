@@ -17,4 +17,18 @@ public interface UldService {
     UldDTO assignFlight(UUID id, UUID flightId);
     UldDTO transferUld(UUID uldId, UUID destinationFlightId, String reason);
     boolean delete(UUID id);
+
+    /**
+     * Despacha todos los ULDs de un vuelo: guarda la snapshot (vuelo + estado previo),
+     * los marca LOADED y les quita el flightId para que puedan reutilizarse en otro vuelo.
+     * @return número de ULDs despachados.
+     */
+    int dispatchFlight(UUID flightId);
+
+    /**
+     * Recupera (revierte el despacho de) todos los ULDs de un vuelo: les devuelve el flightId
+     * y el estado previo al despacho, y limpia la snapshot.
+     * @return número de ULDs recuperados.
+     */
+    int recoverFlight(UUID flightId);
 }
