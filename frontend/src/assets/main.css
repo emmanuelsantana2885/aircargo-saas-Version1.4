@@ -1729,3 +1729,42 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
   align-items: center;
 }
+
+/* ---------------------------------------------------------------------------
+   ULD pallet-label printing (UldLabelGeneratorModal)
+   The modal is teleported to <body>, so the print rules must be global.
+   Only the label subtree stays visible; everything else is hidden.
+--------------------------------------------------------------------------- */
+@media print {
+  @page {
+    margin: 8mm;
+    size: auto;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-pallet-label,
+  .printable-pallet-label * {
+    visibility: visible;
+  }
+
+  .printable-pallet-label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: 3px solid #000 !important;
+    color: #000 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    page-break-inside: avoid;
+    zoom: 1 !important;
+    transform: none !important;
+    min-height: 0 !important;
+  }
+}

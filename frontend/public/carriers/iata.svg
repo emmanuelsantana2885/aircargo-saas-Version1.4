@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 64" width="260" height="64" role="img" aria-label="IATA Standard Cargo">
+  <rect x="0" y="0" width="64" height="64" rx="10" fill="#0F172A"/>
+  <text x="32" y="41" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">IATA</text>
+  <rect x="78" y="22" width="4" height="22" rx="2" fill="#0F172A"/>
+  <text x="92" y="30" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#0F172A">IATA</text>
+  <text x="92" y="46" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="600" letter-spacing="1" fill="#64748B">STANDARD CARGO</text>
+</svg>

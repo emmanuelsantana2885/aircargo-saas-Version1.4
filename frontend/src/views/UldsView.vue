@@ -23,7 +23,21 @@
           :status-options="uldStatusOptions"
           :search-placeholder="t('ulds.searchPlaceholder')"
           container-class="!gap-1"
-        />
+        >
+          <div class="flex flex-col gap-0.5">
+            <label class="ds-label">{{ t('ulds.flightFilter') }}</label>
+            <select
+              v-model="flightFilterId"
+              class="ds-input w-auto min-w-[180px]"
+              :title="t('ulds.flightFilterHint')"
+            >
+              <option value="">{{ t('ulds.allFlights') }}</option>
+              <option v-for="f in flightOptions" :key="f.id" :value="f.id">
+                {{ flightOptionLabel(f) }}
+              </option>
+            </select>
+          </div>
+        </FilterBar>
         <button @click="createNewBlankUld"
           class="ds-btn-primary">
           <span class="text-[12px] font-sans">&#65291;</span> {{ t('ulds.createUld') }}
@@ -316,6 +330,14 @@
                       <template v-else-if="scanMode">{{ t('ulds.scanning') }}</template>
                       <template v-else>📷 {{ t('ulds.scanMode') }}</template>
                     </button>
+                    <button @click="openLabelGenerator(uld)"
+                      class="ds-btn-secondary flex items-center gap-1.5"
+                      :class="labelStored(uld) ? '!border-emerald-300 !text-emerald-700' : ''"
+                      :title="t('ulds.label.actionHint')">
+                      <component :is="icons.Printer" :size="15" />
+                      <span>{{ t('ulds.label.action') }}</span>
+                      <span v-if="labelStored(uld)" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    </button>
                     <button @click="deleteUld(uld)"
                       class="ds-btn-secondary text-tertiary hover:text-slate-700"
                       :title="uld.backendId ? t('ulds.actions.delete') : t('ulds.actions.discard')">
@@ -371,6 +393,14 @@
               </span>
               <span class="text-[10px] font-bold px-1 py-px rounded uppercase whitespace-nowrap leading-none shrink-0"
                 :class="statusBadgeClass(uld.status)">{{ t('ulds.status.' + uld.status) }}</span>
+              <button @click.stop="openLabelGenerator(uld)"
+                class="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded border transition-colors"
+                :class="labelStored(uld)
+                  ? 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
+                  : 'border-strong text-secondary hover:text-primary hover:border-slate-400'"
+                :title="t('ulds.label.actionHint')">
+                <component :is="icons.Printer" :size="12" />
+              </button>
 
               <div class="flex items-center gap-x-2 text-[11px] font-mono text-secondary truncate w-full leading-tight min-w-0">
                 <span class="font-bold text-slate-700 tabular-nums">{{ Number(uld.grossWeightLbs || 0).toLocaleString() }} lb</span>
@@ -404,6 +434,13 @@
       </div>
     </section>
 
+    <UldLabelGeneratorModal
+      :show="showLabelModal"
+      :uld="labelModalUld"
+      :ctx="labelModalCtx"
+      @close="showLabelModal = false"
+      @saved="onLabelSaved" />
+
   </div>
 </template>
 
@@ -426,9 +463,11 @@ import { useCommodities } from '../composables/useCommodities'
 import { useConfirm } from '../composables/useConfirm'
 import FilterBar from '../components/FilterBar.vue'
 import EmptyState from '../components/EmptyState.vue'
+import UldLabelGeneratorModal from '../components/UldLabelGeneratorModal.vue'
 import { useIcons } from '../composables/useIcons'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
 import { normalizeAwb, sameAwb } from '../utils/awb'
+import { hasStoredLabel } from '../utils/uldLabel'
 
 const uldsStore = useUldsStore()
 const appStore = useAppStore()
@@ -500,6 +539,41 @@ const detailPanel = ref(null)
 const statusFilter = ref('')
 const searchText = ref('')
 const destFilter = ref('')
+// Load-planning flight filter: '' = todos los ULDs; si tiene valor, la lista
+// incluye los ULDs del vuelo (asignados o liberados tras el despacho).
+const flightFilterId = ref('')
+// ULDs crudos del vuelo filtrado (cargados aparte para no pisar appStore.ulds).
+const planUlds = ref([])
+
+function flightOptionLabel(f) {
+  if (!f) return ''
+  const code = airlineCodeById(f.airlineId)
+  const route = f.origin && f.destination ? ` (${f.origin}\u2192${f.destination})` : ''
+  return `${code}-${f.flightNumber || ''}${route}`
+}
+
+const flightOptions = computed(() => {
+  const list = [...(appStore.flights || [])]
+  list.sort((a, b) => String(b.flightDate || '').localeCompare(String(a.flightDate || '')))
+  return list
+})
+
+async function loadPlanUlds() {
+  const flightId = flightFilterId.value
+  if (!flightId) {
+    planUlds.value = []
+    rebuildLocalList()
+    return
+  }
+  const flight = appStore.flights.find(f => f.id === flightId)
+  try {
+    const res = await uldsApi.getByFlight(flightId, flight?.airlineId)
+    planUlds.value = res.data?.content || res.data || []
+  } catch {
+    planUlds.value = []
+  }
+  rebuildLocalList()
+}
 
 const uldStatusOptions = computed(() => [
   { value: 'OPEN', label: t('ulds.status.OPEN'), dotClass: 'bg-slate-400' },
@@ -547,6 +621,12 @@ const suggestedTareLbs = computed(() => {
 
 const filteredUlDs = computed(() => {
   let list = localUlds.value
+  if (flightFilterId.value) {
+    // ULDs del vuelo: tanto los asignados como los liberados tras el despacho.
+    list = list.filter(u =>
+      u.flightId === flightFilterId.value || u.dispatchedFlightId === flightFilterId.value
+    )
+  }
   if (statusFilter.value) {
     list = list.filter(u => u.status === statusFilter.value)
   }
@@ -595,6 +675,40 @@ const scanUldUid = ref(null)
 
 // Guided creation steps: 0=idle, 1=select flight, 2=scan ULD, 3=done
 const creationStep = ref(0)
+
+// Pallet / ULD label generator modal
+const showLabelModal = ref(false)
+const labelModalUld = ref(null)
+const labelModalCtx = ref({})
+const labelTick = ref(0)
+
+function openLabelGenerator(uld) {
+  const flightId = uld?.flightId || uld?.dispatchedFlightId || flightFilterId.value || null
+  const f = appStore.flights.find(x => x.id === flightId)
+  labelModalCtx.value = f
+    ? {
+        airlineCode: airlineCodeById(f.airlineId),
+        flightNumber: f.flightNumber,
+        origin: f.origin,
+        destination: f.destination,
+        flightDate: f.flightDate,
+      }
+    : {}
+  labelModalUld.value = uld
+  showLabelModal.value = true
+}
+
+function labelStored(uld) {
+  if (!uld) return false
+  // labelTick fuerza re-evaluación tras guardar una etiqueta
+  void labelTick.value
+  return hasStoredLabel(uld)
+}
+
+function onLabelSaved() {
+  labelTick.value++
+  toast.success(t('ulds.label.saved'))
+}
 
 function toggleScanMode(uld) {
   scanMode.value = !scanMode.value
@@ -902,27 +1016,28 @@ function liveCommodityFor(awbNumber, fallback) {
 }
 
 function rebuildLocalList() {
-  // Los ULDs de vuelos despachados (DEPARTED/ARRIVED) no pertenecen al listado
-  // de ULDs "creados": se ocultan. Si el vuelo ya fue liberado tras el cierre
-  // (flightId nulo), el ULD conserva status LOADED → también se oculta.
-  const dispatchedFlightIds = new Set(
-    (appStore.flights || [])
-      .filter(f => f.status === 'DEPARTED' || f.status === 'ARRIVED')
-      .map(f => f.id)
-  )
-  const backend = (appStore.ulds || [])
-    .filter(u => {
-      const onDispatchedFlight = u.flightId && dispatchedFlightIds.has(u.flightId)
-      const loadedAfterDispatch = (u.status || '') === 'LOADED'
-      return !onDispatchedFlight && !loadedAfterDispatch
-    })
+  // Los ULDs de vuelos despachados se muestran igualmente (ya no se ocultan):
+  // el despacho libera flight_id (queda dispatched_flight_id) y el ULD sigue
+  // siendo consultable desde la vista. Se fusionan los ULDs del vuelo
+  // filtrado (planUlds) con el listado global de appStore, deduplicando por id.
+  const seen = new Set()
+  const source = []
+  for (const u of [...(planUlds.value || []), ...(appStore.ulds || [])]) {
+    if (!u || u.id == null || seen.has(u.id)) continue
+    seen.add(u.id)
+    source.push(u)
+  }
+  const backend = source
     .map(u => {
-      const flight = appStore.flights.find(f => f.id === u.flightId)
+      const resolvedFlightId = u.flightId || u.dispatchedFlightId || null
+      const flight = appStore.flights.find(f => f.id === resolvedFlightId)
       return {
       uid: u.id,
       backendId: u.id,
       uldNumber: u.uldNumber,
       flightId: u.flightId,
+      dispatchedFlightId: u.dispatchedFlightId || null,
+      statusBeforeDispatch: u.statusBeforeDispatch || null,
       flightLabel: flight?.flightNumber || 'FLOTANTE',
       route: flight ? (flight.origin + ' -> ' + flight.destination) : t('ulds.noFlight'),
       uldType: u.uldType,
@@ -1308,13 +1423,18 @@ onMounted(async () => {
 
 watch(() => appStore.ulds, () => rebuildLocalList(), { deep: true })
 
+// Al cambiar el vuelo seleccionado, recargar los ULDs de su plan de carga.
+watch(flightFilterId, () => { loadPlanUlds() })
+
 useLiveRefresh(() => {
   if (!appStore.flights.length) return
-  return Promise.all([
+  const tasks = [
     appStore.loadUlds(undefined, { silent: true }),
     appStore.loadAllMawbs({ silent: true }),
     appStore.loadBookings(undefined, { silent: true }),
-  ])
+  ]
+  if (flightFilterId.value) tasks.push(loadPlanUlds())
+  return Promise.all(tasks)
 }, { interval: 60000, pauses: [() => !!expandedUldId.value] })
 </script>
 

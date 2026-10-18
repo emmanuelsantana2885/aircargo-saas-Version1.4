@@ -1,4 +1,4 @@
-import { mdiRadar, mdiAlertCircle, mdiAlert, mdiBell, mdiChartBar, mdiChartPie, mdiCheckAll, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiCheckCircle, mdiChevronRight, mdiClipboardList, mdiCodeTags, mdiCrown, mdiDownload, mdiEye, mdiBookOpen, mdiInbox, mdiSend, mdiFile, mdiFolder, mdiShippingPallet, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiInformation, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiMenu, mdiMinus, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPencil, mdiAirplaneTakeoff, mdiAirplaneLanding, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShield, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiTrendingUp, mdiTrendingDown, mdiTruck, mdiStore } from '@mdi/js'
+import { mdiRadar, mdiAlertCircle, mdiAlert, mdiBell, mdiChartBar, mdiChartPie, mdiCheckAll, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiCheckCircle, mdiChevronRight, mdiClipboardList, mdiCodeTags, mdiCrown, mdiDownload, mdiEye, mdiBookOpen, mdiInbox, mdiSend, mdiFile, mdiFolder, mdiShippingPallet, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiInformation, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiMenu, mdiMinus, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPalette, mdiImage, mdiPrinter, mdiPencil, mdiAirplaneTakeoff, mdiAirplaneLanding, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShield, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiTrendingUp, mdiTrendingDown, mdiTruck, mdiStore } from '@mdi/js'
 import { mdiIcon } from './utils/mdiIcon'
 
 const md = (path) => mdiIcon(path)
@@ -46,6 +46,9 @@ export const mdiIcons = {
   Moon: md(mdiWeatherNight),
   Package: md(mdiPackageVariant),
   Paperclip: md(mdiPaperclip),
+  Palette: md(mdiPalette),
+  Image: md(mdiImage),
+  Printer: md(mdiPrinter),
   Pencil: md(mdiPencil),
   PlaneDeparture: md(mdiAirplaneTakeoff),
   PlaneLanding: md(mdiAirplaneLanding),
