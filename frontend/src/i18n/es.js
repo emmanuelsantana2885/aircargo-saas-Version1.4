@@ -825,6 +825,9 @@ import: {
         sealNumber: 'Número de sello / precinto',
         sealPh: 'SL-SDQ-000000',
         generateSeal: 'Generar',
+        weightUnit: 'Unidad de peso en etiqueta',
+        unitLb: 'Libras (lb)',
+        unitKg: 'Kilogramos (kg)',
       },
       printLayout: {
         size: 'Tamaño y disposición de impresión',
@@ -940,6 +943,7 @@ import: {
         signoffLoaded: 'Cargado',
         signoffWeighed: 'Pesado',
         signoffSealed: 'Sellado',
+        signoffSealNumber: 'Sello N°',
         remarks: 'Observaciones',
       },
     },

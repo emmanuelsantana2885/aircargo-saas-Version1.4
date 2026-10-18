@@ -238,7 +238,12 @@ export function createEmptyLabel(uld = {}, ctx = {}) {
     customLabelH: 6,
     tareWeightKg: lbsToKg(tareLbs),
     netWeightKg: lbsToKg(netLbs),
+    // exact source pounds (kept for drift-free LB display on the label)
+    tareWeightLbs: Math.round(tareLbs),
+    netWeightLbs: Math.round(netLbs),
     customGrossWeight: null,
+    // displayed weight unit on the printed label (LB default per ops)
+    weightUnit: 'LB',
     // sign-offs
     builtBy: uld.loadedBy || '',
     weighedBy: uld.weighedBy || '',

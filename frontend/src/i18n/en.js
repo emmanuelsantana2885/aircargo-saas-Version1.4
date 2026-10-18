@@ -825,6 +825,9 @@ export default {
         sealNumber: 'Seal / tamper number',
         sealPh: 'SL-SDQ-000000',
         generateSeal: 'Generate',
+        weightUnit: 'Weight unit on label',
+        unitLb: 'Pounds (lb)',
+        unitKg: 'Kilograms (kg)',
       },
       printLayout: {
         size: 'Print size & layout',
@@ -940,6 +943,7 @@ export default {
         signoffLoaded: 'Loaded',
         signoffWeighed: 'Weighed',
         signoffSealed: 'Sealed',
+        signoffSealNumber: 'Seal No.',
         remarks: 'Remarks',
       },
     },

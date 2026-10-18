@@ -128,6 +128,26 @@
                 </div>
                 <div class="space-y-2 border-t border-strong pt-3">
                   <span class="ds-label flex items-center gap-1.5">
+                    <component :is="icons.Scale" :size="12" />
+                    {{ t('ulds.label.baseline.weightUnit') }}
+                  </span>
+                  <div class="flex gap-1.5">
+                    <button
+                      type="button"
+                      class="text-[11px] flex-1"
+                      :class="label.weightUnit === 'LB' ? 'ds-btn-primary' : 'ds-btn-secondary'"
+                      @click="label.weightUnit = 'LB'"
+                    >{{ t('ulds.label.baseline.unitLb') }}</button>
+                    <button
+                      type="button"
+                      class="text-[11px] flex-1"
+                      :class="label.weightUnit === 'KG' ? 'ds-btn-primary' : 'ds-btn-secondary'"
+                      @click="label.weightUnit = 'KG'"
+                    >{{ t('ulds.label.baseline.unitKg') }}</button>
+                  </div>
+                </div>
+                <div class="space-y-2 border-t border-strong pt-3">
+                  <span class="ds-label flex items-center gap-1.5">
                     <component :is="icons.Printer" :size="12" />
                     {{ t('ulds.label.printLayout.size') }}
                   </span>
@@ -461,7 +481,7 @@
                   <div v-if="label.visibleBlocks.uldId" style="display:flex; justify-content:space-between; align-items:flex-end; gap:8px; border-bottom:2px solid #000; padding-bottom:8px;">
                     <div style="min-width:0;">
                       <div style="font-size:9px; font-weight:700; letter-spacing:1px;">ULD IDENTIFICATION</div>
-                      <div style="font-size:32px; font-weight:900; line-height:1; word-break:break-all;">{{ label.uldId || '—' }}</div>
+                      <div style="font-size:44px; font-weight:900; line-height:1; word-break:break-all;">{{ label.uldId || '—' }}</div>
                       <div style="font-size:10px; font-weight:700;">{{ label.type || '—' }}<template v-if="label.contour"> · {{ label.contour }}</template></div>
                     </div>
                     <div v-if="label.position" style="text-align:right; shrink:0;">
@@ -481,9 +501,9 @@
 
                   <div v-if="label.visibleBlocks.weights" style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; border:1.5px solid #000; padding:6px;">
                     <div v-for="w in weightCells" :key="w.k" style="text-align:center;">
-                      <div style="font-size:8px; font-weight:700;">{{ w.k }}</div>
-                      <div style="font-size:16px; font-weight:900;">{{ w.v }}</div>
-                      <div style="font-size:8px;">KG</div>
+                      <div style="font-size:9px; font-weight:700;">{{ w.k }}</div>
+                      <div style="font-size:22px; font-weight:900; line-height:1.1;">{{ w.v }}</div>
+                      <div style="font-size:10px; font-weight:700;">{{ weightUnitLabel }}</div>
                     </div>
                   </div>
 
@@ -499,7 +519,7 @@
                   <div v-if="label.visibleBlocks.routing" style="display:flex; justify-content:space-between; align-items:center; gap:8px; border-bottom:1.5px dashed #000; padding-bottom:6px;">
                     <div>
                       <div style="font-size:9px; font-weight:700;">ROUTING</div>
-                      <div style="font-size:26px; font-weight:900; line-height:1.1;">{{ label.origin || '—' }} &#8594; {{ label.destination || '—' }}</div>
+                      <div style="font-size:34px; font-weight:900; line-height:1.1;">{{ label.origin || '—' }} &#8594; {{ label.destination || '—' }}</div>
                     </div>
                     <div style="text-align:right;">
                       <div style="font-size:8px; font-weight:700;">FLIGHT</div>
@@ -524,7 +544,7 @@
                       style="display:flex; justify-content:space-between; border-bottom:1px solid #cbd5e1; padding:2px 0; font-size:10px;"
                     >
                       <span style="font-weight:700;">{{ s.k }}</span>
-                      <span>{{ s.v || '________________' }}</span>
+                      <span :style="s.seal ? 'font-weight:900; color:#dc2626; letter-spacing:1px;' : ''">{{ s.v || '________________' }}</span>
                     </div>
                   </div>
 
@@ -613,6 +633,7 @@ import {
   resolveLabelSize,
   createEmptyLabel,
   grossWeightKg,
+  kgToLbs,
   makeCustomField,
   makeLegend,
   applyTemplate as applyLabelTemplate,
@@ -770,15 +791,35 @@ const carrierLogo = computed(() => {
 
 const barcodeText = computed(() => label.value.barcodeValue || buildBarcodeValue(label.value))
 
-const weightCells = computed(() => [
-  { k: 'TARA', v: Math.round(Number(label.value.tareWeightKg) || 0) },
-  { k: 'NETO', v: Math.round(Number(label.value.netWeightKg) || 0) },
-  { k: 'BRUTO', v: grossWeightKg(label.value) },
-])
+const weightUnitLabel = computed(() => (label.value.weightUnit === 'KG' ? 'KG' : 'LB'))
+
+const weightCells = computed(() => {
+  const toKg = (v) => Math.round(Number(v) || 0)
+  // prefer the exact source pounds (avoids kg round-trip drift); fall back to
+  // converting the stored kg for labels saved before the lbs fields existed.
+  const toLbs = (lbsField, kgField) =>
+    lbsField != null ? Math.round(Number(lbsField) || 0) : kgToLbs(kgField)
+  if (label.value.weightUnit === 'KG') {
+    return [
+      { k: 'TARA', v: toKg(label.value.tareWeightKg) },
+      { k: 'NETO', v: toKg(label.value.netWeightKg) },
+      { k: 'BRUTO', v: toKg(grossWeightKg(label.value)) },
+    ]
+  }
+  const tare = toLbs(label.value.tareWeightLbs, label.value.tareWeightKg)
+  const net = toLbs(label.value.netWeightLbs, label.value.netWeightKg)
+  const gross = label.value.customGrossWeight != null ? kgToLbs(label.value.customGrossWeight) : tare + net
+  return [
+    { k: 'TARA', v: tare },
+    { k: 'NETO', v: net },
+    { k: 'BRUTO', v: gross },
+  ]
+})
 
 const signoffRows = computed(() => [
   { k: t('ulds.label.preview.signoffLoaded'), v: label.value.builtBy },
   { k: t('ulds.label.preview.signoffWeighed'), v: label.value.weighedBy },
+  { k: t('ulds.label.preview.signoffSealNumber'), v: label.value.sealNumber, seal: true },
   { k: t('ulds.label.preview.signoffSealed'), v: label.value.sealedBy },
 ])
 
