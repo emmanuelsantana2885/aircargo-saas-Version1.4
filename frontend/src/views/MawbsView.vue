@@ -116,6 +116,12 @@
         <button @click="toggleHidePast" class="button ghost" :title="t('mawbs.hidePast')">
           <i class="pi pi-filter"></i> {{ hidePastDates ? t('mawbs.future') : t('mawbs.past') }}
         </button>
+        <button @click="showZeroDispatch = !showZeroDispatch" class="button ghost"
+          :class="{ 'ring-1 ring-inset ring-slate-400': !showZeroDispatch }"
+          :title="t('mawbs.zeroDispatchTooltip')">
+          <i class="pi" :class="showZeroDispatch ? 'pi-eye' : 'pi-eye-slash'"></i>
+          {{ showZeroDispatch ? t('mawbs.showZeroDispatch') : t('mawbs.hideZeroDispatch') }}
+        </button>
       </div>
     </header>
 
@@ -958,6 +964,9 @@ function toggleHidePast() {
   hidePastDates.value = !hidePastDates.value
   buildMatrix()
 }
+// La matriz arranca mostrando solo MAWBs con despachos (pcsDispatched != 0);
+// el operador puede revelar también las de 0 despachos con el toggle.
+const showZeroDispatch = ref(false)
 const periodOptions = [
   { value: 'year' },
   { value: 'quarter' },
@@ -1061,6 +1070,10 @@ function colStyle(colIdx) {
 
 const filteredRows = computed(() => {
   let rows = matrixRows.value
+  // Por defecto la matriz oculta las MAWBs sin despachos; el toggle las revela.
+  if (!showZeroDispatch.value) {
+    rows = rows.filter(r => Number(r.pcsDispatched || 0) !== 0)
+  }
   if (commodityFilter.value) {
     rows = rows.filter(r => r.commodityType === commodityFilter.value)
   }
