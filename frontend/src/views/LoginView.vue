@@ -900,6 +900,7 @@ onMounted(() => {
   padding-top: 10px;
   padding-bottom: 10px;
   border: 1px solid var(--border);
+  font-size: 19px;
 }
 
 .auth-control input:focus {
