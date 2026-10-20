@@ -1,4 +1,4 @@
-import { mdiRadar, mdiAlertCircle, mdiAlert, mdiBell, mdiChartBar, mdiChartPie, mdiCheckAll, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiCheckCircle, mdiChevronRight, mdiClipboardList, mdiCodeTags, mdiCrown, mdiDownload, mdiEye, mdiBookOpen, mdiInbox, mdiSend, mdiFile, mdiFolder, mdiShippingPallet, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiInformation, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiMenu, mdiMinus, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPalette, mdiImage, mdiPrinter, mdiPencil, mdiAirplaneTakeoff, mdiAirplaneLanding, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShield, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiTrendingUp, mdiTrendingDown, mdiTruck, mdiStore } from '@mdi/js'
+import { mdiRadar, mdiAlertCircle, mdiAlert, mdiBell, mdiChartBar, mdiChartPie, mdiCheckAll, mdiApi, mdiSwapHorizontal, mdiCalendarMonth, mdiCamera, mdiCheck, mdiCheckCircle, mdiChevronRight, mdiClipboardList, mdiCodeTags, mdiCrown, mdiDownload, mdiEye, mdiEyeOff, mdiBookOpen, mdiInbox, mdiSend, mdiFile, mdiFolder, mdiShippingPallet, mdiFileDocument, mdiFileExport, mdiReceiptText, mdiFileUpload, mdiForklift, mdiGauge, mdiInformation, mdiKey, mdiViewGrid, mdiPageLayoutSidebarLeft, mdiLock, mdiLogout, mdiEmail, mdiMenu, mdiMinus, mdiWeatherNight, mdiPackageVariant, mdiPaperclip, mdiPalette, mdiImage, mdiPrinter, mdiPencil, mdiAirplaneTakeoff, mdiAirplaneLanding, mdiPlus, mdiRefresh, mdiRoutes, mdiScale, mdiMagnify, mdiCog, mdiShield, mdiShieldLock, mdiShieldAlert, mdiWeatherSunny, mdiDelete, mdiAccount, mdiAccountGroup, mdiClose, mdiTrendingUp, mdiTrendingDown, mdiTruck, mdiStore } from '@mdi/js'
 import { mdiIcon } from './utils/mdiIcon'
 
 const md = (path) => mdiIcon(path)
@@ -26,6 +26,7 @@ export const mdiIcons = {
   Cog: md(mdiCog),
   Download: md(mdiDownload),
   Eye: md(mdiEye),
+  EyeOff: md(mdiEyeOff),
   File: md(mdiFile),
   Folder: md(mdiFolder),
   FileDescription: md(mdiFileDocument),
@@ -41,6 +42,7 @@ export const mdiIcons = {
   LayoutSidebarFilled: md(mdiPageLayoutSidebarLeft),
   Lock: md(mdiLock),
   Logout: md(mdiLogout),
+  Mail: md(mdiEmail),
   Menu: md(mdiMenu),
   Minus: md(mdiMinus),
   Moon: md(mdiWeatherNight),

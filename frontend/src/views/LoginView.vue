@@ -6,39 +6,82 @@
         </div>
         <template v-if="step === 'credentials'">
         <div class="text-center mb-6">
-          <div class="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-3" style="background: var(--accent)">
-            <component :is="icons.PlaneDeparture" :size="28" color="white" :stroke-width="2" />
+          <div class="auth-logo flex items-center justify-center mx-auto mb-3">
+            <component :is="icons.PlaneDeparture" :size="30" color="white" :stroke-width="2" />
           </div>
-          <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.brand') }}</h1>
+          <h1 class="auth-title font-bold" style="color: var(--text)">{{ t('login.brand') }}</h1>
           <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.tagline') }}</p>
         </div>
 
-        <form @submit.prevent="handleLogin" class="space-y-4">
-          <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.email') }}</label>
-            <input
-              v-model="loginEmail"
-              type="email"
-              required
-              :placeholder="t('login.emailPlaceholder')"
-              class="w-full px-3 py-2.5 rounded text-sm outline-none transition-all border-slate-300"
-              style="background: var(--bg); color: var(--text)"
-              :disabled="loading"
-            />
+        <form @submit.prevent="handleLogin" class="space-y-4" novalidate>
+          <div class="auth-field">
+            <label for="login-email" class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.email') }}</label>
+            <div class="auth-control">
+              <span class="auth-control-icon" aria-hidden="true">
+                <component :is="icons.Mail" :size="16" :stroke-width="2" />
+              </span>
+              <input
+                id="login-email"
+                v-model="loginEmail"
+                type="email"
+                required
+                name="email"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck="false"
+                :placeholder="t('login.emailPlaceholder')"
+                class="w-full rounded text-sm outline-none transition-all"
+                style="background: var(--bg); color: var(--text)"
+                :disabled="loading"
+              />
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.password') }}</label>
-            <input
-              v-model="password"
-              type="password"
-              :required="needsPassword"
-              placeholder="••••••••"
-              class="w-full px-3 py-2.5 rounded text-sm outline-none transition-all border-slate-300"
-              style="background: var(--bg); color: var(--text)"
-              :disabled="loading"
-            />
+          <div v-if="needsPassword" class="auth-field">
+            <label for="login-password" class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.password') }}</label>
+            <div class="auth-control">
+              <span class="auth-control-icon" aria-hidden="true">
+                <component :is="icons.Lock" :size="16" :stroke-width="2" />
+              </span>
+              <input
+                id="login-password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                required
+                name="password"
+                autocomplete="current-password"
+                :placeholder="t('login.passwordPlaceholder')"
+                class="w-full rounded text-sm outline-none transition-all"
+                style="background: var(--bg); color: var(--text); padding-right: 42px"
+                :disabled="loading"
+                @keyup="detectCapsLock"
+                @keydown="detectCapsLock"
+              />
+              <button
+                type="button"
+                class="auth-control-btn"
+                :aria-label="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                :title="showPassword ? t('login.hidePassword') : t('login.showPassword')"
+                @click="showPassword = !showPassword"
+              >
+                <component :is="showPassword ? icons.EyeOff : icons.Eye" :size="16" :stroke-width="2" />
+              </button>
+            </div>
+            <p v-if="capsLockOn" class="auth-hint auth-hint-warn mt-1.5">
+              <component :is="icons.ShieldAlert" :size="13" :stroke-width="2" class="shrink-0" />
+              {{ t('login.capsLock') }}
+            </p>
           </div>
+
+          <label v-if="needsPassword" class="auth-remember">
+            <input type="checkbox" v-model="rememberEmail" />
+            <span>{{ t('login.rememberEmail') }}</span>
+          </label>
+
+          <p v-if="errorMsg" class="auth-alert" role="alert">
+            <component :is="icons.ShieldAlert" :size="15" :stroke-width="2" class="shrink-0 mt-px" />
+            <span>{{ errorMsg }}</span>
+          </p>
 
           <button
             type="submit"
@@ -54,7 +97,6 @@
             <span v-else>{{ t('login.loginBtn') }}</span>
           </button>
 
-          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
           <p v-if="showSetupLink" class="text-xs text-center">
             <a href="#" @click.prevent="goToSetPassword" style="color: var(--accent)" class="underline">
               {{ t('login.setPasswordLink') }}
@@ -449,12 +491,17 @@ function clearFlow() {
   } catch {}
 }
 
+const REMEMBER_KEY = 'aircargo_login_remember'
+
 const loginEmail = ref('')
 const password = ref('')
 const totpCode = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
 const needsPassword = ref(false)
+const showPassword = ref(false)
+const rememberEmail = ref(true)
+const capsLockOn = ref(false)
 const showSetupLink = ref(false)
 const step = ref('credentials')
 const selectedSite = ref(null)
@@ -477,6 +524,22 @@ const selectedSiteLabel = computed(() => {
   return site ? `${site.name}` : ''
 })
 
+function detectCapsLock(e) {
+  if (typeof e?.getModifierState === 'function') {
+    capsLockOn.value = e.getModifierState('CapsLock')
+  }
+}
+
+function persistRememberedEmail() {
+  try {
+    if (rememberEmail.value && loginEmail.value) {
+      localStorage.setItem(REMEMBER_KEY, loginEmail.value)
+    } else {
+      localStorage.removeItem(REMEMBER_KEY)
+    }
+  } catch {}
+}
+
 async function handleLogin() {
   errorMsg.value = ''
   showSetupLink.value = false
@@ -484,6 +547,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.login(loginEmail.value, password.value)
+    persistRememberedEmail()
     if (auth.mustChangePassword) {
       router.push('/change-password')
       return
@@ -770,6 +834,11 @@ async function handleRecoveryConfirm() {
 // · si el usuario ya tenía userId pero no sitio confirmado → site-select
 // · si venía de MFA → de vuelta al paso MFA con el email precargado
 onMounted(() => {
+  try {
+    const savedEmail = localStorage.getItem(REMEMBER_KEY)
+    if (savedEmail && !loginEmail.value) loginEmail.value = savedEmail
+  } catch {}
+
   const flow = loadFlow()
   if (!flow || !flow.step || flow.step === 'credentials') return
 
@@ -792,3 +861,115 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.auth-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  box-shadow: var(--shadow-glow);
+}
+
+.auth-title {
+  font-size: 1.4rem;
+  letter-spacing: -0.01em;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-control-icon {
+  position: absolute;
+  left: 11px;
+  display: inline-flex;
+  color: var(--text-3);
+  pointer-events: none;
+}
+
+.auth-control input {
+  padding-left: 34px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border: 1px solid var(--border);
+}
+
+.auth-control input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.auth-control input:disabled {
+  opacity: 0.6;
+}
+
+.auth-control-btn {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-3);
+  background: transparent;
+  transition: color 0.15s, background 0.15s;
+}
+
+.auth-control-btn:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.auth-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.auth-hint-warn {
+  color: var(--warn);
+}
+
+.auth-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-remember input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--warn);
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-soft);
+}
+</style>
+
