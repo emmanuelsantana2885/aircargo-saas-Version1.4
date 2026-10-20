@@ -935,6 +935,8 @@ import: {
         standardDesc: 'Etiqueta general para pallets y contenedores.',
         valName: 'Carga valiosa (VAL)',
         valDesc: 'Alta seguridad con custodia y doble sello.',
+        upsName: 'Pallet UPS Air Cargo',
+        upsDesc: 'Etiqueta de identificación de pallet UPS con ruta y pesos.',
       },
       preview: {
         issued: 'Emitido',

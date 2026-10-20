@@ -162,6 +162,7 @@ export const PRESET_HANDLING_ICONS = [
 export const LABEL_TEMPLATES = [
   {
     id: 'standard',
+    designStyle: 'iata',
     carrierCode: 'IATA',
     headerTitle: 'IATA ULD IDENTIFICATION TAG',
     headerSubtitle: 'STANDARD PALLET / CONTAINER LABEL',
@@ -177,6 +178,7 @@ export const LABEL_TEMPLATES = [
   },
   {
     id: 'val',
+    designStyle: 'iata',
     carrierCode: 'QR',
     headerTitle: 'HIGH SECURITY VALUABLE CARGO ULD',
     headerSubtitle: 'ARMORED ESCORT / DOUBLE LOCK PROTOCOL',
@@ -190,6 +192,22 @@ export const LABEL_TEMPLATES = [
       { label: 'Custodio AVSEC Asignado', value: 'Cap. Roberto Mendez (Credencial AVSEC #112)', section: 'signoff', badgeColor: 'slate', highlight: false },
     ],
     remarks: 'CARGA VALIOSA - CUSTODIA CONTINUA / DOBLE SELLO VERIFICADO',
+  },
+  {
+    id: 'ups-pallet',
+    designStyle: 'ups',
+    carrierCode: 'UPS',
+    headerTitle: 'UPS AIR CARGO',
+    headerSubtitle: 'PALLET IDENTIFICATION TAG',
+    cargoClass: 'General',
+    handlingIcons: ['this_way_up', 'keep_dry'],
+    secondaryBadge: 'AVSEC',
+    activeLegends: ['spx'],
+    fields: [
+      { label: 'SHC Special Handling', value: 'GEN (General Cargo)', section: 'details', badgeColor: 'slate', highlight: false },
+      { label: 'Trincaje / Lashing', value: 'Red de Amarre Aprobada', section: 'signoff', badgeColor: 'slate', highlight: false },
+    ],
+    remarks: 'SIN SOBRESALIENTES / NETTING TENSADA Y AJUSTADA / ESTIBA HOMOGÉNEA',
   },
 ]
 
@@ -254,6 +272,7 @@ export function createEmptyLabel(uld = {}, ctx = {}) {
     // branding
     headerTitle: 'IATA ULD IDENTIFICATION TAG',
     headerSubtitle: 'STANDARD PALLET / CONTAINER LABEL',
+    designStyle: 'iata',
     carrierCode: matchedCarrier ? matchedCarrier.code : 'IATA',
     customLogoUrl: '',
     logoPosition: 'left',
@@ -304,6 +323,7 @@ export function applyTemplate(label, templateId) {
   if (!tpl) return
   label.headerTitle = tpl.headerTitle
   label.headerSubtitle = tpl.headerSubtitle
+  label.designStyle = tpl.designStyle || 'iata'
   label.carrierCode = tpl.carrierCode
   label.secondaryBadge = tpl.secondaryBadge
   label.handlingIcons = [...tpl.handlingIcons]

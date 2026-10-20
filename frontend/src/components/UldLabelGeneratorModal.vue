@@ -409,10 +409,10 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div v-for="tpl in LABEL_TEMPLATES" :key="tpl.id" class="rounded-xl border border-strong bg-surface p-3 flex flex-col gap-2">
                     <div class="flex items-center justify-between gap-2">
-                      <span class="text-[12px] font-bold text-primary">{{ tpl.id === 'val' ? t('ulds.label.templates.valName') : t('ulds.label.templates.standardName') }}</span>
+                      <span class="text-[12px] font-bold text-primary">{{ templateName(tpl) }}</span>
                       <span class="text-[10px] font-mono text-tertiary">{{ tpl.carrierCode }}</span>
                     </div>
-                    <p class="text-[11px] text-secondary leading-snug flex-1">{{ tpl.id === 'val' ? t('ulds.label.templates.valDesc') : t('ulds.label.templates.standardDesc') }}</p>
+                    <p class="text-[11px] text-secondary leading-snug flex-1">{{ templateDesc(tpl) }}</p>
                     <button type="button" class="ds-btn-secondary text-[11px] self-start" @click="onApplyTemplate(tpl.id)">{{ t('ulds.label.templates.apply') }}</button>
                   </div>
                 </div>
@@ -439,6 +439,117 @@
               </div>
               <div class="flex-1 overflow-auto rounded-lg" style="min-height: 0;">
                 <div class="printable-pallet-label" :style="labelStyle">
+                  <!-- UPS Air Cargo pallet identification tag (designStyle === 'ups') -->
+                  <template v-if="label.designStyle === 'ups'">
+                    <div
+                      v-if="label.visibleBlocks.header"
+                      style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:#351C15; color:#fff; padding:8px 10px; margin:-14px -14px 0;"
+                    >
+                      <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                        <img
+                          v-if="carrierLogo"
+                          :src="carrierLogo"
+                          style="height:34px; width:auto; object-fit:contain; background:#fff; padding:2px 5px; border-radius:2px;"
+                          alt=""
+                        />
+                        <span v-else style="background:#fff; color:#351C15; font-weight:900; font-size:14px; padding:3px 7px; border-radius:2px;">{{ label.carrierCode || 'UPS' }}</span>
+                        <div style="min-width:0;">
+                          <div style="font-size:15px; font-weight:900; letter-spacing:1px; line-height:1.1;">{{ label.headerTitle }}</div>
+                          <div style="font-size:9px; font-weight:800; letter-spacing:1px; color:#FFB500;">{{ label.headerSubtitle }}</div>
+                        </div>
+                      </div>
+                      <span v-if="label.secondaryBadge" style="border:1.5px solid #fff; padding:2px 6px; font-size:10px; font-weight:800; letter-spacing:1px;">{{ label.secondaryBadge }}</span>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.uldId">
+                      <div style="font-size:9px; font-weight:800; letter-spacing:1px; background:#f1f5f9; padding:1px 5px;">ULD NUMBER</div>
+                      <div style="font-size:40px; font-weight:900; line-height:1; word-break:break-all; border:2.5px solid #000; padding:6px 9px;">{{ label.uldId || '—' }}</div>
+                      <div style="display:flex; justify-content:space-between; gap:6px; font-size:10px; font-weight:800; padding-top:3px;">
+                        <span>TYPE: {{ label.type || '—' }}</span>
+                        <span v-if="label.contour">CONTOUR: {{ label.contour }}</span>
+                        <span v-if="label.position">POS: {{ label.position }}</span>
+                      </div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.weights" style="display:grid; grid-template-columns:repeat(3,1fr); border:2px solid #000;">
+                      <div
+                        v-for="(w, i) in weightCells"
+                        :key="'uw' + w.k"
+                        :style="{ textAlign: 'center', padding: '4px 2px', borderLeft: i ? '1.5px solid #000' : 'none' }"
+                      >
+                        <div style="font-size:9px; font-weight:800;">{{ w.k }}</div>
+                        <div style="font-size:24px; font-weight:900; line-height:1.05;">{{ w.v }}</div>
+                        <div style="font-size:10px; font-weight:800;">{{ weightUnitLabel }}</div>
+                      </div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.routing" style="display:flex; align-items:stretch; border:2px solid #000;">
+                      <div style="flex:1; text-align:center; padding:4px;">
+                        <div style="font-size:8px; font-weight:800; letter-spacing:1px;">ORIGIN</div>
+                        <div style="font-size:30px; font-weight:900; line-height:1;">{{ label.origin || '—' }}</div>
+                      </div>
+                      <div style="display:flex; align-items:center; padding:0 6px; font-size:20px; font-weight:900;">&#8594;</div>
+                      <div style="flex:1; text-align:center; padding:4px;">
+                        <div style="font-size:8px; font-weight:800; letter-spacing:1px;">DESTINATION</div>
+                        <div style="font-size:30px; font-weight:900; line-height:1;">{{ label.destination || '—' }}</div>
+                      </div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.routing" style="display:flex; justify-content:space-between; gap:8px; font-size:11px; font-weight:800; border-bottom:1.5px dashed #000; padding-bottom:5px;">
+                      <span>FLIGHT: {{ label.flightNumber || '—' }}</span>
+                      <span>DATE: {{ label.flightDate }}</span>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.signoffs" style="border:2px solid #000; padding:5px 8px; display:flex; flex-direction:column; gap:3px;">
+                      <div v-for="s in signoffRows" :key="'us' + s.k" style="display:flex; justify-content:space-between; gap:8px; font-size:11px;">
+                        <span style="font-weight:800;">{{ s.k }}</span>
+                        <span :style="s.seal ? 'font-weight:900; color:#dc2626; letter-spacing:1px;' : ''">{{ s.v || '________________' }}</span>
+                      </div>
+                    </div>
+
+                    <div
+                      v-for="(f, i) in (label.visibleBlocks.custom ? label.customFields : [])"
+                      :key="'uc' + i"
+                      :style="badgeStyle(f.badgeColor)"
+                    >
+                      <span style="font-size:9px; font-weight:700; text-transform:uppercase;">{{ f.label }}</span>
+                      <span style="font-size:11px; font-weight:900; text-align:right;">{{ f.value }}</span>
+                    </div>
+
+                    <div v-if="label.remarks" style="border:1.5px solid #000; padding:4px 6px;">
+                      <div style="font-size:8px; font-weight:700;">{{ t('ulds.label.preview.remarks') }}</div>
+                      <div style="font-size:10px; font-weight:700;">{{ label.remarks }}</div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.handling && selectedHandling.length" style="display:flex; flex-wrap:wrap; gap:6px;">
+                      <div v-for="ic in selectedHandling" :key="'uh' + ic.id" style="border:1.5px solid #000; padding:3px 6px; text-align:center; min-width:54px;">
+                        <div style="font-size:18px; line-height:1;">{{ ic.icon }}</div>
+                        <div style="font-size:7px; font-weight:700;">{{ ic.label }}</div>
+                      </div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.legends && activeLegends.length" style="display:flex; flex-direction:column; gap:4px;">
+                      <div v-for="lg in activeLegends" :key="'ul' + lg.id" :style="legendBannerStyle(lg.colorScheme)">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                          <span :style="{ background: legendColor(lg.colorScheme), color: '#fff', fontWeight: 900, fontSize: '10px', padding: '2px 6px', borderRadius: '2px' }">{{ lg.title }}</span>
+                          <span style="font-size:9px; font-weight:800;">{{ lg.subtitle }}</span>
+                        </div>
+                        <div style="font-size:8px; margin-top:2px;">{{ lg.complianceText }}</div>
+                      </div>
+                    </div>
+
+                    <div v-if="label.visibleBlocks.barcode" style="display:flex; align-items:flex-end; gap:2px; height:30px;">
+                      <span v-for="(b, i) in BARCODE_BARS" :key="'ub' + i" :style="{ width: (b * 2) + 'px', height: '26px', background: '#000' }"></span>
+                      <span style="margin-left:6px; font-size:9px; letter-spacing:1px;">{{ barcodeText.slice(0, 30) }}</span>
+                    </div>
+
+                    <div style="margin-top:auto; border-top:2px solid #351C15; padding-top:5px; display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:8px; font-weight:700;">
+                      <span>{{ t('ulds.label.preview.secured') }}</span>
+                      <span>{{ t('ulds.label.preview.issued') }}: {{ label.issuedAt || '—' }}</span>
+                    </div>
+                  </template>
+
+                  <template v-else>
                   <div v-if="label.visibleBlocks.header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; border-bottom:2px solid #000; padding-bottom:6px;">
                     <div style="display:flex; align-items:center; gap:8px; min-width:0;">
                       <img
@@ -592,6 +703,7 @@
                     <span>{{ t('ulds.label.preview.secured') }}</span>
                     <span>{{ t('ulds.label.preview.issued') }}: {{ label.issuedAt || '—' }}</span>
                   </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -944,6 +1056,22 @@ function onApplyTemplate(tplId) {
   applyLabelTemplate(label.value, tplId)
   templateApplied.value = true
   setTimeout(() => { templateApplied.value = false }, 1600)
+}
+
+// Localised template label/description. Falls back to the template id when the
+// translation key is missing so new templates still render a readable name.
+const TEMPLATE_I18N = { standard: 'standard', val: 'val', 'ups-pallet': 'ups' }
+
+function templateI18nKey(tpl) {
+  return TEMPLATE_I18N[tpl.id] || tpl.id
+}
+
+function templateName(tpl) {
+  return t(`ulds.label.templates.${templateI18nKey(tpl)}Name`)
+}
+
+function templateDesc(tpl) {
+  return t(`ulds.label.templates.${templateI18nKey(tpl)}Desc`)
 }
 
 function buildLabelForSave() {

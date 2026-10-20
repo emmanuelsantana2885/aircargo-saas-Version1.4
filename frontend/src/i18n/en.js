@@ -935,6 +935,8 @@ export default {
         standardDesc: 'General-purpose pallet and container label.',
         valName: 'Valuable cargo (VAL)',
         valDesc: 'High security with continuous custody and double seal.',
+        upsName: 'UPS Air Cargo pallet',
+        upsDesc: 'UPS branded pallet identification tag with routing and weights.',
       },
       preview: {
         issued: 'Issued',
