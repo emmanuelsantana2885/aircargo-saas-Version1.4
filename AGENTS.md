@@ -1,5 +1,25 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 20, 2026 — Rediseño del cuadro de acceso (login) + mejoras de UX)
+
+**Contexto**: pedido del usuario para mejorar el login (`frontend/src/views/LoginView.vue`). Tras una pregunta de alcance el usuario eligió **"Rediseño + mejoras funcionales/UX"** (mostrar/ocultar contraseña, mejor manejo de errores, accesibilidad: labels/autocomplete/focus) **sin romper el flujo multi-step** (credentials → MFA → selección de sitio). Decisión de estilo: **no tocar las clases compartidas `auth-shell`/`auth-card`** (las usan también `MfaSetupView`, `SetPasswordView`, `ChangePasswordView`) — todo el estilo nuevo vive en `<style scoped>` + i18n propios.
+
+| File | Change |
+|------|--------|
+| `frontend/src/views/LoginView.vue` | **Rediseño del step de credenciales**: header con `div.auth-logo` (icono `PlaneDeparture`) + `h1.auth-title`; campos dentro de `div.auth-control` con icono (`Mail`/`Lock`); botón mostrar/ocultar contraseña (`Eye`/`EyeOff`, `aria-label`/`title`); aviso de Bloq Mayús (`ShieldAlert` + `t('login.capsLock')`) detectado con `getModifierState('CapsLock')`; checkbox "recordar correo" (`rememberEmail`); caja de error `p.auth-alert role="alert"`. Accesibilidad: `id`/`name`/`autocomplete="username"`/`current-password`/`autocapitalize="none"`/`spellcheck="false"`, submit `:disabled` durante la carga. `<script setup>`: `REMEMBER_KEY='aircargo_login_remember'`, refs `showPassword`/`rememberEmail`/`capsLockOn`, `detectCapsLock(e)`, `persistRememberedEmail()` (try/catch localStorage), `onMounted` precarga el email recordado antes de `loadFlow()`. `<style scoped>`: `.auth-logo`, `.auth-title`, `.auth-field`, `.auth-control(+icon/btn/input)`, `.auth-hint(-warn)`, `.auth-remember`, `.auth-alert` |
+| `frontend/src/mdi.js` | **Iconos nuevos** `Mail` (`mdiEmail`) y `EyeOff` (`mdiEyeOff`) — mapa canónico ahora **71 claves** |
+| `frontend/src/composables/tablerIcons.js` | `IconMail` / `IconEyeOff` |
+| `frontend/src/composables/lucideIcons.js` | `LcMail` / `LcEyeOff` (aliases) |
+| `frontend/src/phosphor.js` | `PhEnvelope` (`Mail`) / `PhEyeSlash` (`EyeOff`) |
+| `frontend/tests/iconFamily.spec.js` | **FIX** — sustituido el recuento mágico `expect(CANONICAL.length).toBe(69)` por `toBeGreaterThan(0)`: el número real lo fija el mapa canónico y la **igualdad de claves entre las 4 familias** (esa es la invariante que importa; un hardcode obligaba a tocar el test por cada icono nuevo) |
+| `frontend/src/i18n/es.js` + `en.js` | Claves `login.showPassword`/`hidePassword`/`capsLock`/`rememberEmail` |
+
+**Decisiones de diseño**: (1) el **contrato de iconos** exige que las 4 familias (tabler/lucide/mdi/phosphor) expongan el mismo conjunto de claves — añadir `Mail`/`EyeOff` implica tocar los 4 mapas; el test `iconFamily.spec.js` verifica esa igualdad y que toda clave `icons.X` usada en `src/` exista; se quitó el recuento hardcodeado porque era frágil (basta añadir un icono para romperlo sin que haya un bug real). (2) El estilo del login vive en `<style scoped>` porque `auth-shell`/`auth-card` son compartidas con las otras vistas de auth (MFA/set-password/change-password) y el usuario aceptó mantenerlas intactas. (3) "Recordar correo" solo persiste el **email** (nunca la contraseña) en localStorage; por defecto activado, y las excepciones de localStorage se tragan silenciosamente. (4) `CapsLock` se detecta en `keydown`/`keyup` con `getModifierState` — sin librerías externas.
+
+**Verificación**: frontend `npm run lint` ✓ (check:refs **49 SFC / 0 refs** no resueltas; i18n **1518/1518** en es y en; contraste WCAG AA ✓), `npm test` ✓ **274/274** (20 files), `npm run build` ✓ (2.02s). Sin cambios de backend. Commit `12bd9b9` → `origin/main` (`7733635..12bd9b9`).
+
+**Pendiente/notas**: `git push` funciona (remote SSH `git@github.com:emmanuelsantana2885/aircargo-saas-Version1.4.git`; key `~/.ssh/id_ed25519`). Multi-pestaña (sesión) y CDN siguen fuera de alcance. Entorno: reactor Maven en `backend/`, `JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto`, `mvn -o`; `rg` no instalado.
+
 ## Recent session changes (Oct 19, 2026 (2) — Escaneo HAWB→MAWB padre + fix de separadores + matriz sin despachos)
 
 **Contexto**: dos pedidos del usuario. (1) Al **escanear una HAWB** (no solo la MAWB) el sistema debe resolverla a su **MAWB padre** y registrar la pieza contra esa MAWB guardando el número de HAWB escaneado. (2) La **matriz de MAWBs** debía arrancar **ocultando las MAWBs sin despachos** (`pcsDispatched == 0`), con un **toggle** para revelarlas (no filtro estricto permanente). El usuario confirmó ambas decisiones: "Por defecto oculta, con toggle" y "HAWB resuelve a su MAWB padre y registra pieza".
