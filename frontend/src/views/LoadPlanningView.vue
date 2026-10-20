@@ -419,6 +419,7 @@ import { useIcons } from '../composables/useIcons'
 import { useConfirm } from '../composables/useConfirm'
 import { useCommodities } from '../composables/useCommodities'
 import { normalizeAwb } from '../utils/awb'
+import { isDraftReceipt } from '../utils/mawbDispatch'
 
 const icons = useIcons()
 const uldsStore = useUldsStore()
@@ -1053,7 +1054,7 @@ async function confirmRecover() {
 async function dispatchFlight() {
   if (!selectedFlightId.value) return
   const ulds = uldsStore.activeUlds || []
-  const receipts = (appStore.receipts || []).filter(r => !r.superseded)
+  const receipts = (appStore.receipts || []).filter(r => !r.superseded && !isDraftReceipt(r))
   const receiptByMawbId = new Map()
   const receiptByAwb = new Map()
   for (const r of receipts) {

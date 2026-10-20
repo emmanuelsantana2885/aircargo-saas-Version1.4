@@ -191,6 +191,11 @@ export const useAppStore = defineStore('app', () => {
     return res.data
   }
 
+  async function saveReceiptDraft(payload) {
+    const res = await api.post('/warehouse/receipts/draft', payload)
+    return res.data
+  }
+
   async function loadUlds(flightId, { page = 0, size = 50, silent = false } = {}) {
     try {
       beginLoad(silent)
@@ -227,7 +232,7 @@ export const useAppStore = defineStore('app', () => {
     loadFlights, loadAirlines, createFlight, updateFlight, deleteFlight,
     loadBookings, createBooking, updateBooking, deleteBooking,
     loadMawbs, loadAllMawbs, createMawb,
-    loadReceipts, emitReceipt,
+    loadReceipts, emitReceipt, saveReceiptDraft,
     loadUlds, loadUldAwbs,
     selectFlight,
   }

@@ -22,12 +22,32 @@ import { normalizeAwb } from './awb'
  * topeadas a las piezas recibidas (no se puede despachar más de lo recibido).
  */
 
-/** Recibo vigente (no superseded) de una MAWB, por `mawbId` o por AWB normalizado. */
+/** ¿El recibo está en estado borrador (guardado, aún no emitido)? */
+export function isDraftReceipt(r) {
+  return r?.status === 'DRAFT'
+}
+
+/**
+ * Recibo vigente (no superseded, no borrador) de una MAWB, por `mawbId` o por
+ * AWB normalizado. Un borrador NO cuenta como recibo: la MAWB sigue PENDIENTE
+ * hasta que el recibo se emite explícitamente.
+ */
 export function activeReceiptForMawb(mawb, receipts) {
   const awb = normalizeAwb(mawb?.awbNumber)
   if (!awb && !mawb?.id) return null
   return (receipts || []).find(r =>
-    !r.superseded &&
+    !r.superseded && !isDraftReceipt(r) &&
+    ((r.mawbId && mawb?.id && r.mawbId === mawb.id) ||
+      (r.mawbNumber && normalizeAwb(r.mawbNumber) === awb))
+  ) || null
+}
+
+/** Borrador vigente (no superseded, status DRAFT) de una MAWB, por `mawbId` o AWB. */
+export function draftReceiptForMawb(mawb, receipts) {
+  const awb = normalizeAwb(mawb?.awbNumber)
+  if (!awb && !mawb?.id) return null
+  return (receipts || []).find(r =>
+    !r.superseded && isDraftReceipt(r) &&
     ((r.mawbId && mawb?.id && r.mawbId === mawb.id) ||
       (r.mawbNumber && normalizeAwb(r.mawbNumber) === awb))
   ) || null

@@ -966,6 +966,16 @@ export default {
       correction: 'Correction #{n}',
       editMode: 'Edit mode',
     },
+    draft: {
+      badge: 'Draft',
+      badgeTitle: 'Saved draft — does not count as received',
+      continue: 'Continue',
+      continueTitle: 'Resume this draft',
+      continueToast: 'Draft for {awb} loaded to continue',
+      save: 'Save draft',
+      saving: 'Saving…',
+      saved: 'Draft saved',
+    },
     form: {
       awbNumber: 'AWB Number',
       mawbNumber: 'MAWB Number',

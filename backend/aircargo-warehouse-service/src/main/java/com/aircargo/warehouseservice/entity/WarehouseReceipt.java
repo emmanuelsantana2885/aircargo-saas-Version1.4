@@ -214,6 +214,10 @@ public class WarehouseReceipt {
     @Column(name = "corrected_by_name", length = 150)
     private String correctedByName;
 
+    @Column(name = "status", length = 20, nullable = false,
+            columnDefinition = "varchar(20) not null default 'EMITTED'")
+    private String status = "EMITTED";
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -346,6 +350,8 @@ public class WarehouseReceipt {
     public void setCorrectionReason(String correctionReason) { this.correctionReason = correctionReason; }
     public String getCorrectedByName() { return correctedByName; }
     public void setCorrectedByName(String correctedByName) { this.correctedByName = correctedByName; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

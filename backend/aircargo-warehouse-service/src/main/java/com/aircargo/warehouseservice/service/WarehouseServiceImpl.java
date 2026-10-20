@@ -76,9 +76,13 @@ public class WarehouseServiceImpl implements WarehouseService {
         dto.setCreatedAt(OffsetDateTime.now());
         dto.setReceiptDate(OffsetDateTime.now());
         dto.setSuperseded(false);
+        dto.setStatus("EMITTED");
 
         // Resolve MAWB number: stored value → Feign → shared-DB fallback
         dto.setMawbNumber(mawbNumberResolver.resolve(dto.getMawbId(), dto.getMawbNumber()));
+
+        // A draft being finalised is replaced by this emitted receipt
+        deleteDraftsForMawb(dto.getMawbId());
 
         // Resolve calc params (airline profile → default) and persist on the DTO
         CalcParams params = calcParamsResolver.resolveFor(dto, null);
@@ -111,6 +115,45 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         // Publish event (consumers: notification-service, booking-service AWB sync, mawb-service status sync)
         publishReceiptCreatedEvent(saved);
+
+        return WarehouseReceiptDTO.fromEntity(saved);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = {"warehouse-receipts", "receipt-pieces"}, allEntries = true)
+    public WarehouseReceiptDTO saveDraft(WarehouseReceiptDTO dto, UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request) {
+        // Set audit fields
+        dto.setCreatedByUserId(principal != null ? principal.getUserIdAsUuid() : null);
+        dto.setCreatedByName(principal != null ? principal.fullName() : "system");
+        dto.setCreatedAt(OffsetDateTime.now());
+        dto.setReceiptDate(OffsetDateTime.now());
+        dto.setSuperseded(false);
+        dto.setStatus("DRAFT");
+
+        // Resolve MAWB number: stored value → Feign → shared-DB fallback
+        dto.setMawbNumber(mawbNumberResolver.resolve(dto.getMawbId(), dto.getMawbNumber()));
+
+        // Only one active draft per MAWB — replace the previous one (pieces are not shared)
+        deleteDraftsForMawb(dto.getMawbId());
+
+        // Resolve calc params (airline profile → default) and persist on the DTO
+        CalcParams params = calcParamsResolver.resolveFor(dto, null);
+        applyParamsToDto(dto, params);
+
+        // Process pieces (weights only; no artifacts, no event yet)
+        List<ReceiptPieceDTO> pieces = processPieces(dto.getPieces(), params);
+        dto.setPieces(pieces);
+        calculateTotals(dto, params);
+
+        WarehouseReceipt entity = WarehouseReceiptDTO.toEntity(dto);
+        WarehouseReceipt saved = receiptRepository.save(entity);
+
+        List<ReceiptPiece> pieceEntities = pieces.stream()
+                .map(p -> ReceiptPieceDTO.toEntity(p))
+                .peek(e -> e.setReceiptId(saved.getId()))
+                .toList();
+        pieceRepository.saveAll(pieceEntities);
 
         return WarehouseReceiptDTO.fromEntity(saved);
     }
@@ -621,6 +664,20 @@ public class WarehouseServiceImpl implements WarehouseService {
     private void supersedeExistingReceipts(UUID mawbId, UUID newReceiptId) {
         if (mawbId != null) {
             receiptRepository.supersedeAllByMawbId(mawbId, newReceiptId);
+        }
+    }
+
+    /**
+     * Elimina los borradores (status DRAFT) vigentes de un MAWB junto con sus piezas.
+     * Se usa al guardar un nuevo borrador (solo se conserva el último) y al emitir
+     * el recibo definitivo (el borrador queda reemplazado por el recibo emitido).
+     */
+    private void deleteDraftsForMawb(UUID mawbId) {
+        if (mawbId == null) return;
+        List<WarehouseReceipt> drafts = receiptRepository.findByMawbIdAndStatusAndSupersededFalse(mawbId, "DRAFT");
+        for (WarehouseReceipt draft : drafts) {
+            pieceRepository.deleteByReceiptId(draft.getId());
+            receiptRepository.delete(draft);
         }
     }
 

@@ -49,6 +49,22 @@ public class WarehouseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PostMapping("/draft")
+    public ResponseEntity<WarehouseReceiptDTO> saveDraft(@Valid @RequestBody WarehouseReceiptDTO dto,
+                                                          @AuthenticationPrincipal UserPrincipal principal,
+                                                          HttpServletRequest request) {
+        WarehouseReceiptDTO draft = warehouseService.saveDraft(dto, principal, request);
+        auditService.log(
+                principal != null ? principal.getUserIdAsUuid() : null,
+                principal != null ? principal.email() : "system",
+                principal != null ? principal.fullName() : "system",
+                "RECEIPT_DRAFT", "RECEIPT", draft.getId().toString(),
+                "{\"mawbId\":\"" + draft.getMawbId() + "\"}",
+                request.getRemoteAddr()
+        );
+        return ResponseEntity.ok(draft);
+    }
+
     @PutMapping("/{receiptId}")
     public ResponseEntity<WarehouseReceiptDTO> updateReceipt(@PathVariable UUID receiptId,
                                                                @Valid @RequestBody WarehouseReceiptDTO dto,

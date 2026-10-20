@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface WarehouseService {
     WarehouseReceiptDTO emitReceipt(WarehouseReceiptDTO dto, com.aircargo.common.auth.UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request);
+    WarehouseReceiptDTO saveDraft(WarehouseReceiptDTO dto, com.aircargo.common.auth.UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request);
     Optional<WarehouseReceiptDTO> updateReceipt(UUID receiptId, WarehouseReceiptDTO dto, com.aircargo.common.auth.UserPrincipal principal, jakarta.servlet.http.HttpServletRequest request);
     WarehouseReceiptDTO validateReceipt(WarehouseReceiptDTO dto);
     List<com.aircargo.warehouseservice.dto.ReceiptPieceDTO> getPieces(UUID receiptId);

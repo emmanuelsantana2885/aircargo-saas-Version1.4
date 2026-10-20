@@ -84,6 +84,7 @@ public class WarehouseReceiptDTO {
     private Boolean superseded;
     private String correctionReason;
     private String correctedByName;
+    private String status;
     @Valid
     private List<ReceiptPieceDTO> pieces;
     private OffsetDateTime createdAt;
@@ -213,6 +214,8 @@ public class WarehouseReceiptDTO {
     public void setCorrectionReason(String correctionReason) { this.correctionReason = correctionReason; }
     public String getCorrectedByName() { return correctedByName; }
     public void setCorrectedByName(String correctedByName) { this.correctedByName = correctedByName; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public List<ReceiptPieceDTO> getPieces() { return pieces; }
     public void setPieces(List<ReceiptPieceDTO> pieces) { this.pieces = pieces; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
@@ -283,6 +286,7 @@ public class WarehouseReceiptDTO {
         dto.setSuperseded(entity.getSuperseded());
         dto.setCorrectionReason(entity.getCorrectionReason());
         dto.setCorrectedByName(entity.getCorrectedByName());
+        dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -351,6 +355,7 @@ public class WarehouseReceiptDTO {
         entity.setSuperseded(dto.getSuperseded());
         entity.setCorrectionReason(dto.getCorrectionReason());
         entity.setCorrectedByName(dto.getCorrectedByName());
+        entity.setStatus(dto.getStatus() != null ? dto.getStatus() : "EMITTED");
         return entity;
     }
 }

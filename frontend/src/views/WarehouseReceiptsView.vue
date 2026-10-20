@@ -136,6 +136,7 @@
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
               <span v-else-if="receiptHawbs[m.id] && receiptHawbs[m.id].length === 1"
                 class="text-[13px] font-bold text-[var(--text)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
+              <span v-if="draftForMawb(m)" class="badge-draft" :title="t('warehouse.draft.badgeTitle')">&#9998; {{ t('warehouse.draft.badge') }}</span>
             </div>
             <div class="col-span-2 text-[var(--text)] font-semibold relative z-10 truncate pr-3 receipt-list-cell" data-col="shipper">{{ m.shipperName || '—' }}</div>
             <div class="col-span-2 text-left font-mono font-bold text-[var(--text)] relative z-10 text-[12px] receipt-list-cell" data-col="flight">{{ fmtFlight(m) }}</div>
@@ -150,6 +151,8 @@
               <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[13px] text-[var(--muted)] block leading-tight">recibo</span>
             </div>
             <div class="col-span-2 flex items-center justify-center gap-1 relative z-10">
+              <button v-if="draftForMawb(m)" type="button" @click.stop="continueDraft(m)" :title="t('warehouse.draft.continueTitle')"
+                class="mini-act act-draft">&#9654; {{ t('warehouse.draft.continue') }}</button>
               <button type="button" @click.stop="editOrExpandReceipt(m)" :title="t('warehouse.editReceipt')"
                 class="mini-act" :class="{ 'act-edit-has': receiptById[m.id] }">&#9998;</button>
               <button type="button" @click.stop="toggleMawbEvidenceManager(m)" :title="t('warehouse.evidence.title')"
@@ -790,6 +793,9 @@
                 <div class="ops-fl">
                   <button class="btn-ghost" @click="prevStep" :disabled="localStep === 1">&#9664; Atras</button>
                   <button class="btn-ghost danger" @click="cancelForm">&#10005; Cancelar</button>
+                  <button class="btn-ghost draft" @click="submitDraft(m)" :disabled="draftSaving || submitting">
+                    <span>{{ draftSaving ? t('warehouse.draft.saving') : t('warehouse.draft.save') }}</span>
+                  </button>
                   <span v-if="stepRecap" class="ops-recap">{{ stepRecap.pcs }} pzs · {{ stepRecap.kg }} kg</span>
                   <span v-if="successMsg" class="ops-ok">{{ successMsg }}</span>
                 </div>
@@ -1023,7 +1029,7 @@ import { calcConfigApi } from '../api/receiptCalcConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 import { normalizeAwb } from '../utils/awb'
-import { activeReceiptForMawb } from '../utils/mawbDispatch'
+import { activeReceiptForMawb, draftReceiptForMawb, isDraftReceipt } from '../utils/mawbDispatch'
 import { useConfirm } from '../composables/useConfirm'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
 
@@ -1080,7 +1086,7 @@ function deriveMawbOperationalStatusPure(m, uldAwbs, flights, receipts) {
   const receivedPieces = (() => {
     const totals = {}
     for (const r of receipts || []) {
-      if (r.superseded) continue
+      if (r.superseded || isDraftReceipt(r)) continue
       const mid = r.mawb?.id || r.mawbId
       if (!mid) continue
       if (!totals[mid]) totals[mid] = { pieces: 0 }
@@ -1215,7 +1221,7 @@ function isPartialLoadingPure(m, uldAwbs, receipts) {
   const receivedPieces = (() => {
     const totals = {}
     for (const r of receipts || []) {
-      if (r.superseded) continue
+      if (r.superseded || isDraftReceipt(r)) continue
       const mid = r.mawb?.id || r.mawbId
       if (!mid) continue
       if (!totals[mid]) totals[mid] = { pieces: 0 }
@@ -1242,14 +1248,14 @@ const mawbOperationalStatusMap = computed(() => {
   }
   const receiptPiecesByMawb = {}
   for (const r of store.receipts || []) {
-    if (r.superseded) continue
+    if (r.superseded || isDraftReceipt(r)) continue
     const mid = r.mawb?.id || r.mawbId
     if (!mid) continue
     receiptPiecesByMawb[mid] = (receiptPiecesByMawb[mid] || 0) + (r.pieceCount || 0)
   }
   const activeReceiptByMawb = {}
   for (const r of store.receipts || []) {
-    if (r.superseded) continue
+    if (r.superseded || isDraftReceipt(r)) continue
     const mid = r.mawb?.id || r.mawbId
     if (!mid || activeReceiptByMawb[mid]) continue
     activeReceiptByMawb[mid] = r
@@ -1293,6 +1299,7 @@ const localStep = ref(1)
 const touchedSteps = reactive([false, false, false, false, false])
 const stepErrorMsg = ref('')
 const submitting = ref(false)
+const draftSaving = ref(false)
 const successMsg = ref('')
 const showConfirmModal = ref(false)
 const editModalRef = ref(null)
@@ -1718,6 +1725,13 @@ function editOrExpandReceipt(m) {
   } else {
     toggleExpand(m)
   }
+}
+
+// Reanudar un borrador guardado: expande la fila (toggleExpand precarga el
+// formulario con loadExistingReceiptData, que sí considera los borradores).
+async function continueDraft(m) {
+  if (expandedId.value !== m.id) await toggleExpand(m)
+  toast.info(t('warehouse.draft.continueToast', { awb: m.awbNumber || String(m.id).slice(0, 8) }))
 }
 
 async function newReceipt() {
@@ -2684,10 +2698,130 @@ async function confirmBookingCorrection() {
   }
 }
 
+// Contexto compartido por el guardado de borrador y la emisión: sincroniza los
+// nombres MAWB/HAWB, asegura que cada HAWB del formulario exista en el backend
+// (crea los faltantes y reasigna sus piezas) y devuelve `{ f, hawbs }`.
+async function prepareReceiptContext(m) {
+  const f = receiptForms[m.id]
+  const hawbs = receiptHawbs[m.id] || []
+  if (!f) return null
+  console.warn('[Context] START', { mawbId: m.id, awbNumber: m.awbNumber, pieceCount: f.pieces.length, hawbCount: hawbs.length })
+  try {
+    if (f.shipperName && f.shipperName !== m.shipperName) {
+      await mawbsApi.update(m.id, { shipperName: f.shipperName })
+      m.shipperName = f.shipperName
+    }
+    if (f.consigneeName && f.consigneeName !== m.consigneeName) {
+      await mawbsApi.update(m.id, { consigneeName: f.consigneeName })
+      m.consigneeName = f.consigneeName
+    }
+    for (const h of hawbs) {
+      if (h._dirty && h.id) {
+        await hawbsApi.update(h.id, { consigneeName: h.consigneeName })
+      }
+    }
+  } catch (nameErr) {
+    console.warn('Non-critical: failed to sync MAWB/HAWB names', nameErr)
+  }
+
+  for (const entry of f.hawbEntries) {
+    if (!entry._dbId && entry.hawbNumber && !hawbs.includes(entry)) {
+      hawbs.push(entry)
+    }
+  }
+
+  for (const h of hawbs) {
+    if (!h._dbId && h.hawbNumber) {
+      const oldHawbId = h._hawbId
+      try {
+        const res = await hawbsApi.create({
+          mawbId: m.id,
+          hawbNumber: h.hawbNumber,
+          consigneeName: h.consigneeName || '',
+          pieces: h.pieces || 1,
+          weightKg: h.weightKg || 0,
+          destination: h.destination || f.destination || 'MIA',
+        })
+        h._dbId = res.data.id
+        h._hawbId = res.data.id
+        for (const p of f.pieces) {
+          if (p.hawbId === oldHawbId) {
+            p.hawbId = res.data.id
+          }
+        }
+      } catch (hawbErr) {
+        console.warn('Failed to persist HAWB:', h.hawbNumber, hawbErr)
+      }
+    }
+  }
+  return { f, hawbs }
+}
+
+function buildReceiptPayload(m, f, hawbs, pieceList, remarkSuffix) {
+  const hawbId = hawbs.length <= 1 ? (hawbs[0]?.id || hawbs[0]?._hawbId || null) : null
+  const validHawbId = hawbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hawbId) ? hawbId : null
+  return {
+    mawbId: m.id,
+    airlineId: m.airline?.id || m.airlineId || null,
+    hawbId: validHawbId,
+    gatewayCfs: f.gatewayCfs || 'SDQ',
+    shipperName: f.shipperName ?? m.shipperName ?? '',
+    consigneeName: f.consigneeName ?? m.consigneeName ?? '',
+    origin: f.origin || 'SDQ',
+    destination: f.destination || 'MIA',
+    awbReportedPieces: f.awbReportedPieces ?? pieceList.reduce((s, p) => s + (p.pieces || 1), 0),
+    mawbWeightGreatest: f.mawbWeightGreatest || 0,
+    dimFactorIntl: f.dimFactorKg || 366,
+    dimFactorDom: f.dimFactorLbs || 194,
+    chargeableMethod: f.chargeableMethod || 'MAX',
+    roundUpKg: f.roundUpKg || 0,
+    roundUpLbs: f.roundUpLbs || 0,
+    minChargeableKg: f.minChargeableKg || 0,
+    minChargeableLbs: f.minChargeableLbs || 0,
+    pieceCount: pieceList.reduce((s, p) => s + (p.pieces || 1), 0),
+    cashOnly: f.cashOnly || false,
+    bookedInAcoms: f.bookedInAcoms || false,
+    docsProvided: f.docsProvided || false,
+    customsCompleted: f.customsCompleted || false,
+    preBuilt: f.preBuilt || false,
+    remarks: (f.remarks || '').replace(/ — RECIBO GENERAL(?:\s*— RECIBO GENERAL)*$/, '') + (remarkSuffix ? ' — ' + remarkSuffix : ''),
+    dockSignature: f.dockSignature || '',
+    printName: f.printName || '',
+    deliveredByName: f.deliveredByName || '',
+    deliveredByIdNum: f.deliveredByIdNum || '',
+    deliveredBySigUrl: f.deliveredBySig || '',
+    receivedByName: f.receivedByName || f.printName || '',
+    receivedBySigUrl: f.receivedBySig || '',
+    brokerName: f.brokerName || '',
+    brokerIdNum: f.brokerIdNum || '',
+    brokerSigUrl: f.brokerSig || '',
+    startDatetime: f.startDatetime || new Date().toISOString(),
+    receiptDate: f.receiptDate || new Date().toISOString(),
+    pieces: pieceList.map((p, i) => ({
+      pieceNumber: i + 1,
+      pieces: p.pieces || 1,
+      hawbId: (p.hawbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.hawbId)) ? p.hawbId : null,
+      lengthIn: p.lengthIn || 0,
+      widthIn: p.widthIn || 0,
+      heightIn: p.heightIn || 0,
+      scaleWeightLbs: p.scaleWeightLbs || 0,
+      scaleWeightKg: p.scaleWeightKg || 0,
+      dimWeightLbs: p.dimWeightLbs || 0,
+      dimWeightKg: p.dimWeightKg || 0,
+      chargeableLbs: p.chargeableLbs || 0,
+      chargeableKg: p.chargeableKg || 0,
+    })),
+    supportingDocs: JSON.stringify(f.evidence.map(ev => ({
+      name: ev.name,
+      type: ev.type,
+      url: ev.url,
+    }))),
+  }
+}
+
 async function submitReceipt(m) {
   if (submitting.value) return
   const f = receiptForms[m.id]
-  const hawbs = receiptHawbs[m.id] || []
   if (!f) return
   f.pieces = f.pieces.filter(p => p.hawbId != null || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
   if (f.pieces.length === 0) {
@@ -2701,124 +2835,15 @@ async function submitReceipt(m) {
   }
   submitting.value = true
   try {
-    console.warn('[Submit] START', { mawbId: m.id, awbNumber: m.awbNumber, pieceCount: f.pieces.length, hawbCount: hawbs.length })
-    try {
-      if (f.shipperName && f.shipperName !== m.shipperName) {
-        await mawbsApi.update(m.id, { shipperName: f.shipperName })
-        m.shipperName = f.shipperName
-      }
-      if (f.consigneeName && f.consigneeName !== m.consigneeName) {
-        await mawbsApi.update(m.id, { consigneeName: f.consigneeName })
-        m.consigneeName = f.consigneeName
-      }
-      for (const h of hawbs) {
-        if (h._dirty && h.id) {
-          await hawbsApi.update(h.id, { consigneeName: h.consigneeName })
-        }
-      }
-    } catch (nameErr) {
-      console.warn('Non-critical: failed to sync MAWB/HAWB names', nameErr)
-    }
-
-    for (const entry of f.hawbEntries) {
-      if (!entry._dbId && entry.hawbNumber && !hawbs.includes(entry)) {
-        hawbs.push(entry)
-      }
-    }
-
-    for (const h of hawbs) {
-      if (!h._dbId && h.hawbNumber) {
-        const oldHawbId = h._hawbId
-        try {
-          const res = await hawbsApi.create({
-            mawbId: m.id,
-            hawbNumber: h.hawbNumber,
-            consigneeName: h.consigneeName || '',
-            pieces: h.pieces || 1,
-            weightKg: h.weightKg || 0,
-            destination: h.destination || f.destination || 'MIA',
-          })
-          h._dbId = res.data.id
-          h._hawbId = res.data.id
-          for (const p of f.pieces) {
-            if (p.hawbId === oldHawbId) {
-              p.hawbId = res.data.id
-            }
-          }
-        } catch (hawbErr) {
-          console.warn('Failed to persist HAWB:', h.hawbNumber, hawbErr)
-        }
-      }
-    }
-
-    function buildPayload(pieceList, remarkSuffix) {
-      const hawbId = hawbs.length <= 1 ? (hawbs[0]?.id || hawbs[0]?._hawbId || null) : null
-      const validHawbId = hawbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hawbId) ? hawbId : null
-      return {
-        mawbId: m.id,
-        airlineId: m.airline?.id || m.airlineId || null,
-        hawbId: validHawbId,
-        gatewayCfs: f.gatewayCfs || 'SDQ',
-        shipperName: f.shipperName ?? m.shipperName ?? '',
-        consigneeName: f.consigneeName ?? m.consigneeName ?? '',
-        origin: f.origin || 'SDQ',
-        destination: f.destination || 'MIA',
-        awbReportedPieces: f.awbReportedPieces ?? pieceList.reduce((s, p) => s + (p.pieces || 1), 0),
-        mawbWeightGreatest: f.mawbWeightGreatest || 0,
-        dimFactorIntl: f.dimFactorKg || 366,
-        dimFactorDom: f.dimFactorLbs || 194,
-        chargeableMethod: f.chargeableMethod || 'MAX',
-        roundUpKg: f.roundUpKg || 0,
-        roundUpLbs: f.roundUpLbs || 0,
-        minChargeableKg: f.minChargeableKg || 0,
-        minChargeableLbs: f.minChargeableLbs || 0,
-        pieceCount: pieceList.reduce((s, p) => s + (p.pieces || 1), 0),
-        cashOnly: f.cashOnly || false,
-        bookedInAcoms: f.bookedInAcoms || false,
-        docsProvided: f.docsProvided || false,
-        customsCompleted: f.customsCompleted || false,
-        preBuilt: f.preBuilt || false,
-        remarks: (f.remarks || '').replace(/ — RECIBO GENERAL(?:\s*— RECIBO GENERAL)*$/, '') + (remarkSuffix ? ' — ' + remarkSuffix : ''),
-        dockSignature: f.dockSignature || '',
-        printName: f.printName || '',
-        deliveredByName: f.deliveredByName || '',
-        deliveredByIdNum: f.deliveredByIdNum || '',
-        deliveredBySigUrl: f.deliveredBySig || '',
-        receivedByName: f.receivedByName || f.printName || '',
-        receivedBySigUrl: f.receivedBySig || '',
-        brokerName: f.brokerName || '',
-        brokerIdNum: f.brokerIdNum || '',
-        brokerSigUrl: f.brokerSig || '',
-        startDatetime: f.startDatetime || new Date().toISOString(),
-        receiptDate: f.receiptDate || new Date().toISOString(),
-        pieces: pieceList.map((p, i) => ({
-          pieceNumber: i + 1,
-          pieces: p.pieces || 1,
-          hawbId: (p.hawbId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.hawbId)) ? p.hawbId : null,
-          lengthIn: p.lengthIn || 0,
-          widthIn: p.widthIn || 0,
-          heightIn: p.heightIn || 0,
-          scaleWeightLbs: p.scaleWeightLbs || 0,
-          scaleWeightKg: p.scaleWeightKg || 0,
-          dimWeightLbs: p.dimWeightLbs || 0,
-          dimWeightKg: p.dimWeightKg || 0,
-          chargeableLbs: p.chargeableLbs || 0,
-          chargeableKg: p.chargeableKg || 0,
-        })),
-        supportingDocs: JSON.stringify(f.evidence.map(ev => ({
-          name: ev.name,
-          type: ev.type,
-          url: ev.url,
-        }))),
-      }
-    }
-
+    const ctx = await prepareReceiptContext(m)
+    if (!ctx) return
+    const { f: cf, hawbs } = ctx
     const payload = hawbs.length <= 1
-      ? buildPayload(f.pieces, '')
-      : buildPayload(f.pieces, 'RECIBO GENERAL')
+      ? buildReceiptPayload(m, cf, hawbs, cf.pieces, '')
+      : buildReceiptPayload(m, cf, hawbs, cf.pieces, 'RECIBO GENERAL')
 
     // ─── VALIDATE FIRST (dry-run) ────────────────────────
-    const newPieceCount = f.pieces.reduce((s, p) => s + (p.pieces || 1), 0)
+    const newPieceCount = cf.pieces.reduce((s, p) => s + (p.pieces || 1), 0)
     try {
       const valRes = await receiptsApi.validate({
         mawbId: m.id,
@@ -2848,6 +2873,37 @@ async function submitReceipt(m) {
     toast.error('Error (' + e.response?.status + '): ' + msg)
   } finally {
     submitting.value = false
+  }
+}
+
+// Guarda el estado actual como borrador en el servidor (NO emite recibo ni
+// genera artefactos). Mantiene el formulario abierto y el autoguardado local;
+// permite terminar la recepción después, incluso desde otro usuario/dispositivo.
+async function submitDraft(m) {
+  if (draftSaving.value || submitting.value) return
+  const f = receiptForms[m.id]
+  if (!f) return
+  f.pieces = f.pieces.filter(p => p.hawbId != null || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
+  if (f.pieces.length === 0) {
+    toast.warning('Ingresa al menos una pieza')
+    return
+  }
+  draftSaving.value = true
+  try {
+    const ctx = await prepareReceiptContext(m)
+    if (!ctx) return
+    const { f: cf, hawbs } = ctx
+    const payload = {
+      ...buildReceiptPayload(m, cf, hawbs, cf.pieces, hawbs.length > 1 ? 'RECIBO GENERAL' : ''),
+      status: 'DRAFT',
+    }
+    await store.saveReceiptDraft(payload)
+    await store.loadReceipts()
+    toast.success(t('warehouse.draft.saved'))
+  } catch (e) {
+    toast.error(extractError(e))
+  } finally {
+    draftSaving.value = false
   }
 }
 
@@ -2888,7 +2944,7 @@ async function executeEmit(m, hawbs, payload) {
 const receiptTotals = computed(() => {
   const totals = {}
   for (const r of store.receipts || []) {
-    if (r.superseded) continue
+    if (r.superseded || isDraftReceipt(r)) continue
     const mawbId = r.mawb?.id || r.mawbId
     if (!mawbId) continue
     if (!totals[mawbId]) totals[mawbId] = { pieces: 0, weightKg: 0, weightLbs: 0 }
@@ -2921,12 +2977,17 @@ const attentionQueue = computed(() => {
 const receiptById = computed(() => {
   const map = {}
   for (const r of store.receipts || []) {
-    if (r.superseded) continue
+    if (r.superseded || isDraftReceipt(r)) continue
     const mawbId = r.mawb?.id || r.mawbId
     if (mawbId) map[mawbId] = r.id
   }
   return map
 })
+
+// Borrador vigente (no superseded, status DRAFT) de una MAWB (máx. 1 por MAWB)
+function draftForMawb(m) {
+  return draftReceiptForMawb(m, store.receipts)
+}
 
 function receiptVersionTag(receiptId) {
   const r = (store.receipts || []).find(x => x.id === receiptId)
@@ -3341,6 +3402,12 @@ useLiveRefresh(refreshData,
 .mini-act:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft, rgba(37, 99, 235, .06)); }
 .mini-act.act-edit-has { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); background: var(--warn-soft, #fffbeb); }
 .mini-act.act-edit-has:hover { border-color: var(--warn); color: #fff; background: var(--warn); }
+.mini-act.act-draft { width: auto; padding: 0 8px; gap: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .03em; border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); background: var(--warn-soft, #fffbeb); }
+.mini-act.act-draft:hover { border-color: var(--warn); color: #fff; background: var(--warn); }
+.badge-draft { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent); background: var(--warn-soft, #fffbeb);
+  color: var(--warn); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; line-height: 1.5; }
 .btn-rec { display: inline-flex; align-items: center; gap: 5px; padding: 3px 12px; border: 1px solid var(--accent);
   border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 800;
   text-transform: uppercase; letter-spacing: .04em; cursor: pointer; transition: all .12s; }
@@ -3464,6 +3531,8 @@ useLiveRefresh(refreshData,
   cursor: pointer; transition: all .12s; }
 .btn-ghost:hover { background: var(--accent-soft, rgba(62,123,250,.1)); color: var(--accent, #3e7bfa); }
 .btn-ghost.danger:hover { background: var(--danger-soft, #fef2f2); color: var(--danger, #dc2626); border-color: color-mix(in srgb, var(--danger, #dc2626) 32%, transparent); }
+.btn-ghost.draft { border-color: color-mix(in srgb, var(--warn) 55%, transparent); color: var(--warn); background: var(--warn-soft, #fffbeb); }
+.btn-ghost.draft:hover { border-color: var(--warn); color: #fff; background: var(--warn); }
 .btn-ghost:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Restyling of the shared form pieces inside the wizard body */

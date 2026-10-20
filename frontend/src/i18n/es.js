@@ -966,6 +966,16 @@ import: {
       correction: 'Corrección #{n}',
       editMode: 'Modo edición',
     },
+    draft: {
+      badge: 'Borrador',
+      badgeTitle: 'Borrador guardado — no cuenta como recibido',
+      continue: 'Continuar',
+      continueTitle: 'Reanudar este borrador',
+      continueToast: 'Borrador de {awb} cargado para continuar',
+      save: 'Guardar borrador',
+      saving: 'Guardando…',
+      saved: 'Borrador guardado',
+    },
     form: {
       awbNumber: 'Número AWB',
       mawbNumber: 'Número MAWB',

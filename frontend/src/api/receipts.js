@@ -9,6 +9,7 @@ export const receiptsApi = {
   getFullPdf: (id) => api.get(`/warehouse/receipts/${id}/pdf`, { responseType: 'blob' }),
   update: (receiptId, payload) => api.put(`/warehouse/receipts/${receiptId}`, payload),
   validate: (payload) => api.post('/warehouse/receipts/validate', payload),
+  saveDraft: (payload) => api.post('/warehouse/receipts/draft', payload),
   getSupportingDocsJson: (id) => api.get(`/warehouse/receipts/${id}/supporting-docs`),
   getSupportingDocsHtml: (id) => api.get(`/warehouse/receipts/${id}/supporting-docs/html`, { responseType: 'text' }),
   getSupportingDocsPdf: (id) => api.get(`/warehouse/receipts/${id}/supporting-docs/pdf`, { responseType: 'blob' }),

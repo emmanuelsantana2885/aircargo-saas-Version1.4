@@ -22,6 +22,9 @@ public interface WarehouseReceiptRepository extends JpaRepository<WarehouseRecei
     List<WarehouseReceipt> findByCreatedAtAfter(OffsetDateTime since);
     Page<WarehouseReceipt> findByCreatedAtAfter(OffsetDateTime since, Pageable pageable);
 
+    List<WarehouseReceipt> findByMawbIdAndStatusAndSupersededFalse(UUID mawbId, String status);
+    Optional<WarehouseReceipt> findFirstByMawbIdAndStatusAndSupersededFalseOrderByCreatedAtDesc(UUID mawbId, String status);
+
     @Modifying
     @Query("UPDATE WarehouseReceipt r SET r.superseded = true WHERE r.mawbId = :mawbId AND r.id <> :excludeId")
     void supersedeAllByMawbId(UUID mawbId, UUID excludeId);
