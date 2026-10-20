@@ -12,6 +12,7 @@ public interface HawbService {
     List<HawbDTO> getByMawbId(UUID mawbId);
     Page<HawbDTO> getByMawbId(UUID mawbId, Pageable pageable);
     Optional<HawbDTO> getById(UUID id);
+    Optional<HawbDTO> getByHawbNumber(String hawbNumber);
     HawbDTO create(HawbDTO dto);
     Optional<HawbDTO> update(UUID id, HawbDTO dto);
     boolean delete(UUID id);

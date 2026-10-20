@@ -32,6 +32,9 @@ public interface MawbClient {
     @GetMapping("/api/hawbs/{id}")
     HawbDTO getHawbById(@PathVariable UUID id);
 
+    @GetMapping("/api/hawbs/number/{hawbNumber}")
+    HawbDTO getHawbByNumber(@PathVariable String hawbNumber);
+
     @PostMapping("/api/mawbs")
     MawbDTO createMawb(@RequestBody MawbDTO dto);
 

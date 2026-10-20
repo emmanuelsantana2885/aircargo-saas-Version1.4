@@ -51,6 +51,12 @@ public class MawbClientFallbackFactory implements FallbackFactory<MawbClient> {
             }
 
             @Override
+            public HawbDTO getHawbByNumber(String hawbNumber) {
+                log.warn("MawbClient fallback: getHawbByNumber({}) — {}", hawbNumber, cause.getMessage());
+                return null;
+            }
+
+            @Override
             public MawbDTO createMawb(MawbDTO dto) {
                 log.error("MawbClient fallback: createMawb — writes cannot degrade", cause);
                 throw new RuntimeException("Mawb service unavailable: " + cause.getMessage(), cause);

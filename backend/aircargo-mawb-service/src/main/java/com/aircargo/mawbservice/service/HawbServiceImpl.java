@@ -48,6 +48,14 @@ public class HawbServiceImpl implements HawbService {
     }
 
     @Override
+    @Cacheable(value = "hawbs", key = "'num:' + #hawbNumber")
+    public Optional<HawbDTO> getByHawbNumber(String hawbNumber) {
+        if (hawbNumber == null || hawbNumber.isBlank()) return Optional.empty();
+        return Optional.ofNullable(hawbRepository.findByHawbNumber(hawbNumber.trim()))
+                .map(HawbDTO::fromEntity);
+    }
+
+    @Override
     @CacheEvict(value = "hawbs", allEntries = true)
     public HawbDTO create(HawbDTO dto) {
         Hawb entity = HawbDTO.toEntity(dto);

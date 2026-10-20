@@ -38,6 +38,13 @@ public class HawbController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/number/{hawbNumber}")
+    public ResponseEntity<HawbDTO> getByHawbNumber(@PathVariable String hawbNumber) {
+        return hawbService.getByHawbNumber(hawbNumber)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
     public ResponseEntity<HawbDTO> create(@Valid @RequestBody HawbDTO dto,
                                            @AuthenticationPrincipal UserPrincipal principal,

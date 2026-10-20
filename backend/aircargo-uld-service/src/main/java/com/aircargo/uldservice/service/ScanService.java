@@ -3,6 +3,7 @@ package com.aircargo.uldservice.service;
 import com.aircargo.feign.client.MawbClient;
 import com.aircargo.feign.client.BookingClient;
 import com.aircargo.feign.dto.MawbDTO;
+import com.aircargo.feign.dto.HawbDTO;
 import com.aircargo.uldservice.dto.ScanLookupDTO;
 import com.aircargo.uldservice.dto.ScanPieceRequest;
 import com.aircargo.uldservice.dto.ScanPieceResult;
@@ -47,13 +48,20 @@ public class ScanService {
     public ScanLookupDTO lookup(String code, UUID uldId) {
         String normalized = normalizeCode(code);
 
-        // 1. Try as MAWB via Feign
-        try {
-            MawbDTO mawb = mawbClient.getMawbByAwbNumber(normalized);
-            if (mawb != null) {
-                return buildMawbLookup(mawb, uldId);
+        // 1. Try as MAWB via Feign (raw code first, then normalized)
+        MawbDTO mawb = findMawbByCode(normalized);
+        if (mawb != null) {
+            return buildMawbLookup(mawb, uldId);
+        }
+
+        // 1b. Try as HAWB via Feign (resolves to its parent MAWB)
+        HawbDTO hawb = findHawbByCode(normalized);
+        if (hawb != null && hawb.getMawbId() != null) {
+            MawbDTO parent = mawbClient.getMawbById(hawb.getMawbId());
+            if (parent != null) {
+                return buildMawbLookup(parent, uldId);
             }
-        } catch (Exception ignored) {}
+        }
 
         // 2. Try as ULD number
         Optional<Uld> uldOpt = uldRepository.findAll().stream()
@@ -74,11 +82,20 @@ public class ScanService {
 
         String normalized = normalizeCode(request.getAwbNumber());
 
-        // Resolve MAWB via Feign
-        MawbDTO mawb = null;
-        try {
-            mawb = mawbClient.getMawbByAwbNumber(normalized);
-        } catch (Exception ignored) {}
+        // Resolve scanned code: first as MAWB, then as HAWB (resolves to its parent MAWB)
+        MawbDTO mawb = findMawbByCode(normalized);
+        String hawbNumber = request.getHawbNumber();
+
+        if (mawb == null) {
+            // Scanned code may be a HAWB number: resolve it to its parent MAWB
+            HawbDTO hawb = findHawbByCode(normalized);
+            if (hawb != null && hawb.getMawbId() != null) {
+                mawb = mawbClient.getMawbById(hawb.getMawbId());
+                if (mawb != null && (hawbNumber == null || hawbNumber.isBlank())) {
+                    hawbNumber = hawb.getHawbNumber();
+                }
+            }
+        }
 
         if (mawb == null) {
             return errorResult("Código no reconocido: " + request.getAwbNumber());
@@ -100,7 +117,7 @@ public class ScanService {
         piece.setUldId(uld.getId());
         piece.setMawbId(mawb.getId());
         piece.setAwbNumber(mawb.getAwbNumber());
-        piece.setHawbNumber(request.getHawbNumber());
+        piece.setHawbNumber(hawbNumber);
         piece.setPieceNumber(nextPieceNumber);
         piece.setSource("BARCODE".equalsIgnoreCase(request.getSource()) ? PieceSource.BARCODE : PieceSource.MANUAL);
         piece.setScannedBy(scannedBy);
@@ -142,6 +159,52 @@ public class ScanService {
     private String normalizeCode(String code) {
         if (code == null) return "";
         return code.replaceAll("[\\s\\-]", "").toUpperCase();
+    }
+
+    /**
+     * Rebuild the canonical IATA form {@code XXX-XXXXXXXX} from an 11-digit code
+     * (e.g. {@code 40605444320} -> {@code 406-05444320}). Returns the input unchanged
+     * if it is not an 11-digit number.
+     */
+    private String toIataForm(String code) {
+        if (code != null && code.matches("\\d{11}")) {
+            return code.substring(0, 3) + "-" + code.substring(3);
+        }
+        return code;
+    }
+
+    /**
+     * Lookup a MAWB by the scanned code. The code may be scanned with or without
+     * IATA separators (e.g. {@code 406-05444320} vs {@code 40605444320}), while the
+     * mawb-service stores the canonical dashed form and matches it exactly. We try the
+     * normalized form first, then fall back to the canonical dashed form.
+     */
+    private MawbDTO findMawbByCode(String code) {
+        try {
+            MawbDTO mawb = mawbClient.getMawbByAwbNumber(code);
+            if (mawb != null) return mawb;
+        } catch (Exception ignored) {}
+        String dashed = toIataForm(code);
+        if (!dashed.equals(code)) {
+            try {
+                return mawbClient.getMawbByAwbNumber(dashed);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
+    private HawbDTO findHawbByCode(String code) {
+        try {
+            HawbDTO hawb = mawbClient.getHawbByNumber(code);
+            if (hawb != null) return hawb;
+        } catch (Exception ignored) {}
+        String dashed = toIataForm(code);
+        if (!dashed.equals(code)) {
+            try {
+                return mawbClient.getHawbByNumber(dashed);
+            } catch (Exception ignored) {}
+        }
+        return null;
     }
 
     private int getMaxPieces(MawbDTO mawb) {
