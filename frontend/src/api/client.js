@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
 import { handleApiError } from '../utils/error'
 
 // Los tokens viajan en cookies httpOnly: el navegador los envía solo.
@@ -100,6 +101,22 @@ function clearLocalSession() {
   if (!sessionIsFullyEstablished(stored)) return
 
   localStorage.removeItem('aircargo_auth')
+
+  // Limpiar TAMBIÉN el store Pinia. Es la pieza que faltaba y la causa del bucle
+  // infinito de 401: el store se hidrata de `aircargo_auth` una sola vez al
+  // arrancar y NUNCA vuelve a leer localStorage, así que borrar la clave no lo
+  // enteraba. `auth.isAuthenticated` seguía en true → el watch de App.vue no
+  // llamaba a stopHeartbeat() → el intervalo seguía golpeando los endpoints
+  // cada 30 s (heartbeat 401 → refresh 401 → clearLocalSession ya no-op → ...).
+  // El store es la única fuente de verdad de `isAuthenticated`, así que el
+  // interceptor —que es quien detecta la sesión muerta— debe apagarlo aquí y no
+  // depender de que un handler externo lo recuerde.
+  try {
+    useAuthStore().clearProfile()
+  } catch {
+    // Pinia aún no inicializada (p. ej. un import temprano en tests): la clave de
+    // localStorage ya quedó limpia, que es lo mínimo imprescindible.
+  }
 
   // Recordar dónde estaba el usuario para devolverlo allí tras re-autenticar.
   // Antes este bloque copiaba las claves `warehouse_draft_*` de localStorage a

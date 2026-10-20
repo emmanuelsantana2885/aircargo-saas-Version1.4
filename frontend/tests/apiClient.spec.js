@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setActivePinia, createPinia } from 'pinia'
 
 const h = vi.hoisted(() => ({
   inst: null,
@@ -18,6 +19,7 @@ vi.mock('@/utils/error', () => ({ handleApiError: (...a) => h.handleApiError(...
 vi.mock('@/stores/toast', () => ({ useToastStore: () => ({}) }))
 
 import api from '@/api/client'
+import { useAuthStore } from '@/stores/auth'
 
 // Capture the interceptor + axios.create() call at import time: beforeEach calls
 // clearAllMocks(), which would otherwise wipe mock.calls on `use`.
@@ -34,6 +36,7 @@ const storedSession = (o) => localStorage.setItem('aircargo_auth', JSON.stringif
 
 beforeEach(() => {
   vi.clearAllMocks()
+  setActivePinia(createPinia())
   localStorage.clear()
   sessionStorage.clear() // sin esto, aircargo_expired_route se filtra entre tests
   h.inst.mockResolvedValue(RETRIED)
@@ -175,6 +178,44 @@ describe('api client — refresh failure', () => {
 
     await expect(ON_REJECT(err(401, '/api/a'))).rejects.toThrow()
 
+    expect(localStorage.getItem('aircargo_auth')).not.toBeNull()
+  })
+
+  // REGRESIÓN del bucle infinito de 401: `clearLocalSession` borraba
+  // `aircargo_auth` de localStorage, pero el store Pinia se hidrata de esa clave
+  // UNA sola vez al arrancar y nunca la relee. `auth.isAuthenticated` seguía en
+  // true → el watch de App.vue no detenía el heartbeat → cada 30 s volvían el
+  // heartbeat 401 y el refresh 401 en bucle. El interceptor debe apagar el store.
+  it('clears the Pinia auth store too, not just localStorage', async () => {
+    storedSession({ userId: 'u1', selectedSiteId: 's1' })
+    window.history.replaceState({}, '', '/mawbs')
+    h.post.mockRejectedValue(new Error('refresh dead'))
+
+    // El store arranca autenticado desde la sesión persistida.
+    const auth = useAuthStore()
+    expect(auth.isAuthenticated).toBe(true)
+
+    await expect(ON_REJECT(err(401, '/api/auth/heartbeat'))).rejects.toThrow()
+
+    // Sin esto, isAuthenticated seguía true y el intervalo nunca se detenía.
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.userId).toBeNull()
+    expect(auth.selectedSiteId).toBeNull()
+  })
+
+  it('does not clear the store for a half-finished login (mid-MFA)', async () => {
+    const auth = useAuthStore()
+    auth.userId = null
+    auth.hasPasswordSet = true
+    auth.mfaEnabled = true
+    storedSession({ email: 'a@b.c', hasPasswordSet: true, mfaEnabled: true })
+    h.post.mockRejectedValue(new Error('refresh dead'))
+
+    await expect(ON_REJECT(err(401, '/api/a'))).rejects.toThrow()
+
+    // El perfil del paso a medias se conserva: no hay userId/site que limpiar y
+    // borrarlo devolvería al operador al paso de contraseña.
+    expect(auth.hasPasswordSet).toBe(true)
     expect(localStorage.getItem('aircargo_auth')).not.toBeNull()
   })
 

@@ -109,6 +109,10 @@ function startHeartbeat() {
   usersApi.heartbeat().catch(() => {})
   if (NOTIFY_ROLES.includes(auth.role)) checkNewReceipts()
   heartbeatInterval = setInterval(() => {
+    // Guard defensivo: si el store acaba de limpiarse (sesión expirada) y el
+    // tick se dispara en el mismo instante, no lanzar peticiones que sólo
+    // generarían 401 + refresh fallido en el console.
+    if (!auth.isAuthenticated) return
     usersApi.heartbeat().catch(() => {})
     if (NOTIFY_ROLES.includes(auth.role)) checkNewReceipts()
   }, 30000)
@@ -175,6 +179,12 @@ onMounted(() => {
   document.addEventListener('keydown', onKeydown)
   // Registrar handler global de expiración de sesión (SPA navigation, no hard reload)
   setSessionExpiredHandler(() => {
+    // `client.js#clearLocalSession` ya limpió el store (auth.clearProfile()) y
+    // `aircargo_auth`. Se repite aquí por idempotencia/defensa: si alguna ruta
+    // futura dispara el handler sin pasar por el interceptor, el store — fuente
+    // única de `isAuthenticated`— queda igualmente apagado y el watch de abajo
+    // detiene heartbeat e idle-logout.
+    auth.clearProfile()
     router.push('/login?expired=1')
   })
 })
