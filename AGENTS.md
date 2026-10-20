@@ -1,5 +1,27 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 19, 2026 (2) — Escaneo HAWB→MAWB padre + fix de separadores + matriz sin despachos)
+
+**Contexto**: dos pedidos del usuario. (1) Al **escanear una HAWB** (no solo la MAWB) el sistema debe resolverla a su **MAWB padre** y registrar la pieza contra esa MAWB guardando el número de HAWB escaneado. (2) La **matriz de MAWBs** debía arrancar **ocultando las MAWBs sin despachos** (`pcsDispatched == 0`), con un **toggle** para revelarlas (no filtro estricto permanente). El usuario confirmó ambas decisiones: "Por defecto oculta, con toggle" y "HAWB resuelve a su MAWB padre y registra pieza".
+
+| File | Change |
+|------|--------|
+| `backend/aircargo-mawb-service/.../controller/HawbController.java` | **NEW** `GET /api/hawbs/number/{hawbNumber}` → 200 `HawbDTO` / 404 |
+| `backend/aircargo-mawb-service/.../service/HawbService.java` + `HawbServiceImpl.java` | **NEW** `getByHawbNumber(String)`: `@Cacheable(value="hawbs", key="'num:' + #hawbNumber")`, blank→empty, `findByHawbNumber(trim)` |
+| `backend/aircargo-feign-clients/.../client/MawbClient.java` | **NEW** `getHawbByNumber(@PathVariable String hawbNumber)` → `GET /api/hawbs/number/{hawbNumber}` |
+| `backend/aircargo-feign-clients/.../fallback/MawbClientFallbackFactory.java` | Override `getHawbByNumber` → warn + `null` (degradación best-effort) |
+| `backend/aircargo-uld-service/.../service/ScanService.java` | **`lookup()`**: MAWB por `findMawbByCode`; si null → `findHawbByCode` + `getMawbById(hawb.getMawbId())` (HAWB→MAWB padre). **`registerPiece`**: resuelve MAWB o HAWB→MAWB; si el request no traía `hawbNumber` usa `hawb.getHawbNumber()`. **NEW helpers** `toIataForm` (reconstruye `XXX-XXXXXXXX` desde 11 dígitos), `findMawbByCode`/`findHawbByCode` (prueban código normalizado y luego forma dashed como fallback). **Fix pre-existente**: `normalizeCode` quita guiones pero mawb-service almacena la forma dashed (`406-05444320`) con match exacto → escaneos MAWB sin guion daban 404; ahora se reintenta en forma IATA |
+| `frontend/src/views/MawbsView.vue` | **Toggle de despachos**: `showZeroDispatch = ref(false)`; botón junto a `toggleHidePast` (`pi-eye`/`pi-eye-slash`, `ring-1 ring-inset ring-slate-400` cuando activo); `filteredRows` filtra `Number(r.pcsDispatched \|\| 0) !== 0` salvo `showZeroDispatch` |
+| `frontend/src/i18n/es.js` + `en.js` | Claves `mawbs.hideZeroDispatch` / `showZeroDispatch` / `zeroDispatchTooltip` |
+
+**Decisiones de diseño**: (1) el filtro de despachos es **de vista, no destructivo**: la matriz arranca limpia (solo despachadas) pero el operador revela las de 0 con un clic — no hay filtro permanente ni param de backend; el universo (`matrixRows`) no se toca, solo `filteredRows`. (2) La resolución HAWB→MAWB es **secuencial y best-effort**: se prueba MAWB primero (camino caliente, cacheado), luego HAWB; la búsqueda de HAWB es infra `GET` en mawb-service, cacheada por número sin afectar el camino MAWB. (3) El fallback de forma IATA vive **solo en el scanner (uld-service)** — mawb-service mantiene su match exacto canónico; no se relaja la fuente de verdad. (4) La pieza siempre guarda `awbNumber` = MAWB canónica y `hawbNumber` = el escaneado (o el de la HAWB resuelta si faltaba), preservando trazabilidad por-HAWB.
+
+**Verificación**: backend `mvn -o -pl aircargo-mawb-service,aircargo-uld-service -am test` → **BUILD SUCCESS** (common 30, mawb 10 incl. `FeignContractSyncTest` 2, uld 24). Frontend `npm run lint` ✓ (check:refs 49 SFC / 0 refs, i18n **1514/1514**, contrast WCAG AA), `npm test` ✓ **274/274**. **E2E real vía gateway** (token HS512 fresco del `.env`): `POST /api/hawbs` → 201 (`E2EHAWB001`, `mawbId=16d80dca…`); `GET /api/hawbs/number/E2EHAWB001` → 200, `/NOPE999` → 404; scan lookup: HAWB → 200 (resuelve `406-05444320`), MAWB dashed `406-05444320` → 200 (regresión), MAWB dashless `40605444320` → 200, desconocido → 400; `POST /api/scan/piece` con `E2EHAWB001` → 200 "Pieza #1 registrada" y BD confirma `uld.uld_piece(hawb_number=E2EHAWB001, mawb_id=16d80dca…)`. Datos de test limpiados (hawb/piece/uld_awb recientes = 0). uld-service recompilado y reiniciado con el fix; mawb-service sirve el endpoint nuevo.
+
+**Commits**: `06c5c98` feat(uld): el escaneo de una HAWB resuelve su MAWB padre y registra la pieza · `e48c745` feat(mawbs): la matriz oculta por defecto las MAWBs sin despachos (con toggle). (Repo-local identity `emmanuelsantana2885`.)
+
+**Pendiente/notas**: `git push` a `origin/main` sigue bloqueado (sin credenciales) — 7 commits sin subir. Multipestaña (sesión) y CDN siguen fuera de alcance. Entorno: reactor Maven en `backend/`, `JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto`, `mvn -o`; `rg` no instalado.
+
 ## Recent session changes (Oct 19, 2026 — Borradores de recibo (DRAFT) + template UPS de etiqueta ULD + fix del bucle infinito de 401 al expirar sesión)
 
 **Contexto**: pedido del usuario — el formulario/recibo de bodega podía rellenarse a medias y perderse; debía poder **guardarse como borrador sin emitir** (la MAWB sigue PENDIENTE hasta la emisión), y además se cerró un bug real de sesión: al morir la sesión el navegador spameaba 401 para siempre. Se añadió también una etiqueta de pallet con diseño **UPS Air Cargo**. Los tres cambios se commitearon por separado (ver Commits abajo).
