@@ -1,7 +1,7 @@
 <template>
   <div class="auth-shell">
     <div class="auth-card">
-      <div v-if="route.query.idle === '1'" class="mb-4 p-3 rounded-xl text-[12.5px]" style="background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn)">
+      <div v-if="route.query.idle === '1'" class="mb-4 p-3 rounded-xl text-sm" style="background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn)">
           {{ t('idle.expired') }}
         </div>
         <template v-if="step === 'credentials'">
@@ -10,12 +10,12 @@
             <component :is="icons.PlaneDeparture" :size="30" color="white" :stroke-width="2" />
           </div>
           <h1 class="auth-title font-bold" style="color: var(--text)">{{ t('login.brand') }}</h1>
-          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.tagline') }}</p>
+          <p class="text-base mt-1" style="color: var(--muted)">{{ t('login.tagline') }}</p>
         </div>
 
         <form @submit.prevent="handleLogin" class="space-y-4" novalidate>
           <div class="auth-field">
-            <label for="login-email" class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.email') }}</label>
+            <label for="login-email" class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.email') }}</label>
             <div class="auth-control">
               <span class="auth-control-icon" aria-hidden="true">
                 <component :is="icons.Mail" :size="16" :stroke-width="2" />
@@ -30,7 +30,7 @@
                 autocapitalize="none"
                 spellcheck="false"
                 :placeholder="t('login.emailPlaceholder')"
-                class="w-full rounded text-sm outline-none transition-all"
+                class="w-full rounded text-base outline-none transition-all"
                 style="background: var(--bg); color: var(--text)"
                 :disabled="loading"
               />
@@ -38,7 +38,7 @@
           </div>
 
           <div v-if="needsPassword" class="auth-field">
-            <label for="login-password" class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.password') }}</label>
+            <label for="login-password" class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.password') }}</label>
             <div class="auth-control">
               <span class="auth-control-icon" aria-hidden="true">
                 <component :is="icons.Lock" :size="16" :stroke-width="2" />
@@ -51,7 +51,7 @@
                 name="password"
                 autocomplete="current-password"
                 :placeholder="t('login.passwordPlaceholder')"
-                class="w-full rounded text-sm outline-none transition-all"
+                class="w-full rounded text-base outline-none transition-all"
                 style="background: var(--bg); color: var(--text); padding-right: 42px"
                 :disabled="loading"
                 @keyup="detectCapsLock"
@@ -86,7 +86,7 @@
           <button
             type="submit"
             :disabled="loading || !loginEmail || (needsPassword && !password)"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -114,7 +114,7 @@
             <component :is="icons.ShieldLock" :size="28" color="white" :stroke-width="2" />
           </div>
           <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.mfa.title') }}</h1>
-          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.mfa.subtitle') }}</p>
+          <p class="text-base mt-1" style="color: var(--muted)">{{ t('login.mfa.subtitle') }}</p>
         </div>
 
         <div
@@ -139,7 +139,7 @@
 
         <form @submit.prevent="handleMfa" class="space-y-4">
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.codeLabel') }}</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.codeLabel') }}</label>
             <input
               v-model="totpCode"
               type="text"
@@ -148,7 +148,7 @@
               maxlength="6"
               required
               placeholder="000000"
-              class="w-full px-3 py-2.5 rounded text-sm text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
+              class="w-full px-3 py-2.5 rounded text-base text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
               style="background: var(--bg); color: var(--text); font-size: 18px"
               :disabled="loading"
               autofocus
@@ -158,7 +158,7 @@
           <button
             type="submit"
             :disabled="loading || totpCode.length !== 6"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -169,7 +169,7 @@
             <span v-else>{{ t('login.mfa.verify') }}</span>
           </button>
 
-          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-sm text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
           <button
             @click="openMfaRecovery"
@@ -197,18 +197,18 @@
             <component :is="icons.ShieldAlert" :size="28" color="white" :stroke-width="2" />
           </div>
           <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.mfa.recovery.title') }}</h1>
-          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.mfa.recovery.subtitle') }}</p>
+          <p class="text-base mt-1" style="color: var(--muted)">{{ t('login.mfa.recovery.subtitle') }}</p>
         </div>
 
         <form v-if="mfaRecoveryPhase === 'request'" @submit.prevent="handleRecoveryRequest" class="space-y-4">
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.emailLabel') }}</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.emailLabel') }}</label>
             <input
               v-model="mfaRecoveryEmail"
               type="email"
               required
               :placeholder="t('login.emailPlaceholder')"
-              class="w-full px-3 py-2.5 rounded text-sm outline-none transition-all border-slate-300"
+              class="w-full px-3 py-2.5 rounded text-base outline-none transition-all border-slate-300"
               style="background: var(--bg); color: var(--text)"
               :disabled="loading"
               autofocus
@@ -218,7 +218,7 @@
           <button
             type="submit"
             :disabled="loading || !mfaRecoveryEmail"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -229,7 +229,7 @@
             <span v-else>{{ t('login.mfa.recovery.sendCode') }}</span>
           </button>
 
-          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-sm text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
           <div
             v-if="!mfaRecoveryMailAvailable"
@@ -266,7 +266,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.codeLabel') }}</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.recovery.codeLabel') }}</label>
             <input
               v-model="mfaRecoveryCode"
               type="text"
@@ -275,7 +275,7 @@
               maxlength="6"
               required
               placeholder="000000"
-              class="w-full px-3 py-2.5 rounded text-sm text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
+              class="w-full px-3 py-2.5 rounded text-base text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
               style="background: var(--bg); color: var(--text); font-size: 18px"
               :disabled="loading"
               autofocus
@@ -285,7 +285,7 @@
           <button
             type="submit"
             :disabled="loading || mfaRecoveryCode.length !== 6"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -296,7 +296,7 @@
             <span v-else>{{ t('login.mfa.recovery.confirm') }}</span>
           </button>
 
-          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-sm text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
           <button
             @click="backToMfa"
@@ -315,7 +315,7 @@
             <component :is="icons.ShieldLock" :size="28" color="white" :stroke-width="2" />
           </div>
           <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.mfaEnroll.title') }}</h1>
-          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.mfaEnroll.subtitle') }}</p>
+          <p class="text-base mt-1" style="color: var(--muted)">{{ t('login.mfaEnroll.subtitle') }}</p>
         </div>
 
         <div
@@ -348,13 +348,13 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfaEnroll.secret') }}</label>
-            <code class="block w-full px-3 py-2.5 rounded text-sm font-mono break-all text-center"
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.mfaEnroll.secret') }}</label>
+            <code class="block w-full px-3 py-2.5 rounded text-base font-mono break-all text-center"
               style="background: var(--bg); color: var(--text); border: 1px solid var(--border)">{{ enrollSecret }}</code>
           </div>
 
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.codeLabel') }}</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('login.mfa.codeLabel') }}</label>
             <input
               v-model="enrollCode"
               type="text"
@@ -363,19 +363,19 @@
               maxlength="6"
               required
               placeholder="000000"
-              class="w-full px-3 py-2.5 rounded text-sm text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
+              class="w-full px-3 py-2.5 rounded text-base text-center font-mono tracking-[0.5em] outline-none transition-all border-slate-300"
               style="background: var(--bg); color: var(--text); font-size: 18px"
               :disabled="loading"
               autofocus
             />
           </div>
 
-          <p v-if="errorMsg" class="text-xs text-center" style="color: var(--muted)">{{ errorMsg }}</p>
+          <p v-if="errorMsg" class="text-sm text-center" style="color: var(--muted)">{{ errorMsg }}</p>
 
           <button
             type="submit"
             :disabled="loading || enrollCode.length !== 6"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="loading ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -402,15 +402,15 @@
             <component :is="icons.BuildingStore" :size="28" color="white" :stroke-width="2" />
           </div>
           <h1 class="text-xl font-bold" style="color: var(--text)">{{ t('login.stepSite.title') }}</h1>
-          <p class="text-sm mt-1" style="color: var(--muted)">{{ t('login.stepSite.subtitle') }}</p>
+          <p class="text-base mt-1" style="color: var(--muted)">{{ t('login.stepSite.subtitle') }}</p>
         </div>
 
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-medium mb-1" style="color: var(--text)">{{ t('sidebar.siteLabel') }}</label>
+            <label class="block text-sm font-medium mb-1" style="color: var(--text)">{{ t('sidebar.siteLabel') }}</label>
             <select
               v-model="selectedSite"
-              class="w-full px-3 py-2.5 rounded text-sm outline-none border-slate-300"
+              class="w-full px-3 py-2.5 rounded text-base outline-none border-slate-300"
               style="background: var(--bg); color: var(--text)"
             >
               <option v-for="site in auth.sites" :key="site.id" :value="site.id">
@@ -422,7 +422,7 @@
           <button
             @click="handleSiteConfirm"
             :disabled="!selectedSite"
-            class="w-full py-2.5 rounded text-sm font-semibold transition-all"
+            class="w-full py-2.5 rounded text-base font-semibold transition-all"
             :class="!selectedSite ? 'opacity-60' : 'hover:brightness-110 active:scale-[0.98]'"
             style="background: var(--accent); color: white"
           >
@@ -934,7 +934,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
+  font-size: 13px;
   line-height: 1.3;
 }
 
@@ -946,7 +946,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 14px;
   color: var(--text-2);
   cursor: pointer;
   user-select: none;
@@ -965,7 +965,7 @@ onMounted(() => {
   gap: 8px;
   padding: 9px 11px;
   border-radius: 10px;
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.35;
   color: var(--warn);
   background: var(--warn-bg);
