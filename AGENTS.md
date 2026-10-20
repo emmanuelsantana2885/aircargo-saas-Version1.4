@@ -1,5 +1,48 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 19, 2026 — Borradores de recibo (DRAFT) + template UPS de etiqueta ULD + fix del bucle infinito de 401 al expirar sesión)
+
+**Contexto**: pedido del usuario — el formulario/recibo de bodega podía rellenarse a medias y perderse; debía poder **guardarse como borrador sin emitir** (la MAWB sigue PENDIENTE hasta la emisión), y además se cerró un bug real de sesión: al morir la sesión el navegador spameaba 401 para siempre. Se añadió también una etiqueta de pallet con diseño **UPS Air Cargo**. Los tres cambios se commitearon por separado (ver Commits abajo).
+
+**1. Borradores de recibo (status DRAFT)** — backend `aircargo-warehouse-service` + frontend. Un borrador vive en el servidor pero NO cuenta como recibo: `activeReceiptForMawb` lo excluye (la MAWB queda PENDIENTE), se muestra en la lista con distintivo "Borrador" + acción "Continuar", y hay **un único borrador activo por MAWB** (guardar reemplaza los DRAFT previos de esa MAWB); emitir borra los DRAFT y crea el recibo `EMITTED`. Los artículos/PDF/Excel no se generan en borrador ni se publica `ReceiptCreatedEvent`.
+
+| File | Change |
+|------|--------|
+| `backend/.../db/migration/V6__add_receipt_status.sql` ≡ raíz `V70__add_receipt_status.sql` | **NEW** — añade `warehouse.warehouse_receipt.status` (VARCHAR, default `EMITTED`) + índice; cualificado al schema `warehouse` (tras el pivot V5) |
+| `backend/.../entity/WarehouseReceipt.java` + `dto/WarehouseReceiptDTO.java` + `repository/WarehouseReceiptRepository.java` | Campo `status` (+mapping DTO) y finders scopeados por status (`findBySupersededFalse`→ filtra EMITTED, `findByMawbIdAndStatus`, etc.) |
+| `backend/.../service/WarehouseService.java` + `WarehouseServiceImpl.java` | `saveDraft(dto,…)` (set status DRAFT, `deleteDraftsForMawb` para el único-borrador-por-MAWB), `deleteDraftsForMawb(mawbId)`; `emitReceipt` borra los DRAFT de la MAWB antes de crear el `EMITTED` |
+| `backend/.../controller/WarehouseController.java` | `POST /api/warehouse/receipts/draft` → `saveDraft` con auditoría `RECEIPT_DRAFT` |
+| `frontend/src/api/receipts.js` + `stores/app.js` | `receiptsApi.saveDraft` → `POST /warehouse/receipts/draft`; `appStore.saveReceiptDraft(payload)` (L194, export L235) |
+| `frontend/src/utils/mawbDispatch.js` | **NEW** `isDraftReceipt(r)` (`r?.status === 'DRAFT'`) + `draftReceiptForMawb`; `activeReceiptForMawb` ahora exige `!isDraftReceipt(r)` |
+| `frontend/src/views/WarehouseReceiptsView.vue` | UI de borrador: guardar (`submitDraft`, sin confirm ni `bumpFormVersion`, mantiene form+localStorage) y continuar (`continueDraft`); exclusión de DRAFT (`isDraftReceipt`) en `receiptTotals`/`receiptById`/listados (L1089/1224/1251/1258/2905/2938/2950) |
+| `frontend/src/views/LoadPlanningView.vue` | El despacho filtra `!isDraftReceipt(r)` (un borrador no bloquea el despacho) |
+| `frontend/src/i18n/es.js` + `en.js` | Bloque `warehouse.draft.*` (badge, badgeTitle, continue, continueTitle, continueToast, save, saving, saved) |
+
+**2. Etiqueta de pallet "UPS Air Cargo" (`designStyle`)** — tercer diseño del generador de etiquetas ULD (cabecera marrón corporativa #351C15, ULD number grande, bloque de pesos por celda, ruteo origen→destino, vuelo/fecha), sin tocar los templates IATA existentes.
+
+| File | Change |
+|------|--------|
+| `frontend/src/utils/uldLabel.js` | `LABEL_TEMPLATES` gana `id:'ups-pallet'` con `designStyle:'ups'`; los existentes pasan a `designStyle:'iata'`; `createEmptyLabel`/`applyTemplate` propagan `designStyle` |
+| `frontend/src/components/UldLabelGeneratorModal.vue` | Render condicional por `designStyle` (`'ups'` vs `'iata'`); helper `templateName()/templateDesc()` resuelve la etiqueta i18n por id (antes rama ternaria sólo para `val`); resumen de etiqueta ULD muestra peso en lb |
+| `frontend/src/i18n/es.js` + `en.js` | `ulds.label.templates.upsName` / `upsDesc` |
+
+**3. Fix del bucle infinito de 401 al expirar la sesión** — **causa raíz**: `client.js#clearLocalSession()` borraba `aircargo_auth` de localStorage pero **NO el store Pinia**, que hidrata de esa clave una sola vez al arrancar y nunca la relee → `auth.isAuthenticated` quedaba `true` → el watch de `App.vue` no llamaba `stopHeartbeat()` → el intervalo de 30 s repetía `heartbeat 401 → refresh 401 → clearLocalSession (ya no-op)` para siempre. Trigger típico: reinicio del auth-service vacía `ActiveSessionTracker` en memoria → el gate de liveness del refresh rechaza ("Sesión cerrada: navegador cerrado").
+
+| File | Change |
+|------|--------|
+| `frontend/src/api/client.js` | **FIX** — `clearLocalSession()` llama `useAuthStore().clearProfile()` en `try/catch` (Pinia puede no estar inicializada en imports tempranos/tests); el interceptor es quien detecta la sesión muerta, así que apaga la fuente de verdad de `isAuthenticated` en vez de depender de un handler externo |
+| `frontend/src/App.vue` | `setSessionExpiredHandler` añade `auth.clearProfile()` idempotente (defensa en profundidad) antes de `router.push('/login?expired=1')`; el tick del heartbeat gana `if (!auth.isAuthenticated) return` |
+| `frontend/tests/apiClient.spec.js` | **+2 tests de regresión** (Pinia activada en `beforeEach`): (a) un 401 limpia store **y** storage (`isAuthenticated`→false, `userId`/`selectedSiteId` null); (b) un login a medias (mid-MFA) NO limpia el store (conserva `hasPasswordSet`). El test (a) se verificó que FALLA sin el fix y PASA con él |
+
+**Commits** (repo-local identity `emmanuelsantana2885`, 3 commits separados — el archivo i18n se partió por hunks para que cada commit fuera autocontenido):
+- `df11f97` feat(warehouse): guardado de borradores de recibo (status DRAFT) con continuar/emitir
+- `249d62e` feat(ulds): template 'UPS Air Cargo' para etiqueta de pallet + designStyle
+- `8800aa8` fix(frontend): detener el bucle infinito de 401 al expirar la sesión
+
+**Verificación**: frontend `npm run check:refs` ✓ (49 SFC, 0 refs sin resolver), i18n **1511/1511** (es/en) ✓, `lint` + contrast ✓, **vitest 274/274** ✓ (272 previos + 2 de regresión), `npm run build` ✓ 2.17s. Backend warehouse: `mvn -o -pl aircargo-warehouse-service -am test` verde (incl. `WarehouseServiceImplTest`, `ReceiptCalcConfigServiceImplTest` 11, `WarehouseReceiptServiceImplTest` 6). **E2E real**: el 500 previo era un jar viejo — reconstruido y relanzado (PID hadows `:9096`), Flyway aplicó **V6**, `POST …/draft` → 200 `"status":"DRAFT"`, único-borrador-por-MAWB verificado, borrador listado; datos de test limpiados. Harness E2E en `/tmp/opencode/` (`mint_rec.py` HS512 + `token.txt` + `draft.json`).
+
+**Pendiente/notas**: `git push` a `origin/main` sigue bloqueado (sin credenciales) — 5 commits sin subir. Caveat multi-pestaña NO resuelto (la pestaña B conserva `isAuthenticated` tras limpiar la A el localStorage compartido; posible fix futuro con `window.addEventListener('storage', …)`, fuera de alcance). Entorno: Maven reactor raíz en `backend/` (nunca la raíz del repo), `JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto`, `mvn -o`; `rg` no instalado (usar `grep`/`read`).
+
 ## Recent session changes (Oct 16, 2026 — Load planning: recuperar un plan despachado SOLO ante excepción (snapshot de ULD))
 
 **Contexto**: pedido del usuario — *"si un load planning es despachado este se pueda recuperar solo si se crea una excepcion por un problema de vuelo o temas de desviacion de la operacion. Crea una opcion para esto."* Al despachar un vuelo los ULDs se liberan (`flight_id=null`) para volver al pool reutilizable; recuperar el plan debe restaurar **todos** esos ULDs al vuelo original, pero únicamente cuando se documenta una excepción.
