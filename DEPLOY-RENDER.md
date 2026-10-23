@@ -264,8 +264,11 @@ Con el deploy en verde (Render muestra cada servicio como **Live**):
 - [ ] 1.1 Dump local generado (`./scripts/db-backup.sh pre-deploy`).
 - [ ] 2 Blueprint aplicado (recursos creados).
 - [ ] 3.1 `POSTGRES_HOST/PORT` rellenados en los 8 servicios con BD.
-- [ ] 3.2 `RABBITMQ_*` (+`RABBITMQ_SSL=true`) rellenados en los 7 servicios con AMQP.
+- [ ] 3.2 `RABBITMQ_*` (+`RABBITMQ_SSL=true`) rellenados en los 8 servicios con AMQP.
 - [ ] 1.3 Dump restaurado en Render Postgres (`--sslmode=require`).
 - [ ] 1.4 Conteos post-restore coinciden con la tabla de referencia.
 - [ ] 4 Health `200` en los 10 servicios y frontend cargando.
 - [ ] 4 Login E2E por el gateway OK (428 MFA o 200).
+
+> Orden recomendado: **1.1 → 2 → 3 → 1.3 → 1.4 → 4** (el dump local puede generarse en
+> cualquier momento, pero la restauración 1.3 necesita el Postgres ya creado en 2).
