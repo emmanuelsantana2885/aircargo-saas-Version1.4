@@ -117,6 +117,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: RABBITMQ_ENABLED
         value: "true"
       - key: CORS_ORIGINS
@@ -158,6 +160,18 @@ services:
         sync: false
       - key: POSTGRES_SSLMODE
         value: require
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        sync: false
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
+      - key: CORS_ORIGINS
+        value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
         value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
@@ -201,6 +215,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_FLIGHT_URL
         value: https://aircargo-flight.onrender.com
       - key: SERVICE_MAWB_URL
@@ -250,6 +266,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_FLIGHT_URL
         value: https://aircargo-flight.onrender.com
       - key: SERVICE_BOOKING_URL
@@ -299,6 +317,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_FLIGHT_URL
         value: https://aircargo-flight.onrender.com
       - key: SERVICE_MAWB_URL
@@ -354,6 +374,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_FLIGHT_URL
         value: https://aircargo-flight.onrender.com
       - key: SERVICE_MAWB_URL
@@ -391,6 +413,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_FLIGHT_URL
         value: https://aircargo-flight.onrender.com
       - key: SERVICE_ULD_URL
@@ -495,6 +519,8 @@ services:
         sync: false
       - key: RABBITMQ_PASSWORD
         sync: false
+      - key: RABBITMQ_SSL
+        value: "true"
       - key: SERVICE_AUTH_URL
         value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
