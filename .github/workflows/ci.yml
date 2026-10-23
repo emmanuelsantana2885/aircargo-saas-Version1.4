@@ -47,7 +47,7 @@ jobs:
 
       - name: Build Docker images
         run: |
-          for service in aircargo-gateway aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-export-service aircargo-notification-service; do
+          for service in aircargo-gateway aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-audit-reports-service aircargo-notification-service; do
             docker build -t aircargo/$service:latest -f $service/Dockerfile .
           done
         working-directory: backend

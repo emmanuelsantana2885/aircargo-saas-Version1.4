@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aircargo-audit-reports-service
+  namespace: aircargo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aircargo-audit-reports-service
+  template:
+    metadata:
+      labels:
+        app: aircargo-audit-reports-service
+    spec:
+      containers:
+        - name: aircargo-audit-reports-service
+          image: aircargo/aircargo-audit-reports-service:latest
+          ports:
+            - containerPort: 9099
+          envFrom:
+            - configMapRef:
+                name: aircargo-config
+            - secretRef:
+                name: aircargo-secrets
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9099
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 9099
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aircargo-audit-reports-service
+  namespace: aircargo
+spec:
+  selector:
+    app: aircargo-audit-reports-service
+  ports:
+    - port: 9099
+      targetPort: 9099

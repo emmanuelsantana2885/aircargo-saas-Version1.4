@@ -183,7 +183,7 @@ jobs:
           - aircargo-warehouse-service
           - aircargo-uld-service
           - aircargo-load-planning-service
-          - aircargo-export-service
+          - aircargo-audit-reports-service
           - aircargo-notification-service
           - aircargo-frontend
     steps:

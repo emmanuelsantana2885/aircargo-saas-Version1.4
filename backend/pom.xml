@@ -30,7 +30,7 @@
         <module>aircargo-warehouse-service</module>
         <module>aircargo-uld-service</module>
         <module>aircargo-load-planning-service</module>
-        <module>aircargo-export-service</module>
+        <module>aircargo-audit-reports-service</module>
         <module>aircargo-notification-service</module>
     </modules>
 

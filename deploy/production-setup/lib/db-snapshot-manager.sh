@@ -130,7 +130,7 @@ restore_rds_snapshot() {
   kubectl rollout restart deployment -n aircargo -l app=aircargo-warehouse-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-uld-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-load-planning-service
-  kubectl rollout restart deployment -n aircargo -l app=aircargo-export-service
+  kubectl rollout restart deployment -n aircargo -l app=aircargo-audit-reports-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-notification-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-gateway
   
@@ -158,7 +158,7 @@ restore_local_pg_dump() {
   kubectl rollout restart deployment -n aircargo -l app=aircargo-warehouse-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-uld-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-load-planning-service
-  kubectl rollout restart deployment -n aircargo -l app=aircargo-export-service
+  kubectl rollout restart deployment -n aircargo -l app=aircargo-audit-reports-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-notification-service
   kubectl rollout restart deployment -n aircargo -l app=aircargo-gateway
   

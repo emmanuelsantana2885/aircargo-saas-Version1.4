@@ -123,18 +123,18 @@ public class RouteConfig {
                         )
                         .uri(svc("SERVICE_LOAD_PLANNING_URL", "http://localhost:9098")))
 
-                .route("export-service", r -> r
+                .route("audit-reports-service", r -> r
                         .path("/api/exports/**", "/api/bi/**", "/api/reports/**", "/api/catalog/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
-                                        .setName("export-service")
-                                        .setFallbackUri("forward:/fallback/export"))
+                                        .setName("audit-reports-service")
+                                        .setFallbackUri("forward:/fallback/audit-reports"))
                                 .retry(config -> config
                                         .setRetries(2)
                                         .setBackoff(java.time.Duration.ofMillis(500),
                                                      java.time.Duration.ofSeconds(2), 2, true))
                         )
-                        .uri(svc("SERVICE_EXPORT_URL", "http://localhost:9099")))
+                        .uri(svc("SERVICE_AUDIT_REPORTS_URL", "http://localhost:9099")))
 
                 .route("notification-service", r -> r
                         .path("/api/notifications/**")
@@ -157,7 +157,7 @@ public class RouteConfig {
                 .route("warehouse-api-docs", r -> r.path("/warehouse/api-docs/**").uri(svc("SERVICE_WAREHOUSE_URL", "http://localhost:9096")))
                 .route("uld-api-docs", r -> r.path("/uld/api-docs/**").uri(svc("SERVICE_ULD_URL", "http://localhost:9097")))
                 .route("load-planning-api-docs", r -> r.path("/load-planning/api-docs/**").uri(svc("SERVICE_LOAD_PLANNING_URL", "http://localhost:9098")))
-                .route("export-api-docs", r -> r.path("/export/api-docs/**").uri(svc("SERVICE_EXPORT_URL", "http://localhost:9099")))
+                .route("audit-reports-api-docs", r -> r.path("/audit-reports/api-docs/**").uri(svc("SERVICE_AUDIT_REPORTS_URL", "http://localhost:9099")))
                 .route("notification-api-docs", r -> r.path("/notification/api-docs/**").uri(svc("SERVICE_NOTIFICATION_URL", "http://localhost:9100")))
 
                 .build();

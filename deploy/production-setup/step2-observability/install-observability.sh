@@ -546,14 +546,14 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: aircargo-export-pods
+  name: aircargo-audit-reports-pods
   namespace: monitoring
   labels:
     release: kube-prometheus-stack
 spec:
   selector:
     matchLabels:
-      app: aircargo-export-service
+      app: aircargo-audit-reports-service
   podMetricsEndpoints:
     - port: http
       path: /actuator/prometheus

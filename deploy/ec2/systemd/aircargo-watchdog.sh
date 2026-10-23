@@ -26,7 +26,7 @@ SERVICES=(
   "warehouse-service 9096"
   "uld-service 9097"
   "load-planning-service 9098"
-  "export-service 9099"
+  "audit-reports-service 9099"
   "notification-service 9100"
 )
 

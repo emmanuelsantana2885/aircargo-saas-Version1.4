@@ -263,7 +263,7 @@ resource "aws_ecr_repository" "services" {
     "aircargo-warehouse-service",
     "aircargo-uld-service",
     "aircargo-load-planning-service",
-    "aircargo-export-service",
+    "aircargo-audit-reports-service",
     "aircargo-notification-service",
     "aircargo-gateway",
     "aircargo-frontend"

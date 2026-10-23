@@ -18,7 +18,7 @@ resources:
   - ../../base/05-warehouse-service.yml
   - ../../base/05-uld-service.yml
   - ../../base/05-load-planning-service.yml
-  - ../../base/05-export-service.yml
+  - ../../base/05-audit-reports-service.yml
   - ../../base/05-notification-service.yml
   - ../../base/05-gateway.yml
   - ../../base/06-serviceaccount.yml
@@ -42,7 +42,7 @@ images:
     newTag: production-latest
   - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-load-planning-service
     newTag: production-latest
-  - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-export-service
+  - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-audit-reports-service
     newTag: production-latest
   - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-notification-service
     newTag: production-latest
@@ -73,7 +73,7 @@ configMapGenerator:
       - REDIS_PORT=6379
       - RATE_LIMIT_USE_REDIS=true
   # Service-specific cache TTLs (override base)
-  - name: aircargo-export-config
+  - name: aircargo-audit-reports-config
     behavior: merge
     literals:
       - SPRING_CACHE_REDIS_TIME_TO_LIVE=60s
@@ -182,12 +182,12 @@ patches:
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: aircargo-export-service
+        name: aircargo-audit-reports-service
       spec:
         replicas: 2
     target:
       kind: Deployment
-      labelSelector: app=aircargo-export-service
+      labelSelector: app=aircargo-audit-reports-service
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment
@@ -226,22 +226,22 @@ patches:
       apiVersion: apps/v1
       kind: Deployment
       metadata:
-        name: aircargo-export-service
+        name: aircargo-audit-reports-service
       spec:
         template:
           spec:
             containers:
-            - name: aircargo-export-service
+            - name: aircargo-audit-reports-service
               envFrom:
               - configMapRef:
                   name: aircargo-config
               - secretRef:
                   name: aircargo-secrets
               - configMapRef:
-                  name: aircargo-export-config
+                  name: aircargo-audit-reports-config
     target:
       kind: Deployment
-      labelSelector: app=aircargo-export-service
+      labelSelector: app=aircargo-audit-reports-service
   - patch: |-
       apiVersion: apps/v1
       kind: Deployment

@@ -66,8 +66,8 @@ spec:
               value: "http://aircargo-uld-service:9097"
             - name: SERVICE_LOAD_PLANNING_URL
               value: "http://aircargo-load-planning-service:9098"
-            - name: SERVICE_EXPORT_URL
-              value: "http://aircargo-export-service:9099"
+            - name: SERVICE_AUDIT_REPORTS_URL
+              value: "http://aircargo-audit-reports-service:9099"
             - name: SERVICE_NOTIFICATION_URL
               value: "http://aircargo-notification-service:9100"
           resources:

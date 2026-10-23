@@ -23,7 +23,7 @@ Internet → Ingress (NGINX) → Gateway (Spring Cloud Gateway) → 10 Backend S
 | aircargo-warehouse-service | 9096 | 2 | Warehouse receipts, PDF/Excel export |
 | aircargo-uld-service | 9097 | 2 | ULD management, barcode scanning |
 | aircargo-load-planning-service | 9098 | 2 | Load planning, manifest export |
-| aircargo-export-service | 9099 | 2 | Read-only analytics/BI |
+| aircargo-audit-reports-service | 9099 | 2 | Read-only analytics/BI |
 | aircargo-notification-service | 9100 | 2 | Email notifications, RabbitMQ consumers |
 | aircargo-frontend | 80 | 3 | Vue 3 SPA served by nginx |
 

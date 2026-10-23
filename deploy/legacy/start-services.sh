@@ -40,9 +40,9 @@ echo "Arrancando load-planning-service (9098)..."
 "$MAVEN_BIN" spring-boot:run -pl aircargo-load-planning-service -am > /tmp/aircargo-load.log 2>&1 &
 echo $! > /tmp/aircargo-load.pid
 
-echo "Arrancando export-service (9099)..."
-"$MAVEN_BIN" spring-boot:run -pl aircargo-export-service -am > /tmp/aircargo-export.log 2>&1 &
-echo $! > /tmp/aircargo-export.pid
+echo "Arrancando audit-reports-service (9099)..."
+"$MAVEN_BIN" spring-boot:run -pl aircargo-audit-reports-service -am > /tmp/aircargo-audit-reports.log 2>&1 &
+echo $! > /tmp/aircargo-audit-reports.pid
 
 echo "Arrancando notification-service (9100)..."
 "$MAVEN_BIN" spring-boot:run -pl aircargo-notification-service -am > /tmp/aircargo-notification.log 2>&1 &

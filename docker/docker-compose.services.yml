@@ -36,7 +36,7 @@ services:
       SERVICE_WAREHOUSE_URL: http://aircargo-warehouse-service:9096
       SERVICE_ULD_URL: http://aircargo-uld-service:9097
       SERVICE_LOAD_PLANNING_URL: http://aircargo-load-planning-service:9098
-      SERVICE_EXPORT_URL: http://aircargo-export-service:9099
+      SERVICE_AUDIT_REPORTS_URL: http://aircargo-audit-reports-service:9099
       SERVICE_NOTIFICATION_URL: http://aircargo-notification-service:9100
     ports:
       - "8080:8080"
@@ -155,11 +155,11 @@ services:
       postgres:
         condition: service_healthy
 
-  aircargo-export-service:
+  aircargo-audit-reports-service:
     build:
       context: ../backend
-      dockerfile: aircargo-export-service/Dockerfile
-    container_name: aircargo-export-service
+      dockerfile: aircargo-audit-reports-service/Dockerfile
+    container_name: aircargo-audit-reports-service
     restart: unless-stopped
     mem_limit: 1g
     cpus: 1

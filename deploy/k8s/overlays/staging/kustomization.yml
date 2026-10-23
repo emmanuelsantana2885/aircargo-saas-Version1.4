@@ -18,7 +18,7 @@ resources:
   - ../../base/05-warehouse-service.yml
   - ../../base/05-uld-service.yml
   - ../../base/05-load-planning-service.yml
-  - ../../base/05-export-service.yml
+  - ../../base/05-audit-reports-service.yml
   - ../../base/05-notification-service.yml
   - ../../base/05-gateway.yml
   - ../../base/06-serviceaccount.yml
@@ -42,7 +42,7 @@ images:
     newTag: staging-latest
   - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-load-planning-service
     newTag: staging-latest
-  - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-export-service
+  - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-audit-reports-service
     newTag: staging-latest
   - name: ghcr.io/your-org/aircargo-saas-version1-2/aircargo-notification-service
     newTag: staging-latest
@@ -67,7 +67,7 @@ configMapGenerator:
       - REDIS_PORT=6379
       - SPRING_CACHE_TYPE=caffeine
       - RATE_LIMIT_USE_REDIS=false
-  - name: aircargo-export-config
+  - name: aircargo-audit-reports-config
     behavior: merge
     literals:
       - SPRING_CACHE_REDIS_TIME_TO_LIVE=60s

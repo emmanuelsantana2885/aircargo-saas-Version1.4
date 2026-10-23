@@ -14,5 +14,5 @@ java $MAX_CONNS -jar aircargo-mawb-service/target/aircargo-mawb-service-1.2.0-SN
 java $MAX_CONNS -jar aircargo-warehouse-service/target/aircargo-warehouse-service-1.2.0-SNAPSHOT.jar > /tmp/warehouse.log 2>&1 &
 java $MAX_CONNS -jar aircargo-uld-service/target/aircargo-uld-service-1.2.0-SNAPSHOT.jar > /tmp/uld.log 2>&1 &
 java $MAX_CONNS -jar aircargo-load-planning-service/target/aircargo-load-planning-service-1.2.0-SNAPSHOT.jar > /tmp/loadplanning.log 2>&1 &
-java $MAX_CONNS -jar aircargo-export-service/target/aircargo-export-service-1.2.0-SNAPSHOT.jar > /tmp/export.log 2>&1 &
+java $MAX_CONNS -jar aircargo-audit-reports-service/target/aircargo-audit-reports-service-1.2.0-SNAPSHOT.jar > /tmp/audit-reports.log 2>&1 &
 java $MAX_CONNS -jar aircargo-notification-service/target/aircargo-notification-service-1.2.0-SNAPSHOT.jar > /tmp/notification.log 2>&1 &

@@ -43,7 +43,7 @@ class SecurityConfigConsistencyTest {
     private static final List<String> WITH_DB = List.of(
             "aircargo-auth-service", "aircargo-flight-service", "aircargo-booking-service",
             "aircargo-mawb-service", "aircargo-warehouse-service", "aircargo-uld-service",
-            "aircargo-export-service", "aircargo-notification-service");
+            "aircargo-audit-reports-service", "aircargo-notification-service");
 
     /** Servicio stateless (sin BD): filtro sin jdbcTemplate pero mismo entry point. */
     private static final String STATELESS = "aircargo-load-planning-service";

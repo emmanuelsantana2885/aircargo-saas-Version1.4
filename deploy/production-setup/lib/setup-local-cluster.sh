@@ -229,7 +229,7 @@ build_and_load_images() {
   local root="/home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2"
   
   # Backend services
-  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-export-service aircargo-notification-service aircargo-gateway; do
+  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-audit-reports-service aircargo-notification-service aircargo-gateway; do
     log "Building $svc..."
     docker build -t "$svc:local" -f "$root/backend/$svc/Dockerfile" "$root/backend"
     kind load docker-image "$svc:local" --name "$CLUSTER_NAME"
@@ -249,7 +249,7 @@ deploy_services() {
   cd /home/manolov/Desktop/Projects/Rannik/aircargo-saas-Version1.2/deploy/k8s/overlays/staging
   
   # Update images to local
-  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-export-service aircargo-notification-service aircargo-gateway aircargo-frontend; do
+  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-audit-reports-service aircargo-notification-service aircargo-gateway aircargo-frontend; do
     kustomize edit set image "ghcr.io/your-org/aircargo-saas-version1-2/$svc=$svc:local"
   done
   
@@ -261,7 +261,7 @@ deploy_services() {
   
   log "Servicios desplegados. Esperando rollout..."
   
-  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-export-service aircargo-notification-service aircargo-gateway aircargo-frontend; do
+  for svc in aircargo-auth-service aircargo-flight-service aircargo-booking-service aircargo-mawb-service aircargo-warehouse-service aircargo-uld-service aircargo-load-planning-service aircargo-audit-reports-service aircargo-notification-service aircargo-gateway aircargo-frontend; do
     kubectl rollout status deployment/$svc -n "$NAMESPACE" --timeout=300s || true
   done
 }

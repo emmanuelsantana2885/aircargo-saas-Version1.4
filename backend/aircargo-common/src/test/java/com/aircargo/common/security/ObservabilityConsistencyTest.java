@@ -42,7 +42,7 @@ class ObservabilityConsistencyTest {
             "aircargo-gateway",
             "aircargo-auth-service", "aircargo-flight-service", "aircargo-booking-service",
             "aircargo-mawb-service", "aircargo-warehouse-service", "aircargo-uld-service",
-            "aircargo-load-planning-service", "aircargo-export-service", "aircargo-notification-service");
+            "aircargo-load-planning-service", "aircargo-audit-reports-service", "aircargo-notification-service");
 
     /** Servicios con spring-boot-starter-amqp que publican eventos. */
     private static final List<String> AMQP_PUBLISHERS = List.of(

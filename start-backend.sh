@@ -105,7 +105,7 @@ for entry in "aircargo-booking-service 9094" \
              "aircargo-warehouse-service 9096" \
              "aircargo-uld-service 9097" \
              "aircargo-load-planning-service 9098" \
-             "aircargo-export-service 9099" \
+             "aircargo-audit-reports-service 9099" \
              "aircargo-notification-service 9100"; do
     name="${entry%% *}"
     port="${entry##* }"

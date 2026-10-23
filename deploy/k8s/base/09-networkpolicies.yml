@@ -97,7 +97,7 @@ spec:
     - to:
         - podSelector:
             matchLabels:
-              app: aircargo-export-service
+              app: aircargo-audit-reports-service
       ports:
         - protocol: TCP
           port: 9099
@@ -169,7 +169,7 @@ spec:
           - aircargo-warehouse-service
           - aircargo-uld-service
           - aircargo-load-planning-service
-          - aircargo-export-service
+          - aircargo-audit-reports-service
   policyTypes:
     - Egress
   egress:
@@ -286,7 +286,7 @@ spec:
                   - aircargo-warehouse-service
                   - aircargo-uld-service
                   - aircargo-load-planning-service
-                  - aircargo-export-service
+                  - aircargo-audit-reports-service
                   - aircargo-notification-service
       ports:
         - protocol: TCP

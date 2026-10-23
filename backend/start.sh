@@ -21,7 +21,7 @@ java $MAX_CONNS -jar "$BACKEND/aircargo-mawb-service/target/aircargo-mawb-servic
 java $MAX_CONNS -jar "$BACKEND/aircargo-warehouse-service/target/aircargo-warehouse-service-1.2.0-SNAPSHOT.jar" &
 java $MAX_CONNS -jar "$BACKEND/aircargo-uld-service/target/aircargo-uld-service-1.2.0-SNAPSHOT.jar" &
 java $MAX_CONNS -jar "$BACKEND/aircargo-load-planning-service/target/aircargo-load-planning-service-1.2.0-SNAPSHOT.jar" &
-java $MAX_CONNS -jar "$BACKEND/aircargo-export-service/target/aircargo-export-service-1.2.0-SNAPSHOT.jar" &
+java $MAX_CONNS -jar "$BACKEND/aircargo-audit-reports-service/target/aircargo-audit-reports-service-1.2.0-SNAPSHOT.jar" &
 java $MAX_CONNS -jar "$BACKEND/aircargo-notification-service/target/aircargo-notification-service-1.2.0-SNAPSHOT.jar" &
 
 echo "Done. Wait 30s then check: curl -s http://localhost:8080/actuator/health"

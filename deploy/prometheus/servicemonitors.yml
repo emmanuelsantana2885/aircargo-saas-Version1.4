@@ -162,7 +162,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: aircargo-export-service
+  name: aircargo-audit-reports-service
   namespace: aircargo
   labels:
     release: prometheus
@@ -170,7 +170,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: aircargo-export-service
+      app: aircargo-audit-reports-service
   namespaceSelector:
     matchNames:
       - aircargo

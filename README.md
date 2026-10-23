@@ -16,7 +16,7 @@ Microservicios Spring Boot detrás de un API Gateway reactivo, con frontend Vue 
 | **warehouse-service** | 9096 | Recibos de bodega + exportes PDF/Excel + evidencias |
 | **uld-service** | 9097 | ULD/ULD-AWB/piezas + escaneo de códigos + eventos SSE |
 | **load-planning-service** | 9098 | Planificación de carga + import ramp manifest + manifiestos |
-| **export-service** | 9099 | Analítica de solo lectura: Export, BI, Reportes, Catálogo |
+| **audit-reports-service** | 9099 | Analítica de solo lectura: Export, BI, Reportes, Catálogo |
 | **notification-service** | 9100 | Notificaciones + listeners RabbitMQ + email |
 
 **Stack**: Vue 3 + Vite + Pinia + Tailwind · Spring Boot 3.3 (Java 21) · PostgreSQL 16 (Flyway por servicio) · RabbitMQ 4 · JWT httpOnly cookies + BCrypt + MFA TOTP · AES-256-GCM en reposo.
@@ -110,7 +110,7 @@ La carpeta de destino se gestiona desde **Settings → Backups** (ADMIN/SUPER_US
 
 ## API para Power BI
 
-Endpoints de solo lectura con API key en el export-service:
+Endpoints de solo lectura con API key en el audit-reports-service:
 
 ```bash
 curl "http://localhost:8080/api/bi/dashboard?api_key=TOKEN"
