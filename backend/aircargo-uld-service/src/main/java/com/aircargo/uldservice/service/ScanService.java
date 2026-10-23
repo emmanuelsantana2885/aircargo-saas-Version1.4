@@ -180,30 +180,33 @@ public class ScanService {
      * normalized form first, then fall back to the canonical dashed form.
      */
     private MawbDTO findMawbByCode(String code) {
-        try {
-            MawbDTO mawb = mawbClient.getMawbByAwbNumber(code);
-            if (mawb != null) return mawb;
-        } catch (Exception ignored) {}
+        // Try the canonical dashed IATA form first (the mawb-service stores it that way),
+        // then fall back to the raw code. Ordering matters: a failed call trips the
+        // per-method circuit breaker, which would short-circuit subsequent retries.
         String dashed = toIataForm(code);
         if (!dashed.equals(code)) {
             try {
-                return mawbClient.getMawbByAwbNumber(dashed);
+                MawbDTO mawb = mawbClient.getMawbByAwbNumber(dashed);
+                if (mawb != null) return mawb;
             } catch (Exception ignored) {}
         }
+        try {
+            return mawbClient.getMawbByAwbNumber(code);
+        } catch (Exception ignored) {}
         return null;
     }
 
     private HawbDTO findHawbByCode(String code) {
-        try {
-            HawbDTO hawb = mawbClient.getHawbByNumber(code);
-            if (hawb != null) return hawb;
-        } catch (Exception ignored) {}
         String dashed = toIataForm(code);
         if (!dashed.equals(code)) {
             try {
-                return mawbClient.getHawbByNumber(dashed);
+                HawbDTO hawb = mawbClient.getHawbByNumber(dashed);
+                if (hawb != null) return hawb;
             } catch (Exception ignored) {}
         }
+        try {
+            return mawbClient.getHawbByNumber(code);
+        } catch (Exception ignored) {}
         return null;
     }
 

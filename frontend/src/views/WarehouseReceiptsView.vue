@@ -79,6 +79,7 @@
           <button v-for="fo in flightOptions" :key="fo.key" type="button" class="vm-pill" :class="{ on: flightFilter === fo.key }" @click="flightFilter = fo.key">{{ fo.label }}</button>
         </div>
         <span v-if="tableMode === 'byFlight'" class="text-[11px] italic" style="color: var(--muted)">{{ t('warehouse.pipeHint') }}</span>
+        <button type="button" class="vm-pill ml-auto" @click="openScanModal">&#128247; {{ t('warehouse.scan.button') }}</button>
       </div>
       <div class="overflow-x-auto shrink-0">
         <div class="bg-[#0d3b37] border-b border-[#12332f] receipt-list-header sticky top-0 z-10" style="min-width: 1000px">
@@ -1004,6 +1005,18 @@
       @close="capture.open = false"
       @captured="onEvidenceCaptured"
     />
+
+    <!-- ═══ ESCANEO DE CÓDIGOS (MAWB/HAWB) ═══
+         Escanea con la cámara y abre el recibo de la MAWB resuelta. La
+         resolución HAWB→MAWB padre la hace el backend (/api/scan/lookup). -->
+    <BarcodeCameraModal
+      :show="showScanModal"
+      :z-index="96"
+      :title="t('warehouse.scan.button')"
+      :hint="t('scan.cameraHint')"
+      @detected="onScanDetected"
+      @close="closeScanModal"
+    />
   </div>
 </template>
 
@@ -1016,6 +1029,7 @@ import { useAppStore } from '../stores/app'
 const { t } = useI18n()
 import SignaturePad from '../components/SignaturePad.vue'
 import EvidenceCaptureModal from '../components/EvidenceCaptureModal.vue'
+import BarcodeCameraModal from '../components/BarcodeCameraModal.vue'
 import EditReceiptModal from '../components/EditReceiptModal.vue'
 import LocaleDatePicker from '../components/LocaleDatePicker.vue'
 import EmptyState from '../components/EmptyState.vue'
@@ -1025,6 +1039,7 @@ import { hawbsApi } from '../api/hawbs'
 const icons = useIcons()
 import { mawbsApi } from '../api/mawbs'
 import { receiptsApi } from '../api/receipts'
+import { scanApi } from '../api/scan'
 import { calcConfigApi } from '../api/receiptCalcConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
@@ -1292,6 +1307,8 @@ function isExpiredPending(m) {
 const expiredPendingIds = computed(() => new Set(store.mawbs.filter(isExpiredPending).map(m => m.id)))
 
 const expandedId = ref(localStorage.getItem('WAREHOUSE_EXPANDED_MAWB') || null)
+const showScanModal = ref(false)
+const scanBusy = ref(false)
 const queueExpanded = ref(true)
 const localStep = ref(1)
 // Validación por paso: `touchedSteps[si]` se marca al intentar avanzar (guía al operador sin
@@ -2279,6 +2296,40 @@ const stepRecap = computed(() => {
   const kg = (d.pieces || []).reduce((s, p) => s + (Number(p.chargeableKg) || 0), 0)
   return { pcs, kg: Math.round(kg * 10) / 10 }
 })
+
+function openScanModal() {
+  showScanModal.value = true
+}
+
+function closeScanModal() {
+  showScanModal.value = false
+}
+
+// Resuelve el código escaneado (MAWB o HAWB → su MAWB padre) vía el backend y
+// abre el formulario de esa MAWB. La cámara permanece abierta para escanear en
+// cadena; solo se cierra si el operador lo pide.
+async function onScanDetected(code) {
+  const raw = String(code || '').trim()
+  if (!raw || scanBusy.value) return
+  scanBusy.value = true
+  try {
+    const res = await scanApi.lookup(raw)
+    const dto = res.data || {}
+    const target = normalizeAwb(dto.awbNumber || raw)
+    const m = (store.mawbs || []).find(x => normalizeAwb(x.awbNumber) === target)
+    if (!m) {
+      toast.error(t('warehouse.scan.notFound', { code: raw }))
+      return
+    }
+    if (expandedId.value !== m.id) await toggleExpand(m)
+    toast.success(t('warehouse.scan.opened', { awb: dto.awbNumber || raw }))
+    showScanModal.value = false
+  } catch (e) {
+    toast.error(extractError(e) || t('warehouse.scan.notFound', { code: raw }))
+  } finally {
+    scanBusy.value = false
+  }
+}
 
 async function toggleExpand(m) {
   if (expandedId.value === m.id) {

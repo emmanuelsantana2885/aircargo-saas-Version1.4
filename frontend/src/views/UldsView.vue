@@ -58,27 +58,34 @@
         <div ref="detailPanel" class="ds-split-detail">
           <template v-if="expandedUld">
             <div v-for="uld in [expandedUld]" :key="'f-'+uld.uid" class="p-4">
-              <div class="bg-surface border border-strong rounded shadow-sm max-w-5xl mx-auto p-3 md:p-6 font-mono text-sm relative">
+              <div class="bg-surface border border-strong rounded shadow-sm max-w-5xl mx-auto p-3 pb-44 md:p-6 md:pb-44 lg:p-6 font-mono text-sm relative">
                   <div class="flex justify-between items-center border-b border-strong pb-3 mb-5">
                     <div class="flex items-center gap-2">
                       <span class="text-[13px] font-bold text-primary uppercase tracking-wider">{{ t('ulds.palletSheetHeader') }}</span>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <span class="text-[13px] font-bold text-tertiary uppercase">Volumen:</span>
-                    <input v-model.number="uld.volumePct" type="number" min="0" max="100" inputmode="decimal" class="w-20 text-center bg-surface-hover border border-strong rounded font-bold text-primary focus:outline-none text-[14px] pct-input" />
-                    <span class="text-[14px] font-bold text-primary">%</span>
+                  <div class="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 rounded-full pl-2.5 pr-2 py-1">
+                    <span class="text-emerald-600 font-bold text-[13px]">&#10003;</span>
+                    <span class="text-[12px] font-bold text-emerald-800 uppercase tracking-wide">{{ t('ulds.volume') }}</span>
+                    <input v-model.number="uld.volumePct" type="number" min="0" max="100" inputmode="decimal"
+                      class="w-12 text-center bg-transparent border-0 rounded font-bold text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-400 text-[14px] pct-input" />
+                    <span class="text-[13px] font-bold text-emerald-800">%</span>
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                <div class="grid grid-cols-2 gap-3 sm:gap-5 mb-6">
                   <div>
                     <label class="ds-label block mb-1 flex items-center gap-1.5">
-                      {{ t('ulds.form.uldCode') }} *
+                      {{ scanFocus === 'uld' ? t('scan.field.uldScanning') : t('ulds.form.uldCode') }} *
                       <span v-if="creationStep === 2" class="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-px rounded font-bold">{{ t('ulds.scanOrType') }}</span>
                     </label>
-                    <input v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX"
-                      class="ds-input uppercase transition-all duration-300"
-                      :class="creationStep === 2 ? 'ring-2 ring-emerald-400 bg-emerald-50 border-emerald-400' : ''" />
+                    <div class="relative">
+                      <input ref="uldCodeInput" v-model="uld.uldNumber" type="text" placeholder="PMC-XXXXX"
+                        class="ds-input uppercase transition-all duration-300 pr-9"
+                        :class="scanFieldClass('uld', uld.uldNumber, creationStep === 2 ? 'ring-2 ring-emerald-400 bg-emerald-50 border-emerald-400' : '')" />
+                      <span v-if="uld.uldNumber && scanFocus !== 'uld'"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-[15px] pointer-events-none">&#10003;</span>
+                    </div>
+                    <div v-if="scanFieldError === 'uld'" class="mt-1 text-[11px] font-bold text-red-600">{{ t('scan.field.uldError') }}</div>
                   </div>
                   <div>
                     <label class="ds-label block mb-1">{{ t('ulds.form.configType') }}</label>
@@ -94,8 +101,17 @@
                     <input v-model="uld.position" type="text" placeholder="1L" class="ds-input uppercase" />
                   </div>
                   <div>
-                    <label class="ds-label block mb-1">{{ t('ulds.form.sealNumber') }}</label>
-                    <input v-model="uld.sealNumber" type="text" placeholder="SC-XXXXXXXX" class="ds-input font-bold" />
+                    <label class="ds-label block mb-1 flex items-center gap-1.5">
+                      {{ scanFocus === 'seal' ? t('scan.field.sealScanning') : t('ulds.form.sealNumber') }}
+                    </label>
+                    <div class="relative">
+                      <input ref="sealInput" v-model="uld.sealNumber" type="text" placeholder="SC-XXXXXXXX"
+                        class="ds-input font-bold transition-all duration-300 pr-9"
+                        :class="scanFieldClass('seal', uld.sealNumber)" />
+                      <span v-if="uld.sealNumber && scanFocus !== 'seal'"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 font-bold text-[15px] pointer-events-none">&#10003;</span>
+                    </div>
+                    <div v-if="scanFieldError === 'seal'" class="mt-1 text-[11px] font-bold text-red-600">{{ t('scan.field.sealError') }}</div>
                   </div>
                 </div>
 
@@ -103,16 +119,35 @@
                 <ScanPanel
                   :active="scanMode"
                   :uld-id="uld.backendId || ''"
-                  :uld-number="uld.uldNumber || t('ulds.newShort')"
+                  :uld-number="uld.uldNumber || ''"
+                  :seal-number="uld.sealNumber || ''"
                   @piece-added="onScanPieceAdded"
                   @piece-removed="onScanPieceRemoved"
                   @exit-scan="scanMode = false"
                   @uld-number-scanned="onUldNumberScanned"
+                  @seal-scanned="onSealScanned"
+                  @scan-focus="onScanFocus"
+                  @scan-error="onScanError"
                 />
 
+                <!-- Manifiesto: cabecera con contador + barra de progreso (mockup) -->
+                <button type="button" class="w-full flex items-baseline justify-between gap-2 mb-1.5 text-left"
+                  @click="sections.mawb = !sections.mawb">
+                  <span class="text-[14px] font-bold text-primary">{{ t('ulds.section.mawb') }}</span>
+                  <span class="flex items-center gap-1.5 text-[13px] font-mono text-secondary">
+                    {{ t('ulds.manifestCount', { received: totalUldReceivedPieces(uld), assigned: totalUldPieces(uld) }) }}
+                    <span class="md:hidden text-[12px] text-slate-400">{{ sections.mawb ? '▾' : '▸' }}</span>
+                  </span>
+                </button>
+                <div class="h-2 rounded-full bg-slate-200 overflow-hidden mb-3">
+                  <div class="h-full rounded-full transition-all duration-300"
+                    :class="progressPct(uld) >= 100 ? 'bg-emerald-500' : 'bg-slate-600'"
+                    :style="{ width: progressPct(uld) + '%' }"></div>
+                </div>
+
                 <!-- MAWB TABLE -->
-                <div class="border border-strong rounded overflow-hidden mb-6">
-                  <div class="overflow-x-auto">
+                <div ref="mawbTableRef" class="border border-strong rounded overflow-hidden mb-6" :class="sections.mawb ? '' : 'hidden md:block'">
+                  <div class="hidden md:block overflow-x-auto">
                   <div class="table-scroll-wrapper">
                   <div class="ds-table-header grid grid-cols-13 py-3 px-5 items-center gap-2" style="min-width: 750px">
                     <div class="col-span-3">MAWB</div>
@@ -205,18 +240,102 @@
                   </div>
                   </div>
                   </div>
-                  <div class="p-2 bg-surface-hover border-t border-default flex justify-between items-center text-[13px] text-secondary flex-wrap gap-1">
+                  <!-- Mobile: cards apiladas por MAWB (mockup + SDD §4.2: toca para ver el detalle) -->
+                  <div class="md:hidden divide-y divide-slate-100">
+                    <div v-for="(mawb, mIdx) in uld.mawbs" :key="'card-'+mawb._rowId"
+                      class="border-l-[3px] transition-colors" :class="mawbCardBorder(mawb)">
+                      <button type="button"
+                        class="w-full min-h-[58px] flex items-center justify-between gap-2.5 px-3 py-2.5 text-left"
+                        @click="toggleMawbCard(mawb._rowId)">
+                        <span class="min-w-0">
+                          <span class="block text-[15px] font-bold font-mono text-primary truncate">{{ mawb.awbNumber || '—' }}</span>
+                          <span class="block text-[12px] text-secondary truncate">
+                            {{ t('ulds.manifestCount', { received: mawb.receivedPieces != null ? mawb.receivedPieces : 0, assigned: mawb.pieces || 0 }) }}
+                            <template v-if="mawb.destination"> · {{ mawb.destination }}</template>
+                          </span>
+                        </span>
+                        <span class="shrink-0 text-[11px] font-bold uppercase px-2 py-1 rounded-full border"
+                          :class="mawbCardTagClass(mawb)">
+                          {{ t('ulds.card.' + mawbCardState(mawb)) }}
+                        </span>
+                        <span class="shrink-0 text-[13px] text-slate-400">{{ expandedMawbRowId === mawb._rowId ? '▾' : '▸' }}</span>
+                      </button>
+                      <div v-if="expandedMawbRowId === mawb._rowId" class="px-3 pt-3 pb-3 space-y-2.5 border-t border-slate-100">
+                        <div class="flex items-center gap-2">
+                          <select
+                            v-model="mawb.awbNumber"
+                            @change="onMawbDropdownChange(uld, mIdx)"
+                            class="flex-1 min-w-0 border border-strong rounded px-2 py-2.5 bg-transparent font-bold text-[13px] uppercase"
+                          >
+                            <option value="" disabled>{{ t('ulds.form.selectMawb') }}</option>
+                            <template v-for="g in mawbSelectGroups(uld, mIdx)" :key="'card-'+g.label">
+                              <optgroup :label="g.label">
+                                <option v-for="o in g.options" :key="'card-'+o.awbNumber" :value="o.awbNumber">
+                                  {{ mawbOptionLabel(o) }}
+                                </option>
+                              </optgroup>
+                            </template>
+                          </select>
+                          <button @click="removeMawbRow(uld, mIdx)"
+                            class="shrink-0 w-11 h-11 border border-strong rounded text-tertiary hover:text-secondary text-base font-bold">
+                            &#10005;
+                          </button>
+                        </div>
+                        <div v-if="commodityHintFor(mawb)" class="text-[10px] text-secondary font-mono truncate">{{ commodityHintFor(mawb) }}</div>
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+                          <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-tertiary">{{ t('ulds.table.pcsAssigned') }}</span>
+                            <input v-model.number="mawb.pieces" type="number" min="0"
+                              @focus="onPiecesFocus(uld, mIdx)"
+                              @change="onPiecesChange(uld, mIdx)"
+                              class="w-full border-b border-strong focus:outline-none focus:border-slate-950 py-1.5 bg-transparent font-bold text-[14px]" />
+                          </div>
+                          <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-tertiary">{{ t('ulds.table.pcsReceived') }}</span>
+                            <div class="py-1.5 font-mono text-[14px] font-bold"
+                              :class="mawb.receivedPieces != null ? 'text-secondary' : 'text-tertiary'">
+                              {{ mawb.receivedPieces != null ? mawb.receivedPieces : '—' }}
+                            </div>
+                          </div>
+                          <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-tertiary">{{ t('ulds.table.dest') }}</span>
+                            <input v-model="mawb.destination" type="text" maxlength="3"
+                              class="w-full border-b border-strong focus:outline-none focus:border-slate-950 py-1.5 bg-transparent uppercase font-bold text-[14px]" />
+                          </div>
+                          <div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-tertiary">{{ t('ulds.table.status') }}</span>
+                            <div class="py-1.5 text-[13px] font-mono">
+                              <span v-if="mawb.awbNumber && !mawb._isSpecial" class="inline-flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full shrink-0" :class="mawbStatusDotClass(mawb.awbNumber)"></span>
+                                <span class="text-[10px] font-mono font-bold uppercase leading-none" :class="mawbStatusTextClass(mawb.awbNumber)">{{ mawbStatusLabel(mawb.awbNumber) }}</span>
+                              </span>
+                              <span v-else class="text-tertiary">—</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="!uld.mawbs.length" class="p-4 text-center text-[12px] text-tertiary">{{ t('ulds.mawbEmpty') }}</div>
+                  </div>
+                  <div class="p-2 bg-surface-hover border-t border-default">
                     <button @click="addMawbRow(uld)"
-                      class="py-1.5 px-3 border border-dashed border-strong rounded text-center hover:text-primary transition-colors font-bold text-[13px] uppercase">
+                      class="w-full md:w-auto py-3 px-4 min-h-[48px] border border-dashed rounded text-center transition-colors font-bold text-[14px] uppercase
+                             border-strong text-secondary hover:text-primary
+                             max-md:!border-blue-500 max-md:!text-blue-700 max-md:hover:bg-blue-50 max-md:text-[15px]">
                       + MAWB
                     </button>
-                    <div class="flex items-center gap-2">
-                      <span class="font-mono">{{ t('ulds.pcsProgress', { assigned: totalUldPieces(uld), received: totalUldReceivedPieces(uld) }) }}</span>
-                    </div>
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+                <button type="button" @click="sections.weights = !sections.weights"
+                  class="md:hidden w-full flex items-center justify-between gap-3 min-h-[52px] px-4 mb-3 border border-strong rounded-xl bg-surface text-[14px] font-bold text-primary">
+                  <span>{{ t('ulds.section.weights') }}</span>
+                  <span class="flex items-center gap-2 min-w-0 text-[13px] font-medium text-secondary">
+                    <span class="truncate">{{ t('ulds.sectionValue.gross', { n: Number(uld.grossWeightLbs || 0).toLocaleString() }) }}</span>
+                    <span class="text-slate-400 shrink-0">{{ sections.weights ? '▾' : '▸' }}</span>
+                  </span>
+                </button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6" :class="sections.weights ? '' : 'hidden md:grid'">
                   <div>
                     <label class="ds-label block mb-1">{{ t('ulds.tare.label') }} <span class="text-primary">(lbs)</span></label>
                     <div class="relative">
@@ -243,13 +362,21 @@
                         <option value="LEFT_BEHIND">LEFT BEHIND ({{ t('ulds.status.LEFT_BEHIND') }})</option>
                       </select>
                   </div>
-                  <div class="bg-surface-hover flex flex-col justify-center rounded px-3 py-2 border border-strong">
+                  <div class="bg-surface-hover flex flex-col justify-center rounded px-3 py-2 border border-strong lg:sticky lg:top-2 lg:self-start z-10">
                     <span class="text-sm font-bold text-secondary uppercase tracking-wider">{{ t('ulds.netWeight') }}</span>
                     <span class="text-sm font-bold text-slate-800">{{ ((uld.grossWeightLbs || 0) - (uld.tareLbs || 0)).toLocaleString() }} lbs</span>
                   </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-4 xl:grid-cols-5 gap-4 border-t border-strong pt-5">
+                <button type="button" @click="sections.details = !sections.details"
+                  class="md:hidden w-full flex items-center justify-between gap-3 min-h-[52px] px-4 mb-3 border border-strong rounded-xl bg-surface text-[14px] font-bold text-primary">
+                  <span>{{ t('ulds.section.details') }}</span>
+                  <span class="flex items-center gap-2 min-w-0 text-[13px] font-medium text-secondary">
+                    <span class="truncate uppercase">{{ uld.destination || '—' }}</span>
+                    <span class="text-slate-400 shrink-0">{{ sections.details ? '▾' : '▸' }}</span>
+                  </span>
+                </button>
+                <div class="grid grid-cols-1 sm:grid-cols-4 xl:grid-cols-5 gap-4 border-t border-strong pt-5" :class="sections.details ? '' : 'hidden md:grid'">
                   <div>
                     <label class="ds-label block mb-1">{{ t('ulds.form.destination') }}</label>
                     <input v-model="uld.destination" type="text" :placeholder="t('ulds.form.destinationPlaceholder')" class="ds-input uppercase" />
@@ -269,6 +396,52 @@
                   <div>
                     <label class="ds-label block mb-1">{{ t('ulds.form.notes') }}</label>
                     <input v-model="uld.notes" type="text" :placeholder="t('ulds.form.notesPlaceholder')" class="ds-input" />
+                  </div>
+                </div>
+
+
+                <!-- Flight + acciones destructivas: visible < lg (mockup: sección "Flight" con valor) -->
+                <div class="lg:hidden mb-4">
+                  <button type="button" @click="sections.flight = !sections.flight"
+                    class="w-full flex items-center justify-between gap-3 min-h-[52px] px-4 border border-strong rounded-xl bg-surface text-[14px] font-bold text-primary">
+                    <span>{{ t('ulds.form.flight') }}</span>
+                    <span class="flex items-center gap-2 min-w-0 text-[13px] font-medium text-secondary">
+                      <span class="truncate">{{ flightSummaryFor(uld) }}</span>
+                      <span class="text-slate-400 shrink-0">{{ sections.flight ? '▾' : '▸' }}</span>
+                    </span>
+                  </button>
+                  <div v-if="sections.flight" class="mt-3 p-3 border border-strong rounded-xl bg-surface space-y-3">
+                    <div>
+                      <span class="ds-label block mb-1" :class="creationStep === 1 ? 'text-amber-700' : ''">
+                        {{ t('ulds.form.flight') }}
+                        <span v-if="creationStep === 1" class="ml-1 text-[10px] bg-amber-200 text-amber-800 px-1.5 py-px rounded">{{ t('ulds.step', { n: 1 }) }}</span>
+                      </span>
+                      <select v-model="uld.saveFlightId"
+                        class="ds-input uppercase text-[13px] w-full transition-all duration-300"
+                        :class="creationStep === 1 ? 'ring-2 ring-amber-400 bg-amber-50 border-amber-400' : ''">
+                        <option value="" disabled>{{ t('common.selectFlight') }}</option>
+                        <option v-for="f in appStore.flights" :key="'m-'+f.id" :value="f.id">
+                          {{ airlineCodeById(f.airlineId) }}-{{ f.flightNumber }} ({{ f.origin }}&#8594;{{ f.destination }}) {{ f.flightDate }}
+                        </option>
+                      </select>
+                    </div>
+                    <div class="flex items-end justify-between gap-2">
+                      <div>
+                        <span class="ds-label block mb-1">{{ t('ulds.created') }}</span>
+                        <span class="text-[13px] font-bold text-primary">{{ uld.createdAt ? formatDate(uld.createdAt) : '—' }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <button @click="deleteUld(uld)"
+                          class="ds-btn-secondary text-tertiary hover:text-slate-700 min-h-[44px]"
+                          :title="uld.backendId ? t('ulds.actions.delete') : t('ulds.actions.discard')">
+                          &#10005;
+                        </button>
+                        <button v-if="uld.backendId" @click="dismountUld(uld)"
+                          class="ds-btn-secondary min-h-[44px]">
+                          {{ t('ulds.actions.demount') }}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -300,8 +473,12 @@
                   </div>
                 </div>
 
-                <div class="border-t border-strong pt-5 flex flex-wrap justify-end gap-2 bg-surface-hover/50 -mx-2 md:-mx-6 -mb-6 p-3 md:p-6 rounded-b">
-                  <div class="flex items-center gap-4 mr-auto">
+                <div class="border-t border-strong pt-4 flex flex-wrap justify-end gap-2 bg-surface-hover/50 -mx-2 -mb-6 p-3 rounded-b
+                  lg:-mx-6 lg:-mb-6 lg:p-6 lg:pt-5
+                  max-lg:fixed max-lg:bottom-0 max-lg:left-0 max-lg:right-0 max-lg:z-30 max-lg:mx-0 max-lg:mb-0
+                  max-lg:pb-[calc(0.75rem+env(safe-area-inset-bottom))]
+                  max-lg:rounded-none max-lg:bg-surface max-lg:border-t-2 max-lg:shadow-[0_-4px_16px_rgba(15,23,42,0.12)]">
+                  <div class="hidden lg:flex items-center gap-4 mr-auto">
                     <div class="flex flex-col">
                       <span class="text-[12px] font-bold uppercase tracking-widest flex items-center gap-1.5"
                         :class="creationStep === 1 ? 'text-amber-700' : 'text-tertiary'">
@@ -322,16 +499,17 @@
                       <span class="text-[14px] font-bold text-primary">{{ uld.createdAt ? formatDate(uld.createdAt) : '—' }}</span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 max-lg:w-full max-lg:flex-wrap">
                     <button @click="toggleScanMode(uld)"
-                      class="font-mono font-bold uppercase text-[12px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center gap-2"
+                      class="font-mono font-bold uppercase text-[12px] tracking-widest px-4 py-2.5 rounded shadow-md transition-all flex items-center justify-center gap-2
+                             max-lg:w-full max-lg:h-14 max-lg:py-0 max-lg:text-[15px] max-lg:tracking-[0.04em]"
                       :class="creationStep === 2 ? 'bg-emerald-700 hover:bg-emerald-800 text-white ring-2 ring-emerald-300 animate-pulse' : scanMode ? 'bg-emerald-700 hover:bg-emerald-800 text-white ring-2 ring-emerald-300' : 'bg-blue-600 hover:bg-blue-700 text-white'">
                       <template v-if="creationStep === 2">{{ t('ulds.scanNow') }}</template>
                       <template v-else-if="scanMode">{{ t('ulds.scanning') }}</template>
                       <template v-else>📷 {{ t('ulds.scanMode') }}</template>
                     </button>
                     <button @click="openLabelGenerator(uld)"
-                      class="ds-btn-secondary flex items-center gap-1.5"
+                      class="ds-btn-secondary flex items-center gap-1.5 max-lg:flex-1 max-lg:h-11 max-lg:justify-center"
                       :class="labelStored(uld) ? '!border-emerald-300 !text-emerald-700' : ''"
                       :title="t('ulds.label.actionHint')">
                       <component :is="icons.Printer" :size="15" />
@@ -339,16 +517,16 @@
                       <span v-if="labelStored(uld)" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     </button>
                     <button @click="deleteUld(uld)"
-                      class="ds-btn-secondary text-tertiary hover:text-slate-700"
+                      class="ds-btn-secondary text-tertiary hover:text-slate-700 max-lg:hidden"
                       :title="uld.backendId ? t('ulds.actions.delete') : t('ulds.actions.discard')">
                       &#10005;
                     </button>
                     <button v-if="uld.backendId" @click="dismountUld(uld)"
-                      class="ds-btn-secondary">
+                      class="ds-btn-secondary max-lg:hidden">
                       {{ t('ulds.actions.demount') }}
                     </button>
                     <button @click="saveUld(uld)"
-                      class="ds-btn-primary">
+                      class="ds-btn-primary max-lg:flex-[2] max-lg:h-11 max-lg:justify-center">
                       {{ uld.backendId ? t('ulds.actions.update') : t('ulds.sendToLoadPlanning') }}
                     </button>
                   </div>
@@ -445,7 +623,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUldsStore } from '../stores/ulds'
 import { useAppStore } from '../stores/app'
@@ -673,6 +851,101 @@ const expandedUld = computed(() => localUlds.value.find(u => u.uid === expandedU
 const scanMode = ref(false)
 const scanUldUid = ref(null)
 
+// Estados de campo del scan contextual (SDD §6.3): escaneando (azul),
+// completado (verde + ✓) y error (rojo + mensaje)
+const scanFocus = ref('')
+const scanFieldError = ref('')
+const uldCodeInput = ref(null)
+const sealInput = ref(null)
+const mawbTableRef = ref(null)
+
+function scanFieldClass(field, value, base = '') {
+  if (scanFieldError.value === field) return `${base} !border-red-400 ring-4 !ring-red-200`.trim()
+  if (scanFocus.value === field) return `${base} !border-blue-500 ring-4 !ring-blue-200`.trim()
+  if (value) return `${base} !border-emerald-600`.trim()
+  return base
+}
+
+function scrollToRef(el) {
+  try { el?.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) } catch { /* sin soporte */ }
+}
+
+// El panel avanza la secuencia guiada ULD → Sello → MAWBs (SDD §5) y aquí
+// resaltamos y centramos el campo correspondiente del formulario (SDD §7)
+function onScanFocus(field) {
+  scanFocus.value = field
+  scanFieldError.value = ''
+  if (field === 'seal') nextTick(() => scrollToRef(sealInput.value))
+  if (field === 'mawb') nextTick(() => scrollToRef(mawbTableRef.value))
+}
+
+function onScanError(field) {
+  if (field === 'uld' || field === 'seal') {
+    scanFieldError.value = field
+    setTimeout(() => { scanFieldError.value = '' }, 3000)
+  }
+}
+
+watch(scanMode, (on) => {
+  if (!on) {
+    scanFocus.value = ''
+    scanFieldError.value = ''
+  }
+})
+
+// Secciones colapsables en móvil (SDD §6.1/6.2); en desktop siempre visibles
+const sections = ref({ mawb: true, weights: true, details: true, flight: true })
+
+// Card MAWB en móvil: toca para expandir el detalle editable (mockup §4.2)
+const expandedMawbRowId = ref('')
+
+function toggleMawbCard(rowId) {
+  expandedMawbRowId.value = expandedMawbRowId.value === rowId ? '' : rowId
+}
+
+// Estado de la pieza recibida vs asignada → tag de la card (Completo/Parcial/Pendiente)
+function mawbCardState(mawb) {
+  const assigned = mawb.pieces || 0
+  const received = mawb.receivedPieces
+  if (received != null && assigned > 0 && received >= assigned) return 'complete'
+  if (received != null && received > 0) return 'partial'
+  return 'pending'
+}
+
+const MAWB_CARD_TAG = {
+  complete: 'bg-emerald-50 text-emerald-700 border-emerald-300',
+  partial: 'bg-amber-50 text-amber-700 border-amber-300',
+  pending: 'bg-slate-100 text-slate-600 border-slate-300',
+}
+
+function mawbCardTagClass(mawb) {
+  return MAWB_CARD_TAG[mawbCardState(mawb)]
+}
+
+// Borde izquierdo de 3 px con el color del estado (SDD §4.2)
+function mawbCardBorder(mawb) {
+  const s = mawbCardState(mawb)
+  if (s === 'complete') return 'border-l-emerald-500'
+  if (s === 'partial') return 'border-l-amber-500'
+  return 'border-l-slate-300'
+}
+
+// Resumen del vuelo para el cabecero de la sección Flight (móvil/tablet)
+function flightSummaryFor(uld) {
+  const id = uld.saveFlightId || uld.flightId || null
+  if (id) {
+    const f = appStore.flights.find(x => x.id === id)
+    if (f) return `${airlineCodeById(f.airlineId)}-${f.flightNumber}`
+  }
+  return '—'
+}
+
+function progressPct(uld) {
+  const assigned = totalUldPieces(uld)
+  if (!assigned) return 0
+  return Math.min(100, Math.round((totalUldReceivedPieces(uld) / assigned) * 100))
+}
+
 // Guided creation steps: 0=idle, 1=select flight, 2=scan ULD, 3=done
 const creationStep = ref(0)
 
@@ -720,7 +993,10 @@ function toggleScanMode(uld) {
 }
 
 // Auto-advance: after flight selected → step 2 → activate scan mode
-watch(expandedUldId, () => { creationStep.value = 0 })
+watch(expandedUldId, () => {
+  creationStep.value = 0
+  expandedMawbRowId.value = ''
+})
 
 watch(() => {
   const uld = localUlds.value.find(u => u.uid === expandedUldId.value)
@@ -832,6 +1108,34 @@ async function onUldNumberScanned(code) {
       await appStore.loadUlds()
     } catch (e) {
       console.warn('[ULD Scan] Auto-save failed:', e)
+    }
+  } else if (uld.backendId) {
+    // ULD ya guardado: persistir el número escaneado al instante (igual que el sello)
+    try {
+      const payload = { uldNumber: upper }
+      if (uldTypes.value.includes(prefix)) payload.uldType = prefix
+      await uldsApi.patch(uld.backendId, payload)
+    } catch (e) {
+      console.warn('[ULD Scan] ULD number save failed:', e)
+      toast.error(t('scan.message.uldSaveError'))
+    }
+  }
+}
+
+// Escaneo de sello desde el panel: rellena el campo del formulario y,
+// si el ULD ya existe en backend, lo persiste de inmediato (PATCH).
+async function onSealScanned(code) {
+  const uid = scanUldUid.value || expandedUldId.value
+  if (!uid) return
+  const uld = localUlds.value.find(u => u.uid === uid)
+  if (!uld) return
+  uld.sealNumber = code
+  if (uld.backendId) {
+    try {
+      await uldsApi.patch(uld.backendId, { sealNumber: code })
+    } catch (e) {
+      console.warn('[ULD Scan] Seal save failed:', e)
+      toast.error(t('scan.message.sealSaveError'))
     }
   }
 }

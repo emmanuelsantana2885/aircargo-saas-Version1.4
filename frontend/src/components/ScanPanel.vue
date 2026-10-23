@@ -1,30 +1,74 @@
 <template>
-  <div v-if="active" class="border-2 border-dashed rounded-lg p-4 mb-4 transition-all duration-300"
+  <div v-if="active" class="border-2 border-dashed rounded-lg p-3 sm:p-4 mb-4 transition-all duration-300"
        :class="flashClass">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-3">
-      <div class="flex items-center gap-2">
-        <div class="w-2.5 h-2.5 rounded-full animate-pulse" :class="scanning ? 'bg-emerald-500' : 'bg-slate-300'"></div>
-        <span class="text-[13px] font-bold text-slate-900 uppercase tracking-wider">
-          Modo Scan — ULD: {{ uldNumber }}
-        </span>
-        <span v-if="lastResult" class="text-[12px] font-bold px-2 py-0.5 rounded-full"
-              :class="lastResult.success ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
-          {{ lastResult.message || lastResult.error }}
-        </span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button @click="$emit('exit-scan')" class="text-[12px] font-bold text-slate-500 hover:text-red-600 uppercase px-2 py-1 rounded hover:bg-red-50">
-          ✕ Salir
+    <!-- Barra de estado contextual (mockup + SDD §5.2) -->
+    <div class="rounded-2xl border-[1.5px] border-blue-600 bg-blue-50 p-3 sm:p-4 mb-3 flex flex-col gap-2.5"
+         aria-live="polite">
+      <div class="flex items-start justify-between gap-2">
+        <div class="min-w-0 flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" :class="scanning ? 'bg-blue-600' : 'bg-blue-300'"></span>
+          <div class="min-w-0">
+            <div class="text-[17px] font-bold leading-tight text-blue-800">{{ t('scan.banner.' + expected) }}</div>
+            <div class="text-[13px] sm:text-[14px] text-slate-700">{{ t('scan.bannerHint.' + expected) }}</div>
+          </div>
+        </div>
+        <button @click="$emit('exit-scan')"
+          class="shrink-0 text-[12px] font-bold text-slate-500 hover:text-red-600 uppercase px-2 py-1 rounded hover:bg-red-50">
+          {{ t('scan.exit') }}
         </button>
       </div>
+
+      <!-- Stepper guiado: 1·ULD → 2·Seal → 3·MAWBs -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span v-for="s in STEPS" :key="s.id"
+          class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[13px] font-semibold whitespace-nowrap transition-colors"
+          :class="stepClass(s.id)">
+          <span v-if="expected === s.id" class="w-2 h-2 rounded-full bg-white"></span>
+          <span v-else-if="stepDone(s.id)" class="font-bold">&#10003;</span>
+          {{ t(s.key) }}
+        </span>
+        <span v-if="pieceCounter"
+          class="inline-flex items-center h-8 px-3 rounded-full border border-blue-300 bg-white text-[13px] font-bold text-blue-800 font-mono">
+          {{ t('scan.pieceCounter', pieceCounter) }}
+        </span>
+      </div>
+
+      <!-- Último resultado -->
+      <div v-if="lastResult"
+           class="text-[13px] font-bold px-2.5 py-1.5 rounded-lg self-start"
+           :class="lastResult.success ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
+        {{ lastResult.message || lastResult.error }}
+      </div>
+    </div>
+
+    <!-- Scan target: Auto (contextual), pieza (MAWB/HAWB) o sello -->
+    <div class="flex items-center gap-1.5 mb-3 flex-wrap">
+      <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">{{ t('scan.mode.label') }}</span>
+      <button @click="setTarget('auto')"
+        class="text-[12px] font-bold uppercase px-3 py-1.5 rounded border transition-colors"
+        :class="[target === 'auto' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50',
+                 selectorAlert ? 'ring-2 ring-amber-400 animate-pulse' : '']">
+        ⚡ {{ t('scan.mode.auto') }}
+      </button>
+      <button @click="setTarget('piece')"
+        class="text-[12px] font-bold uppercase px-3 py-1.5 rounded border transition-colors"
+        :class="[target === 'piece' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50',
+                 selectorAlert ? 'ring-2 ring-amber-400 animate-pulse' : '']">
+        🧾 {{ t('scan.mode.piece') }}
+      </button>
+      <button @click="setTarget('seal')"
+        class="text-[12px] font-bold uppercase px-3 py-1.5 rounded border transition-colors"
+        :class="[target === 'seal' ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50',
+                 selectorAlert ? 'ring-2 ring-amber-400 animate-pulse' : '']">
+        🔒 {{ t('scan.mode.seal') }}
+      </button>
     </div>
 
     <!-- Info for unsaved ULD -->
     <div v-if="!uldId" class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
       <span class="text-amber-600 text-sm">⚡</span>
       <span class="text-[12px] font-bold text-amber-800 uppercase tracking-wide">
-        Escanee un código ULD (PMC-XXXXX) para crearlo automáticamente, luego escanee piezas MAWB.
+        {{ t('scan.instructions') }}
       </span>
     </div>
 
@@ -35,7 +79,8 @@
         v-model="scanCode"
         @keydown.enter.prevent="processScan"
         type="text"
-        placeholder="Escanee código de barras o escriba MAWB/ULD..."
+        :placeholder="inputPlaceholder"
+        inputmode="none"
         class="w-full bg-white border-2 border-slate-300 rounded-lg px-4 py-3 text-[15px] font-mono font-bold text-slate-900
                focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200
                placeholder:text-slate-300 placeholder:font-sans placeholder:font-normal placeholder:text-[14px]"
@@ -53,6 +98,9 @@
            :class="entry.warning ? 'bg-amber-50 text-amber-700' : entry.success ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'">
         <span>{{ entry.success ? (entry.warning ? '⚠' : '✓') : '✗' }}</span>
         <span class="font-bold">{{ entry.awbNumber }}</span>
+        <span v-if="entry.kind === 'uld'" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">ULD</span>
+        <span v-else-if="entry.kind === 'seal'" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{{ t('scan.mode.seal') }}</span>
+        <span v-else-if="entry.kind === 'unknown'" class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">?</span>
         <span v-if="entry.pieceNumber">{{ t('scan.pieceLabel', { n: entry.pieceNumber }) }}</span>
         <span v-if="entry.totalOnUld">({{ entry.totalOnUld }}/{{ entry.maxAllowed }})</span>
         <span v-if="entry.warning" class="ml-1 text-amber-600 italic truncate max-w-[120px]" :title="entry.warning">{{ t('scan.noBooking') }}</span>
@@ -65,41 +113,23 @@
       <button @click="undoLast" :disabled="!canUndo"
               class="text-[12px] font-bold px-3 py-1.5 rounded border transition-colors"
               :class="canUndo ? 'border-slate-300 text-slate-600 hover:bg-slate-100' : 'border-slate-200 text-slate-300 cursor-not-allowed'">
-        ↩ Deshacer Último
+        ↩ {{ t('scan.undoLast') }}
       </button>
       <button @click="openCamera"
               class="text-[12px] font-bold px-3 py-1.5 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors ml-auto">
-        📷 Cámara
+        📷 {{ t('scan.cameraBtn') }}
       </button>
     </div>
 
-    <!-- Camera Modal -->
-    <div v-if="showCamera" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="closeCamera">
-      <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl"
-        role="dialog" aria-modal="true" :aria-label="t('ulds.scanWithCamera')">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-[14px] font-bold text-slate-900 uppercase">{{ t('ulds.scanWithCamera') }}</span>
-          <button @click="closeCamera" class="text-slate-400 hover:text-red-500 text-lg font-bold" :aria-label="t('common.close')">✕</button>
-        </div>
-        <div class="relative w-full rounded-lg overflow-hidden border border-slate-200 bg-black" style="min-height: 280px;">
-          <video ref="cameraVideo" autoplay playsinline muted class="w-full h-full object-contain" style="min-height: 280px;"></video>
-          <div v-if="!cameraReady && !cameraError" class="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-[13px] font-bold z-10">
-            Iniciando cámara...
-          </div>
-          <div v-if="cameraError" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-white text-[12px] font-bold z-10 px-4 text-center">
-            <span>{{ cameraError }}</span>
-            <button @click="retryCamera"
-              class="mt-3 text-[12px] font-bold px-3 py-1.5 rounded border border-white/60 text-white hover:bg-white/10 transition">
-              ↻ Reintentar
-            </button>
-          </div>
-          <div v-if="cameraReady && !lastDetect" class="absolute bottom-2 left-2 bg-black/60 text-white text-[11px] px-2 py-1 rounded z-10">
-            Enfrente el código de barras
-          </div>
-        </div>
-        <p class="text-[12px] text-slate-400 mt-3 text-center">Apunte la cámara al código de barras de la pieza</p>
-      </div>
-    </div>
+    <!-- Camera Modal (reusable) -->
+    <BarcodeCameraModal
+      :show="showCamera"
+      :title="t('ulds.scanWithCamera')"
+      :hint="t('scan.cameraHint')"
+      :should-accept="shouldScan"
+      @detected="onCameraDetected"
+      @close="closeCamera"
+    />
   </div>
 </template>
 
@@ -108,16 +138,22 @@ import { ref, nextTick, watch, computed, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { scanApi } from '@/api/scan.js'
 import { uldTypeCatalogApi } from '@/api/uldTypeCatalog'
+import { detectScanType } from '@/utils/scanType'
+import BarcodeCameraModal from '@/components/BarcodeCameraModal.vue'
 
 const { t } = useI18n()
 
 const props = defineProps({
   active: { type: Boolean, default: false },
   uldId: { type: String, default: '' },
-  uldNumber: { type: String, default: 'NUEVO' },
+  uldNumber: { type: String, default: '' },
+  sealNumber: { type: String, default: '' },
 })
 
-const emit = defineEmits(['piece-added', 'piece-removed', 'exit-scan', 'update-mawb-pieces', 'ULD_FOUND', 'uld-number-scanned'])
+// scan-focus: el padre resalta el campo del formulario que espera a continuación
+// ( 'uld' | 'seal' | 'mawb' | '' ). scan-error marca ese campo en rojo.
+const emit = defineEmits(['piece-added', 'piece-removed', 'exit-scan', 'update-mawb-pieces', 'ULD_FOUND',
+  'uld-number-scanned', 'seal-scanned', 'scan-focus', 'scan-error', 'unknown-code'])
 
 const scanInput = ref(null)
 const scanCode = ref('')
@@ -127,16 +163,58 @@ const lastResult = ref(null)
 const flashClass = ref('')
 const history = ref([])
 const showCamera = ref(false)
-const cameraVideo = ref(null)
-const cameraReady = ref(false)
-const cameraError = ref('')
-const lastDetect = ref(false)
-const canUndo = computed(() => history.value.length > 0 && history.value[0].success)
+// Destino del escaneo: 'auto' (contextual, por prefijo), pieza (MAWB/HAWB) o sello.
+const target = ref('auto')
+// Siguiente paso esperado de la secuencia guiada ULD → Sello → MAWBs (SDD §5)
+const expected = ref('uld')
+// Destello del selector cuando un código no se reconoce (SDD §7)
+const selectorAlert = ref(false)
+// Contador de piezas del ULD activo mostrado en la barra de estado (SDD §5.2)
+const pieceCounter = ref(null)
+// Pasos de la secuencia guiada ULD → Sello → MAWBs (mockup: stepper 1-2-3)
+const STEPS = [
+  { id: 'uld', key: 'scan.step.uld' },
+  { id: 'seal', key: 'scan.step.seal' },
+  { id: 'mawb', key: 'scan.step.mawb' },
+]
+
+function stepDone(step) {
+  if (step === 'uld') return !!props.uldNumber
+  if (step === 'seal') return !!props.sealNumber
+  return false
+}
+
+function stepClass(step) {
+  if (expected.value === step) return 'bg-blue-600 border-blue-600 text-white'
+  if (stepDone(step)) return 'bg-emerald-50 border-emerald-600 text-emerald-700'
+  return 'bg-white border-slate-300 text-slate-500'
+}
+const canUndo = computed(() => {
+  const last = history.value[0]
+  return !!(last && last.success && last.mawbId) // solo piezas registradas son deshacibles
+})
+const inputPlaceholder = computed(() => {
+  if (target.value === 'seal') return t('scan.placeholderSeal')
+  if (target.value === 'auto') {
+    if (expected.value === 'uld') return t('scan.placeholderUld')
+    if (expected.value === 'seal') return t('scan.placeholderSeal')
+  }
+  return t('scan.inputPlaceholder')
+})
+
+function setTarget(mode) {
+  target.value = mode
+  selectorAlert.value = false
+  // Al elegir manualmente un tipo, el foco del formulario pasa a ese campo
+  emit('scan-focus', mode === 'seal' ? 'seal' : mode === 'piece' ? 'mawb' : '')
+  scanInput.value?.focus()
+}
+
+watch(target, () => { scanInput.value?.focus() })
 
 // Tipos ULD desde el catálogo dinámico (normas IATA); fallback a lista legacy
 const LEGACY_ULD_TYPES = ['PMC', 'PAH', 'PAG', 'PAJ', 'AAY', 'AAZ', 'AAD', 'PIP', 'AMP', 'AMJ', 'PMH']
 const uldCodes = ref([...LEGACY_ULD_TYPES])
-const uldCodeRe = computed(() => new RegExp(`^(${uldCodes.value.join('|')})[-\\s]?[A-Z0-9]{4,}`, 'i'))
 uldTypeCatalogApi.getAll(true)
   .then(res => {
     const codes = (res.data || []).map(x => x.code).filter(Boolean)
@@ -144,99 +222,168 @@ uldTypeCatalogApi.getAll(true)
   })
   .catch(() => {})
 
-let cameraStream = null
-let detectTimer = null
-let scanLoop = null
 let lastDetectedCode = ''
 let lastDetectedAt = 0
-// Los detectores corren en setInterval, pero scanImageData() es async y usa un
-// lector WASM singleton: si un tick entra antes de que termine el anterior,
-// el lector se reentra y puede corromper su estado interno (el fallo ocurre
-// fuera del try/catch, porque sucede en el timer interno, no en la promesa
-// awaited). scanBusy serializa los ticks; scanGeneration invalida ticks de
-// sesiones viejas.
-//
-// NOTA: el error "Cannot read properties of undefined (reading 'startTime')"
-// desde reportAllChanges() NO proviene de ZBar ni de esta vista: es un bug de
-// Chrome DevTools (regresión en Chrome 152) en su script inyectado de Live
-// Metrics (web-vitals/INP) que revienta en navegaciones SPA con DevTools
-// abierto. Ver issues.chromium.org/555794190 y /554790587 — no es corregible
-// desde la aplicación.
-let scanBusy = false
-let scanGeneration = 0
+let selectorAlertTimer = null
 
-// Auto-focus when activated
+// Auto-focus when activated: la secuencia empieza por el campo que falta
+// (immediate: también al montar ya activo, p. ej. al restaurar un ULD en scan)
 watch(() => props.active, async (val) => {
   if (val) {
+    expected.value = props.uldNumber ? 'seal' : 'uld'
+    emit('scan-focus', expected.value)
     await nextTick()
     scanInput.value?.focus()
   } else {
+    pieceCounter.value = null
     closeCamera()
   }
-})
+}, { immediate: true })
 
 // Clean up on unmount
 onBeforeUnmount(() => {
   closeCamera()
+  if (selectorAlertTimer) clearTimeout(selectorAlertTimer)
 })
 
+// Añade una entrada al historial (máx. 10) y la muestra como último resultado
+function addHistory(entry) {
+  entry.time = entry.time || 'ahora'
+  lastResult.value = entry
+  history.value.unshift(entry)
+  if (history.value.length > 10) history.value.pop()
+}
+
+// Feedback háptico en éxito (SDD §7); solo en dispositivos que lo soportan
+function haptic() {
+  try { navigator.vibrate?.(15) } catch { /* sin soporte */ }
+}
+
+// El código escaneado no encaja con ningún tipo conocido → toast + selector (SDD §7)
+function handleUnknown(code) {
+  addHistory({ success: false, kind: 'unknown', awbNumber: code, error: t('scan.message.unknown') })
+  flash('red')
+  selectorAlert.value = true
+  if (selectorAlertTimer) clearTimeout(selectorAlertTimer)
+  selectorAlertTimer = setTimeout(() => { selectorAlert.value = false }, 2500)
+  emit('unknown-code', code)
+  emit('scan-focus', '')
+}
+
+// En modo Auto, un código que no parece ni ULD, ni sello, ni MAWB/HAWB
+const MAWB_RE = /^\d{3}-?\d{7,8}$/
+const HAWB_RE = /^[A-Z0-9][A-Z0-9-]{3,}$/i
+
 async function processScan(codeOverride) {
-  const code = codeOverride || scanCode.value?.trim()
+  // Enter (teclado/lápiz-disparador) envía el evento como argumento: solo aceptamos strings explícitos
+  const code = (typeof codeOverride === 'string' ? codeOverride : (scanCode.value || '')).trim()
   if (!code || processing.value) return
 
   processing.value = true
   scanning.value = true
 
   try {
-    const isUld = uldCodeRe.value.test(code)
+    const detected = detectScanType(code, uldCodes.value)
+    // Destino efectivo: en Auto manda la autodetección; en modo explícito manda el
+    // selector, salvo un código ULD que siempre se asigna (compatibilidad total).
+    let kind = target.value === 'auto' ? detected : target.value
+    if (target.value === 'piece' && detected === 'uld') kind = 'uld'
 
-    if (isUld && !props.uldId) {
-      lastResult.value = { success: true, message: `ULD ${code} asignado`, awbNumber: code }
-      flash('emerald')
-      emit('uld-number-scanned', code)
-    } else if (!isUld && !props.uldId) {
-      lastResult.value = { success: false, error: 'Escanee un código ULD (PMC-XXXXX) antes de registrar piezas', awbNumber: code, time: 'ahora' }
-      history.value.unshift(lastResult.value)
-      flash('red')
-    } else {
-      const res = await scanApi.piece({
-        uldId: props.uldId,
-        awbNumber: code,
-        source: 'BARCODE',
+    // 1) Códigos ULD: asignan el número de ULD y avanzan a Sello
+    if (kind === 'uld') {
+      const upper = code.toUpperCase()
+      const norm = (s) => (s || '').toUpperCase().replace(/[\s-]/g, '')
+      const already = norm(upper) === norm(props.uldNumber)
+      if (!already) emit('uld-number-scanned', upper)
+      addHistory({
+        success: true,
+        kind: 'uld',
+        awbNumber: upper,
+        message: already ? t('scan.message.uldAlready', { code: upper }) : t('scan.message.uldAssigned', { code: upper }),
       })
-
-      const entry = { awbNumber: code, time: 'ahora' }
-      if (res.data.success) {
-        Object.assign(entry, {
-          success: true,
-          message: `Pieza #${res.data.pieceNumber} — ${res.data.awbNumber}`,
-          pieceNumber: res.data.pieceNumber,
-          mawbId: res.data.mawbId,
-          totalOnUld: res.data.totalOnUld,
-          maxAllowed: res.data.totalOnUld + res.data.availablePieces,
-          warning: res.data.warning || null,
-        })
-        flash(res.data.warning ? 'amber' : 'emerald')
-        emit('piece-added', res.data)
-      } else {
-        Object.assign(entry, { success: false, error: res.data.error })
-        flash('red')
-      }
-      lastResult.value = entry
-      history.value.unshift(entry)
-      if (history.value.length > 10) history.value.pop()
+      haptic()
+      flash('emerald')
+      expected.value = 'seal'
+      emit('scan-focus', 'seal')
+      return
     }
+
+    // 2) Sello: va al campo sello del formulario ULD y avanza a MAWBs
+    if (kind === 'seal') {
+      const upper = code.toUpperCase()
+      emit('seal-scanned', upper)
+      addHistory({ success: true, kind: 'seal', awbNumber: upper, message: t('scan.message.sealSet', { code: upper }) })
+      haptic()
+      flash('emerald')
+      expected.value = 'mawb'
+      emit('scan-focus', 'mawb')
+      return
+    }
+
+    // 3) Modo Auto: si no parece ni ULD, ni sello, ni MAWB/HAWB → no reconocido
+    // (sin llamada al backend; toast + selector rápido de tipo, SDD §7)
+    if (target.value === 'auto' && kind === 'mawb' && !MAWB_RE.test(code) && !HAWB_RE.test(code)) {
+      handleUnknown(code)
+      return
+    }
+
+    // 4) Sin ULD guardado no hay piezas que registrar
+    if (!props.uldId) {
+      addHistory({ success: false, kind: 'piece', awbNumber: code, error: t('scan.message.uldFirst') })
+      flash('red')
+      emit('scan-error', 'uld')
+      return
+    }
+
+    const res = await scanApi.piece({
+      uldId: props.uldId,
+      awbNumber: code,
+      source: 'BARCODE',
+    })
+
+    const entry = { awbNumber: code, time: 'ahora', kind: 'piece' }
+    if (res.data.success) {
+      Object.assign(entry, {
+        success: true,
+        message: `Pieza #${res.data.pieceNumber} — ${res.data.awbNumber}`,
+        pieceNumber: res.data.pieceNumber,
+        mawbId: res.data.mawbId,
+        totalOnUld: res.data.totalOnUld,
+        maxAllowed: res.data.totalOnUld + res.data.availablePieces,
+        warning: res.data.warning || null,
+      })
+      haptic()
+      flash(res.data.warning ? 'amber' : 'emerald')
+      pieceCounter.value = {
+        n: res.data.totalOnUld,
+        max: res.data.totalOnUld + res.data.availablePieces,
+      }
+      expected.value = 'mawb'
+      emit('scan-focus', 'mawb')
+      emit('piece-added', res.data)
+    } else {
+      Object.assign(entry, { success: false, error: res.data.error })
+      flash('red')
+      emit('scan-error', 'mawb')
+    }
+    addHistory(entry)
   } catch (e) {
-    const msg = e.response?.data?.error || e.message || 'Error de conexión'
-    const entry = { success: false, error: msg, awbNumber: code, time: 'ahora' }
-    lastResult.value = entry
-    history.value.unshift(entry)
-    if (history.value.length > 10) history.value.pop()
-    flash('red')
+    // Modo Auto: si el backend rechaza el código y no parece un MAWB/HAWB válido,
+    // trátalo como no reconocido (toast + selector rápido de tipo, SDD §7)
+    const looksLikeAwb = MAWB_RE.test(code) || HAWB_RE.test(code)
+    if (target.value === 'auto' && !looksLikeAwb) {
+      handleUnknown(code)
+    } else {
+      const msg = e.response?.data?.error || e.message || 'Error de conexión'
+      addHistory({ success: false, kind: 'piece', error: msg, awbNumber: code })
+      flash('red')
+      emit('scan-error', 'mawb')
+    }
   } finally {
     processing.value = false
     scanning.value = false
-    scanCode.value = ''
+    // El código no reconocido se conserva en el input para re-dirigirlo con el selector
+    if (!(selectorAlert.value)) scanCode.value = ''
     await nextTick()
     scanInput.value?.focus()
   }
@@ -248,6 +395,9 @@ async function undoLast() {
   try {
     await scanApi.undoLast(props.uldId, last.mawbId)
     history.value.shift()
+    if (pieceCounter.value) {
+      pieceCounter.value = { ...pieceCounter.value, n: Math.max(0, pieceCounter.value.n - 1) }
+    }
     lastResult.value = { success: true, message: 'Última pieza eliminada', awbNumber: last.awbNumber }
     flash('amber')
     emit('piece-removed', { awbNumber: last.awbNumber, pieceNumber: last.pieceNumber })
@@ -256,128 +406,14 @@ async function undoLast() {
   }
 }
 
-async function openCamera() {
+function openCamera() {
   showCamera.value = true
-  cameraReady.value = false
-  cameraError.value = ''
-  lastDetect.value = false
-  const gen = ++scanGeneration
-  await nextTick()
-
-  const video = cameraVideo.value
-  if (!video) { closeCamera(); return }
-
-  if (!navigator.mediaDevices?.getUserMedia) {
-    cameraError.value = 'Cámara no disponible. Usa HTTPS o un navegador con cámara.'
-    return
-  }
-
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false,
-    })
-
-    // Si el modal se cerró mientras resolvía, no colgar el stream
-    if (!showCamera.value) {
-      stopStream()
-      return
-    }
-
-    video.srcObject = cameraStream
-    await video.play()
-    cameraReady.value = true
-
-    // Espera a que haya un frame real antes de arrancar los detectores
-    await waitForFrame(video)
-
-    // BarcodeDetector (Chrome/Edge)
-    if ('BarcodeDetector' in window) {
-      try {
-        await BarcodeDetector.getSupportedFormats()
-        const bd = new BarcodeDetector({
-          formats: ['code_128', 'code_39', 'code_39_vin', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar', 'i2of5'],
-        })
-        detectTimer = setInterval(async () => {
-          if (gen !== scanGeneration) return
-          if (!cameraStream?.active || processing.value || !video.videoWidth) return
-          if (scanBusy) return
-          scanBusy = true
-          try {
-            const codes = await bd.detect(video)
-            if (codes.length > 0 && shouldScan(codes[0].rawValue)) {
-              lastDetect.value = true
-              processScan(markScanned(codes[0].rawValue))
-            }
-          } catch {} finally { scanBusy = false }
-        }, 250)
-        return
-      } catch {}
-    }
-
-    // ZBar fallback (Firefox etc.)
-    const { scanImageData } = await import('@undecaf/zbar-wasm')
-
-    const offscreen = document.createElement('canvas')
-    const ctx = offscreen.getContext('2d')
-
-    scanLoop = setInterval(async () => {
-      if (gen !== scanGeneration) return
-      if (!cameraStream?.active || processing.value || !video.videoWidth) return
-      if (scanBusy) return
-      scanBusy = true
-      try {
-        offscreen.width = video.videoWidth || 640
-        offscreen.height = video.videoHeight || 480
-        ctx.drawImage(video, 0, 0)
-        const id = ctx.getImageData(0, 0, offscreen.width, offscreen.height)
-        const symbols = await scanImageData(id)
-        if (symbols.length > 0) {
-          const code = symbols[0].decode()
-          if (code && shouldScan(code)) {
-            lastDetect.value = true
-            processScan(markScanned(code))
-          }
-        }
-      } catch (e) {
-        if (e?.message === 'index out of bounds') return
-        console.warn('[Scan] ZBar error:', e)
-      } finally {
-        scanBusy = false
-      }
-    }, 400)
-  } catch (err) {
-    console.error('[Scan] Camera error:', err)
-    stopStream()
-    cameraReady.value = false
-    if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError') {
-      cameraError.value = 'Permiso de cámara denegado. Permite el acceso en la configuración del navegador.'
-    } else if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
-      cameraError.value = 'No se encontró una cámara disponible.'
-    } else if (err?.name === 'NotReadableError') {
-      cameraError.value = 'La cámara está en uso por otra aplicación. Ciérrala e intenta de nuevo.'
-    } else {
-      cameraError.value = 'Error de cámara: ' + (err?.message || err)
-    }
-  }
 }
 
-function waitForFrame(video, timeoutMs = 5000) {
-  return new Promise((resolve, reject) => {
-    const start = Date.now()
-    const check = () => {
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        resolve()
-        return
-      }
-      if (Date.now() - start > timeoutMs) {
-        reject(new Error('No se recibieron frames de la cámara'))
-        return
-      }
-      setTimeout(check, 50)
-    }
-    check()
-  })
+// Callback del modal de cámara reutilizable
+function onCameraDetected(code) {
+  if (!shouldScan(code)) return
+  processScan(markScanned(code))
 }
 
 // Evita re-disparar el mismo código mientras sigue enfrente (ventana de 3s)
@@ -393,29 +429,7 @@ function markScanned(code) {
   return code
 }
 
-async function retryCamera() {
-  cameraError.value = ''
-  cameraReady.value = false
-  stopStream()
-  openCamera()
-}
-
-function stopStream() {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop())
-    cameraStream = null
-  }
-}
-
-async function closeCamera() {
-  scanGeneration++
-  scanBusy = false
-  if (detectTimer) { clearInterval(detectTimer); detectTimer = null }
-  if (scanLoop) { clearInterval(scanLoop); scanLoop = null }
-  stopStream()
-  cameraReady.value = false
-  cameraError.value = ''
-  lastDetect.value = false
+function closeCamera() {
   showCamera.value = false
 }
 
@@ -428,6 +442,10 @@ const FLASH_CLASSES = {
 
 function flash(color) {
   flashClass.value = FLASH_CLASSES[color] || ''
-  setTimeout(() => { flashClass.value = '' }, 600)
+  // SDD §5.2: resalte 2 s en acierto; vibración doble en error (sin bloquear el escaneo)
+  if (color === 'red') {
+    try { navigator.vibrate?.([50, 70, 50]) } catch { /* sin soporte */ }
+  }
+  setTimeout(() => { flashClass.value = '' }, 2000)
 }
 </script>

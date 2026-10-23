@@ -55,6 +55,7 @@ const GLOBALS = new Set([
   'Element', 'HTMLElement', 'HTMLInputElement', 'SVGElement', 'getComputedStyle',
   'matchMedia', 'requestIdleCallback', 'cancelIdleCallback', 'getSelection',
   'CSS', 'import.meta', 'BarcodeDetector', 'XMLSerializer',
+  'ImageData', 'Uint8ClampedArray', 'OffscreenCanvas', 'createImageBitmap',
 ])
 
 // Macros de compilación de Vue (no requieren import)
