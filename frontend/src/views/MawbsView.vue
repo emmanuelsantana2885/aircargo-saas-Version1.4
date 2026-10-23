@@ -108,10 +108,8 @@
         </div>
         <button v-if="rangeStartSeg" @click="clearTimeline" class="button ghost text-[12px]" :aria-label="t('common.clear')">✕</button>
         <select v-model="localFlightId" @change="onFlightChange" class="sel cursor-pointer min-w-[140px] uppercase tracking-widest font-bold">
-          <option value="">{{ t('mawbs.allFlights') }}</option>
-          <option v-for="flight in store.flights" :key="flight.id" :value="flight.id">
-            {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }})
-          </option>
+          <option value="">{{ t('mawbs.allFlights') }}</option><option v-for="flight in store.flights" :key="flight.id" :value="flight.id">
+            {{ airlineCodeById(flight.airlineId) }}-{{ flight.flightNumber }} ({{ flight.origin }}→{{ flight.destination }}) · {{ fmtFlightDate(flight.flightDate) }}</option>
         </select>
         <button @click="toggleHidePast" class="button ghost" :title="t('mawbs.hidePast')">
           <i class="pi pi-filter"></i> {{ hidePastDates ? t('mawbs.future') : t('mawbs.past') }}
@@ -806,6 +804,17 @@ const hf = useHeaderFilters({ containerSelector: '.ds-table-section' })
 function airlineCodeById(airlineId) {
   const a = store.airlines.find(x => x.id === airlineId)
   return a?.code || 'AIR'
+}
+
+function fmtFlightDate(iso) {
+  if (!iso) return ''
+  try {
+    const localeCode = t('common.monthsShort[0]') === 'Jan' ? 'en-US' : 'es-DO'
+    return new Intl.DateTimeFormat(localeCode, { day: '2-digit', month: 'short', year: 'numeric' })
+      .format(new Date(iso + 'T00:00:00'))
+  } catch {
+    return iso
+  }
 }
 
 const activeTab = ref('matriz')

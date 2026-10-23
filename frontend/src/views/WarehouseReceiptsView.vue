@@ -1308,21 +1308,9 @@ const mawbOperationalStatusMap = computed(() => {
   return map
 })
 
-// MAWBs registradas hace más de EXPIRED_PENDING_DAYS días sin recibo completado
-// (aún PENDIENTE) se eliminan del registro de recibos pendientes: no aparecen en
-// la tabla, el pipeline, los contadores ni los filtros. Se cuenta desde la fecha de
-// registro (createdAt). El conteo es estrictamente > 7 días.
-const EXPIRED_PENDING_DAYS = 7
-function mawbExpiredDays(m) {
-  if (!m.createdAt) return 0
-  const t = new Date(m.createdAt).getTime()
-  if (Number.isNaN(t)) return 0
-  return (Date.now() - t) / 86400000
-}
-function isExpiredPending(m) {
-  return mawbOperationalStatusMap.value[m.id] === 'PENDIENTE' && mawbExpiredDays(m) > EXPIRED_PENDING_DAYS
-}
-const expiredPendingIds = computed(() => new Set(store.mawbs.filter(isExpiredPending).map(m => m.id)))
+// (Pedido del usuario, oct 2026) Ya no se oculta ninguna MAWB por antigüedad:
+// se muestran siempre las trabajadas (recibo emitido), las procesadas o en
+// proceso con borrador y TODAS las reservadas por los vuelos.
 
 const expandedId = ref(localStorage.getItem('WAREHOUSE_EXPANDED_MAWB') || null)
 const showScanModal = ref(false)
@@ -1581,7 +1569,8 @@ function fmtFlight(m) {
   const parts = f.flightNumber ? String(f.flightNumber).split(' ') : []
   const code = airlineCodeById(f.airlineId) || (parts.length > 1 ? parts[0] : '')
   const num = parts.length > 1 ? parts.slice(1).join(' ') : f.flightNumber
-  return [code, num].filter(Boolean).join('-') || f.id?.slice(0, 8)
+  const date = fmtFlightDate(f.flightDate)
+  return [code, num, date].filter(Boolean).join(' - ') || f.id?.slice(0, 8)
 }
 function flightSub(key) {
   const g = groupByKey(key)
@@ -1643,13 +1632,12 @@ const flightFilter = ref('')
 const statusCounts = computed(() => {
   const c = { PENDIENTE: 0, RECIBIDA: 0, EN_PROCESO: 0, CARGADA: 0, MANIFESTADA: 0, DESPACHADA: 0 }
   for (const m of store.mawbs) {
-    if (expiredPendingIds.value.has(m.id)) continue
     const s = mawbOperationalStatusMap.value[m.id]
     if (s && s in c) c[s]++
   }
   return c
 })
-const pipeTotal = computed(() => store.mawbs.length - expiredPendingIds.value.size)
+const pipeTotal = computed(() => store.mawbs.length)
 const pipeSegments = computed(() =>
   ['PENDIENTE', 'RECIBIDA', 'EN_PROCESO', 'CARGADA', 'MANIFESTADA', 'DESPACHADA'].map(key => ({
     key,
@@ -1663,7 +1651,6 @@ function setStatusFilter(key) {
 const flightOptions = computed(() => {
   const seen = new Map()
   for (const m of store.mawbs) {
-    if (expiredPendingIds.value.has(m.id)) continue
     const k = flightKeyOf(m)
     if (!k || k === 'none') continue
     if (!seen.has(k)) seen.set(k, { key: k, label: fmtFlight(m) })
@@ -1672,7 +1659,7 @@ const flightOptions = computed(() => {
 })
 
 const filteredMawbs = computed(() => {
-  let list = store.mawbs.filter(m => !expiredPendingIds.value.has(m.id))
+  let list = [...store.mawbs]
   if (filterDate.value) {
     const target = filterDate.value
     const mawbsWithReceipt = (store.receipts || [])
@@ -1781,11 +1768,9 @@ async function newReceipt() {
 
 async function onEditReceiptSaved() {
   await store.loadReceipts()
-  if (store.selectedFlightId) {
-    await store.loadMawbs(store.selectedFlightId)
-  } else {
-    await store.loadAllMawbs()
-  }
+  // El universo de esta vista es TODAS las MAWBs (el vuelo se filtra aparte con flightFilter).
+  // Nunca cargar por store.selectedFlightId: es estado global de otras vistas y recortaría la lista.
+  await store.loadAllMawbs()
   successMsg.value = 'Recibo actualizado correctamente'
   if (successTimer) clearTimeout(successTimer)
   successTimer = setTimeout(() => { successMsg.value = '' }, 4000)
@@ -2990,11 +2975,8 @@ async function executeEmit(m, hawbs, payload) {
   localStep.value = 5
   clearDraft(m.id)
 
-  if (store.selectedFlightId) {
-    await store.loadMawbs(store.selectedFlightId)
-  } else {
-    await store.loadAllMawbs()
-  }
+  // Universo completo — ver nota en saveChanges (loadAllMawbs siempre).
+  await store.loadAllMawbs()
   const totalKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightKg || 0), 0)
   const totalLbs = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + (p.scaleWeightLbs || 0), 0)
   const chargeKg = (receiptForms[m.id]?.pieces || []).reduce((s, p) => s + Math.max(p.dimWeightKg || 0, p.scaleWeightKg || 0), 0)
@@ -3402,7 +3384,7 @@ async function refreshData() {
   await Promise.all([
     store.loadReceipts({ silent: true }),
     store.loadUldAwbs({ silent: true }),
-    store.selectedFlightId ? store.loadMawbs(store.selectedFlightId, { silent: true }) : store.loadAllMawbs({ silent: true }),
+    store.loadAllMawbs({ silent: true }),
   ])
   statusSnapshot.value = takeStatusSnapshot()
   flashChangedRows(prev)
