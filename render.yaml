@@ -2,6 +2,14 @@
 #
 # Uso: Render Dashboard → New + → Blueprint → Connect repo → Apply.
 #
+# TIER GRATUITO (pedido del usuario, oct 2026 — entorno de PRUEBA real):
+#   - Todos los recursos usan plan `free`.
+#   - Los Web Services free se DUERMIEN tras ~15 min de inactividad (primer
+#     request posterior tarda ~30-60 s en despertar) y tienen 512 MB RAM —
+#     por eso JAVA_OPTS baja a -Xmx320m en los 10 servicios.
+#   - El Postgres free de Render EXPIRA A LOS 30 DÍAS (borrable/recreable).
+#   - RabbitMQ sigue siendo externo (CloudAMQP free "Little Lemur").
+#
 # Qué crea este Blueprint:
 #   - 1 PostgreSQL (aircargo-db, Render)          → top-level `databases:`
 #   - 1 Key Value  (aircargo-cache, Render)       → `services:` type: keyvalue (opcional)
@@ -58,7 +66,7 @@ databases:
   - name: aircargo-db
     databaseName: aircargo
     user: aircargo_user
-    plan: basic-256mb
+    plan: free
     region: oregon
     postgresMajorVersion: "16"
     ipAllowList: []   # sin acceso público; solo red interna de Render
@@ -84,7 +92,7 @@ services:
     name: aircargo-auth
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-auth-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -126,7 +134,7 @@ services:
       - key: FRONTEND_URL
         value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
 
@@ -135,7 +143,7 @@ services:
     name: aircargo-flight
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-flight-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -173,7 +181,7 @@ services:
       - key: CORS_ORIGINS
         value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
 
@@ -182,7 +190,7 @@ services:
     name: aircargo-booking
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-booking-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -222,7 +230,7 @@ services:
       - key: SERVICE_MAWB_URL
         value: https://aircargo-mawb.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-flight
@@ -233,7 +241,7 @@ services:
     name: aircargo-mawb
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-mawb-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -273,7 +281,7 @@ services:
       - key: SERVICE_BOOKING_URL
         value: https://aircargo-booking.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-flight
@@ -284,7 +292,7 @@ services:
     name: aircargo-warehouse
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-warehouse-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -328,7 +336,7 @@ services:
       - key: SERVICE_AUTH_URL
         value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-flight
@@ -341,7 +349,7 @@ services:
     name: aircargo-uld
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-uld-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -385,7 +393,7 @@ services:
       - key: SERVICE_AUTH_URL
         value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-flight
@@ -398,7 +406,7 @@ services:
     name: aircargo-load-planning
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-load-planning-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -424,7 +432,7 @@ services:
       - key: SERVICE_BOOKING_URL
         value: https://aircargo-booking.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-flight
       - aircargo-uld
@@ -436,7 +444,7 @@ services:
     name: aircargo-audit-reports
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-audit-reports-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -472,7 +480,7 @@ services:
       - key: SERVICE_WAREHOUSE_URL
         value: https://aircargo-warehouse.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-flight
@@ -486,7 +494,7 @@ services:
     name: aircargo-notification
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-notification-service/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -524,7 +532,7 @@ services:
       - key: SERVICE_AUTH_URL
         value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-db
       - aircargo-auth
@@ -534,7 +542,7 @@ services:
     name: aircargo-gateway
     runtime: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: backend/aircargo-gateway/Dockerfile
     dockerContext: .
     healthCheckPath: /actuator/health
@@ -562,7 +570,7 @@ services:
       - key: CORS_ORIGINS
         value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+        value: "-Xms128m -Xmx320m -XX:+UseContainerSupport"
     dependsOn:
       - aircargo-auth
       - aircargo-flight
