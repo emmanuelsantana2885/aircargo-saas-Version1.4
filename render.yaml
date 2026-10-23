@@ -14,8 +14,8 @@
 # Render NO ofrece RabbitMQ gestionado. Este Blueprint asume un broker EXTERNO
 # (CloudAMQP plan "Little Lemur" gratis, https://cloudamqp.com).
 #  1. Crea una instancia en CloudAMQP y copia su URL AMQP ("amqps://user:pass@host/vhost").
-#  2. En Render → cada servicio que usa AMQP (auth, mawb, warehouse, uld,
-#     booking, flight, load-planning, notification, audit-reports) → Environment
+#  2. En Render → cada servicio que usa AMQP (auth, flight, booking, mawb,
+#     warehouse, uld, load-planning, notification) → Environment
 #     → rellena RABBITMQ_HOST / RABBITMQ_PORT / RABBITMQ_USER / RABBITMQ_PASSWORD
 #     (los marcados con `sync: false`; Render los pide en el primer Apply).
 #  3. CloudAMQP free usa amqps (TLS, puerto 5671). Añade RABBITMQ_SSL=true en
