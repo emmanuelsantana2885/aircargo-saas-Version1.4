@@ -1017,6 +1017,24 @@
       @detected="onScanDetected"
       @close="closeScanModal"
     />
+
+    <!-- SDD §7: barra sticky Scan MAWB/HAWB siempre visible en móvil -->
+    <div class="scan-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
+      <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
+        @click="openScanModal"
+        :aria-label="t('warehouse.scan.stickyHint')">
+        <component :is="icons.Camera" :size="16" :stroke-width="2" />
+        <span>{{ t('warehouse.scan.stickyLabel') }}</span>
+      </button>
+    </div>
+    <div class="scan-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
+      <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
+        @click="openScanModal"
+        :aria-label="t('warehouse.scan.stickyHint')">
+        <component :is="icons.Camera" :size="16" :stroke-width="2" />
+        <span>{{ t('warehouse.scan.stickyLabel') }}</span>
+      </button>
+    </div>
   </div>
 </template>
 

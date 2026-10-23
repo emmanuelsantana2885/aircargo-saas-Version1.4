@@ -287,6 +287,9 @@ export default {
     selectFlight: 'Seleccionar vuelo',
     selectType: 'Seleccionar tipo',
     newBooking: 'Nueva Reserva',
+    chip: {
+      all: 'Todos',
+    },
     editBooking: 'Editar Reserva',
     skidPallet: 'Paleta (skid)',
     boxUnit: 'Caja / unidad',
@@ -591,6 +594,12 @@ import: {
       subtitle: 'Pipeline de estados / Filtro por estado',
       counter: 'MAWBs: {n}',
       footerSummary: 'MAWBs: {n} | Total piezas: {pieces}',
+      chipTotal: 'Total {n}',
+      chipComplete: 'Completas',
+      chipPartial: 'Parciales',
+      chipMissing: 'Pendientes',
+      onlyDiscrepancies: 'Solo discrepancias',
+      showAll: 'Mostrar todo',
     },
     lbsTab: {
       search: 'Buscar',
@@ -720,6 +729,13 @@ import: {
     steps: {
       scanUld: 'Escanear ULD',
       registerPieces: 'Registrar Piezas',
+    },
+    scan: {
+      activeTitle: 'Escaneando Seal…',
+      sequence: '{step}',
+      stepUld: 'ULD',
+      stepSeal: 'Sello',
+      stepMawb: 'MAWBs',
     },
     section: {
       mawb: 'Manifiesto MAWB',
@@ -1171,6 +1187,8 @@ import: {
     notDispatched: 'No despachadas',
     scan: {
       button: 'Escanear MAWB/HAWB',
+      stickyLabel: 'Escanear MAWB/HAWB',
+      stickyHint: 'Abrir cámara para escanear MAWB o HAWB',
       notFound: 'No se encontró ninguna MAWB para «{code}»',
       opened: 'Recibo abierto para {awb}',
     },

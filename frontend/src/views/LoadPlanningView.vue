@@ -399,6 +399,25 @@
         </div>
       </div>
     </div>
+
+    <!-- SDD §6: barra sticky con Dispatch (primaria) y Pallet sheets (secundaria) en móvil -->
+    <div class="lp-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
+      <div class="flex gap-2">
+        <button v-if="activeFlightMeta.id && activeFlightMeta.status !== 'DEPARTED' && activeFlightMeta.status !== 'ARRIVED' && activeFlightMeta.status !== 'CANCELLED'"
+          type="button" class="flex-1 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
+          @click="dispatchFlight"
+          :aria-label="t('loadPlanning.dispatchFlight')">
+          <component :is="icons.PlaneDeparture" :size="16" :stroke-width="2.5" />
+          <span>{{ t('loadPlanning.dispatchFlight') }}</span>
+        </button>
+        <button v-else type="button" class="flex-1 min-h-[48px] bg-surface border border-strong text-primary font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
+          @click="exportPalletSheets"
+          :aria-label="t('loadPlanning.palletSheets')">
+          <component :is="icons.FileDescription" :size="16" :stroke-width="2" />
+          <span>{{ t('loadPlanning.palletSheets') }}</span>
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 

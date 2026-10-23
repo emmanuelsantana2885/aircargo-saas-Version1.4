@@ -23,6 +23,17 @@
           <span>{{ store.selectedFlight.aircraftReg || '—' }}</span>
           <span>{{ store.selectedFlight.flightDate }}</span>
         </div>
+
+        <!-- SDD §8: chips rápidos de estado en móvil -->
+        <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-surface border border-strong">
+          <button type="button" :class="{ 'bg-blue-600 text-white': !statusFilter.value }" class="px-3 py-1 rounded text-[12px] font-bold transition-colors whitespace-nowrap" @click="statusFilter = ''">{{ t('bookings.chip.all') }}</button>
+          <button v-for="s in statusOptions" :key="s.value" type="button"
+            :class="{ 'bg-blue-600 text-white': statusFilter.value === s.value }" class="px-3 py-1 rounded text-[12px] font-bold transition-colors whitespace-nowrap"
+            @click="statusFilter = statusFilter.value === s.value ? '' : s.value">
+            <span class="w-2 h-2 rounded-full shrink-0" :class="s.dotClass"></span>
+            {{ s.label }}
+          </button>
+        </div>
         <FilterBar
           v-model:status="statusFilter"
           v-model:mawb-number="bkMawbFilter"
@@ -387,6 +398,15 @@
       </div>
     </div>
 
+    <!-- SDD §8: barra sticky New booking siempre visible en móvil -->
+    <div class="bookings-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
+      <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
+        @click="openCreate"
+        :aria-label="t('bookings.newBooking')">
+        <component :is="icons.Plus" :size="16" :stroke-width="2" />
+        <span>{{ t('bookings.newBooking') }}</span>
+      </button>
+    </div>
   </div>
 </template>
 

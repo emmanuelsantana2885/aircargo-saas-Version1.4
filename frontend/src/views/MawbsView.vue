@@ -137,16 +137,24 @@
         <div class="flex items-center gap-1">
           <button v-for="s in statusOptions" :key="s.value"
             @click="toggleStatusFilter(s.value)"
-            class="px-2.5 py-1 rounded text-[12px] font-mono font-bold transition-all border"
-            :class="estadosStatusFilter.includes(s.value)
-              ? 'bg-slate-950 text-white border-slate-950'
-              : 'bg-surface text-secondary border-strong hover:border-strong'">
+            class="px-2.5 py-1 rounded text-[12px] font-mono font-bold transition-all border">
             {{ s.label }} ({{ s.count }})
           </button>
         </div>
         <span class="text-[12px] font-mono text-tertiary">{{ t('mawbs.states.counter', { n: estadosFilteredRows.length }) }}</span>
       </div>
     </header>
+
+    <!-- SDD §10: chips resumen + interruptor "Only discrepancies" -->
+    <div v-if="activeTab === 'estados'" class="flex items-center gap-2 mb-1.5 px-1 overflow-x-auto scrollbar-none shrink-0">
+      <button type="button" :class="{ 'bg-slate-100 text-slate-900 border-slate-950': !discrepanciesOnly }" class="px-3 py-1.5 rounded text-[12px] font-mono font-bold border border-strong transition-colors" @click="discrepanciesOnly = false">{{ t('mawbs.states.chipTotal', { n: estadosFilteredRows.length }) }}</button>
+      <button type="button" :class="{ 'bg-emerald-50 text-emerald-900 border-emerald-600': estadosStatusFilter.includes('MANIFESTED') && !discrepanciesOnly }" class="px-3 py-1.5 rounded text-[12px] font-mono font-bold border border-strong transition-colors" @click="toggleStatusFilter('MANIFESTED')">{{ t('mawbs.states.chipComplete') }}</button>
+      <button type="button" :class="{ 'bg-amber-50 text-amber-900 border-amber-500': estadosStatusFilter.includes('RECEIVED') && !discrepanciesOnly }" class="px-3 py-1.5 rounded text-[12px] font-mono font-bold border border-strong transition-colors" @click="toggleStatusFilter('RECEIVED')">{{ t('mawbs.states.chipPartial') }}</button>
+      <button type="button" :class="{ 'bg-red-50 text-red-900 border-red-500': estadosStatusFilter.includes('PENDIENTE') || estadosStatusFilter.includes('BOOKED') }" class="px-3 py-1.5 rounded text-[12px] font-mono font-bold border border-strong transition-colors" @click="toggleStatusFilter('BOOKED')">{{ t('mawbs.states.chipMissing') }}</button>
+      <button type="button" class="ml-auto px-3 py-1.5 rounded text-[12px] font-mono font-bold border border-strong bg-surface hover:bg-surface-hover transition-colors" @click="discrepanciesOnly = !discrepanciesOnly">
+        {{ discrepanciesOnly ? t('mawbs.states.showAll') : t('mawbs.states.onlyDiscrepancies') }}
+      </button>
+    </div>
 
     <!-- Matrix Toolbar Stats -->
     <div v-if="activeTab === 'matriz'" class="flex items-center gap-2 my-2 shrink-0 px-1 overflow-x-auto scrollbar-none">
@@ -1337,6 +1345,9 @@ const statusOptions = computed(() => {
 
 const estadosStatusFilter = ref(['BOOKED', 'RECEIVED', 'MANIFESTED', 'DEPARTED'])
 
+// SDD §10: filtra solo MAWBs con discrepancia (recibido ≠ reservado)
+const discrepanciesOnly = ref(false)
+
 function toggleStatusFilter(value) {
   const idx = estadosStatusFilter.value.indexOf(value)
   if (idx >= 0) {
@@ -1362,6 +1373,15 @@ const estadosFilteredRows = computed(() => {
   if (cf.es_lbs !== null && cf.es_lbs !== undefined) list = list.filter(r => Number(r.physicalWeightLbs ?? 0) === Number(cf.es_lbs))
   if (cf.es_pcsDisp !== null && cf.es_pcsDisp !== undefined) list = list.filter(r => Number(r.pcsDispatched || 0) === Number(cf.es_pcsDisp))
   if (cf.es_status) list = list.filter(r => (r.status || 'BOOKED') === cf.es_status)
+  // SDD §10: solo discrepancias (recibido ≠ reservado, o piezas despachadas exceden)
+  if (discrepanciesOnly.value) {
+    list = list.filter(r => {
+      const reserved = Number(r.reservedPieces || 0)
+      const received = Number(r.receivedPieces || 0)
+      const dispatched = Number(r.pcsDispatched || 0)
+      return received !== reserved || dispatched > reserved
+    })
+  }
   return list
 })
 

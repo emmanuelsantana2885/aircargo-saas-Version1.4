@@ -45,6 +45,30 @@
       </div>
     </header>
 
+    <!-- Scan status banner (mockup: top banner "Escaneando Seal…") -->
+    <div v-if="scanMode" class="scan-banner mx-3 mb-2 rounded-lg overflow-hidden border border-slate-200">
+      <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200">
+        <component :is="icons.PlaneDeparture" :size="16" :stroke-width="2" class="text-blue-600" />
+        <span class="text-[12px] font-bold text-slate-700">{{ t('ulds.scan.activeTitle') }}</span>
+        <span class="ml-auto text-[11px] font-mono text-slate-400">{{ t('ulds.scan.sequence', { step: scanStepLabel }) }}</span>
+      </div>
+      <div class="px-3 py-1.5 bg-white">
+        <div class="flex items-center gap-2 text-xs font-mono">
+          <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+            :class="scanActive === 'uld' ? 'bg-blue-50 text-blue-900 border-blue-600' : 'bg-surface-border text-slate-400 border border-slate-300'">1</span>
+          <span class="text-slate-500 uppercase tracking-wider">{{ t('ulds.scan.stepUld') }}</span>
+          <span class="w-2 h-1 bg-slate-200 shrink-0"></span>
+          <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+            :class="scanActive === 'seal' ? 'bg-blue-50 text-blue-900 border-blue-600' : scanActive === 'mawb' ? 'bg-emerald-50 text-emerald-900 border-emerald-600' : 'bg-surface-border text-slate-400 border border-slate-300'">2</span>
+          <span class="text-slate-500 uppercase tracking-wider">{{ t('ulds.scan.stepSeal') }}</span>
+          <span class="w-2 h-1 bg-slate-200 shrink-0"></span>
+          <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+            :class="scanActive === 'mawb' ? 'bg-blue-50 text-blue-900 border-blue-600' : 'bg-surface-border text-slate-400 border border-slate-300'">3</span>
+          <span class="text-slate-500 uppercase tracking-wider">{{ t('ulds.scan.stepMawb') }}</span>
+        </div>
+      </div>
+    </div>
+
     <section class="ds-table-section mb-1.5">
       <EmptyState v-if="appStore.loading && !localUlds.length" :title="t('ulds.loading')" loading />
 
@@ -717,6 +741,8 @@ const detailPanel = ref(null)
 const statusFilter = ref('')
 const searchText = ref('')
 const destFilter = ref('')
+// Campo activo de la secuencia guiada de escaneo (SDD §5): uld → seal → mawb
+const scanActive = ref('uld')
 // Load-planning flight filter: '' = todos los ULDs; si tiene valor, la lista
 // incluye los ULDs del vuelo (asignados o liberados tras el despacho).
 const flightFilterId = ref('')
@@ -831,6 +857,11 @@ const filteredUlDs = computed(() => {
 const fullUldCount = computed(() => filteredUlDs.value.filter(u => u.volumePct >= 100).length)
 const nearFullUldCount = computed(() => filteredUlDs.value.filter(u => u.volumePct >= 90 && u.volumePct < 100).length)
 
+const scanStepLabel = computed(() => {
+  const map = { uld: t('ulds.scan.stepUld'), seal: t('ulds.scan.stepSeal'), mawb: t('ulds.scan.stepMawb') }
+  return map[scanActive.value] || t('ulds.scan.stepUld')
+})
+
 // Listado vertical: del ULD más pesado (mayor gross weight) al más ligero
 const sortedUlDsByGross = computed(() => {
   return [...filteredUlDs.value].sort((a, b) => (Number(b.grossWeightLbs) || 0) - (Number(a.grossWeightLbs) || 0))
@@ -874,6 +905,7 @@ function scrollToRef(el) {
 // resaltamos y centramos el campo correspondiente del formulario (SDD §7)
 function onScanFocus(field) {
   scanFocus.value = field
+  scanActive.value = field
   scanFieldError.value = ''
   if (field === 'seal') nextTick(() => scrollToRef(sealInput.value))
   if (field === 'mawb') nextTick(() => scrollToRef(mawbTableRef.value))
@@ -1747,4 +1779,8 @@ input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .row-selected { background: #f8fafc; }
+.bg-surface-border { background: #f3f5f8; }
+
+/* Mockup ULD Pallet Sheet — banner de escaneo y pills de progreso */
+.scan-banner { border-radius: 12px; }
 </style>
