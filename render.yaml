@@ -1,81 +1,96 @@
 # render.yaml — Blueprint 1-click para Aircargo SaaS
-# Uso: Dashboard → New + → Blueprint → Connect repo → selecciona este archivo
 #
-# Requiere: repo en GitHub con esta estructura
-# Render crea: 1 PostgreSQL, 1 Redis, 10 Web Services, 1 Static Site
+# Uso: Render Dashboard → New + → Blueprint → Connect repo → Apply.
+#
+# Qué crea este Blueprint:
+#   - 1 PostgreSQL (aircargo-db, Render)          → top-level `databases:`
+#   - 1 Key Value  (aircargo-cache, Render)       → `services:` type: keyvalue (opcional)
+#   - 1 Environment Group (aircargo-secrets)      → JWT_SECRET + APP_ENCRYPTION_KEY
+#   - 10 Web Services (Docker): auth + flight + booking + mawb + warehouse + uld
+#     + load-planning + audit-reports + notification + gateway
+#   - 1 Static Site (aircargo-frontend) con proxy rewrite /api/* → gateway
+#
+# ─── RabbitMQ (CloudAMQP free) — PASO MANUAL OBLIGATORIO ────────────────────
+# Render NO ofrece RabbitMQ gestionado. Este Blueprint asume un broker EXTERNO
+# (CloudAMQP plan "Little Lemur" gratis, https://cloudamqp.com).
+#  1. Crea una instancia en CloudAMQP y copia su URL AMQP ("amqps://user:pass@host/vhost").
+#  2. En Render → cada servicio que usa AMQP (auth, mawb, warehouse, uld,
+#     booking, flight, load-planning, notification, audit-reports) → Environment
+#     → rellena RABBITMQ_HOST / RABBITMQ_PORT / RABBITMQ_USER / RABBITMQ_PASSWORD
+#     (los marcados con `sync: false`; Render los pide en el primer Apply).
+#  3. CloudAMQP free usa amqps (TLS, puerto 5671). Añade RABBITMQ_SSL=true en
+#     esos mismos servicios si tu broker exige TLS (ver propiedades abajo).
+#  Nota: las variables RABBITMQ_* NO pueden vivir en un envVarGroup porque la
+#  spec de Render prohíbe `sync: false` dentro de environment groups.
+#
+# ─── POSTGRES_HOST / POSTGRES_PORT — PASO MANUAL ────────────────────────────
+# Render no expone host/port como propiedades de `fromDatabase`. Hay que
+# rellenarlos una vez en cada servicio que usa BD, con los valores que Render
+# muestra en el recurso aircargo-db (Internal Hostname / Port). Por eso van
+# con `sync: false` a nivel de servicio (no en el env group).
+#
+# IMPORTANTE sobre el contexto de build: los Dockerfiles hacen `COPY backend/ .`,
+# por lo que el contexto debe ser la RAÍZ del repo. NO uses `rootDir` en los
+# servicios Docker (rompería el COPY). El `dockerfilePath` sí apunta al servicio.
+#
+# IMPORTANTE sobre HTTPS: Render expone cada Web Service con HTTPS
+# (https://<name>.onrender.com) automáticamente. Las variables SERVICE_*_URL
+# se llenan con esas URLs. Si algún día quieres un dominio propio, cámbialas.
+
+# ─────────────────────────────────────────────────────────────────
+# SECRETOS COMPARTIDOS (Environment Group)
+# JWT_SECRET y APP_ENCRYPTION_KEY deben ser IDÉNTICOS en los 10 servicios.
+# Render genera los valores una sola vez y los propaga por `fromGroup`.
+# NOTA: no se admiten `sync: false` ni `fromDatabase` dentro de un envVarGroup.
+# ─────────────────────────────────────────────────────────────────
+envVarGroups:
+  - name: aircargo-secrets
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true
+
+# ─────────────────────────────────────────────────────────────────
+# INFRAESTRUCTURA GESTIONADA POR RENDER — PostgreSQL (top-level)
+# ─────────────────────────────────────────────────────────────────
+databases:
+  - name: aircargo-db
+    databaseName: aircargo
+    user: aircargo_user
+    plan: basic-256mb
+    region: oregon
+    postgresMajorVersion: "16"
+    ipAllowList: []   # sin acceso público; solo red interna de Render
 
 services:
   # ─────────────────────────────────────────────────────────────────
-  # INFRAESTRUCTURA
+  # Key Value (Redis-compatible) — opcional (rate-limit HA / caché)
+  # Va en `services:` con `type: keyvalue`. NO admite `runtime`.
   # ─────────────────────────────────────────────────────────────────
-  - type: pserv
-    name: aircargo-db
-    plan: starter
+  - type: keyvalue
+    name: aircargo-cache
     region: oregon
-    postgresMajorVersion: "16"
-    databaseName: aircargo
-    user: aircargo_user
-    # password: auto-generado, disponible en env vars
-
-  - type: redis
-    name: aircargo-redis
-    plan: starter
-    region: oregon
+    plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []   # sin acceso público; solo red interna de Render
 
   # ─────────────────────────────────────────────────────────────────
-  # SHARED LIBS (Private Services - Background Workers sin puerto)
-  # Se compilan primero y quedan disponibles para mvn install
-  # ─────────────────────────────────────────────────────────────────
-  - type: worker
-    name: aircargo-common
-    region: oregon
-    plan: starter
-    rootDir: backend/aircargo-common
-    buildCommand: "./mvnw -q install -DskipTests"
-    # No startCommand = no puerto, solo build
-    envVars:
-      - key: MAVEN_OPTS
-        value: "-Xmx1g"
-
-  - type: worker
-    name: aircargo-feign-clients
-    region: oregon
-    plan: starter
-    rootDir: backend/aircargo-feign-clients
-    buildCommand: "./mvnw -q install -DskipTests"
-    envVars:
-      - key: MAVEN_OPTS
-        value: "-Xmx1g"
-
-  # ─────────────────────────────────────────────────────────────────
-  # MICROSERVICIOS (Web Services) — orden de dependencias
+  # MICROSERVICIOS (Web Services Docker) — contexto = raíz del repo
   # ─────────────────────────────────────────────────────────────────
 
-  # 1. Auth Service (base para los demás)
+  # 1. Auth Service (emite/valida JWT y refresh tokens)
   - type: web
     name: aircargo-auth
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-auth-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-auth-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -84,66 +99,47 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
+        sync: false
       - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
+        sync: false
       - key: RABBITMQ_USER
-        value: aircargo
+        sync: false
       - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        generateValue: true
-      - key: APP_ENCRYPTION_KEY
-        generateValue: true
+        sync: false
+      - key: RABBITMQ_ENABLED
+        value: "true"
       - key: CORS_ORIGINS
         value: https://aircargo-frontend.onrender.com
       - key: FRONTEND_URL
         value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
-    # Depende de common + feign-clients + DB + Redis
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
 
   # 2. Flight Service
   - type: web
     name: aircargo-flight
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-flight-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-flight-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -152,68 +148,33 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
-      - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
-      - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
-      - key: RABBITMQ_USER
-        value: aircargo
-      - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
-      - aircargo-auth
 
-  # 3. Booking Service
+  # 3. Booking Service (Feign → flight, mawb)
   - type: web
     name: aircargo-booking
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-booking-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-booking-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -222,68 +183,47 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
+        sync: false
       - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
+        sync: false
       - key: RABBITMQ_USER
-        value: aircargo
+        sync: false
       - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+        sync: false
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
-      - aircargo-auth
+      - aircargo-flight
+      - aircargo-mawb
 
-  # 4. MAWB Service (incluye DUA Compliance)
+  # 4. MAWB Service (Feign → flight, booking)
   - type: web
     name: aircargo-mawb
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-mawb-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-mawb-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -292,260 +232,47 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
-      - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
-      - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
-      - key: RABBITMQ_USER
-        value: aircargo
-      - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
-      - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
-    dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
-      - aircargo-db
-      - aircargo-redis
-      - aircargo-auth
-
-  # 5. Warehouse Service
-  - type: web
-    name: aircargo-warehouse
-    region: oregon
-    plan: starter
-    rootDir: backend/aircargo-warehouse-service
-    dockerfilePath: Dockerfile
-    healthCheckPath: /actuator/health
-    autoDeploy: true
-    envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
       - key: POSTGRES_DB
         fromDatabase:
           name: aircargo-db
-          property: databaseName
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: aircargo-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: aircargo-db
-          property: password
-      - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
-      - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
-      - key: RABBITMQ_USER
-        value: aircargo
-      - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
-      - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
-    dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
-      - aircargo-db
-      - aircargo-redis
-      - aircargo-auth
-
-  # 6. ULD Service (con SSE para scan events)
-  - type: web
-    name: aircargo-uld
-    region: oregon
-    plan: starter
-    rootDir: backend/aircargo-uld-service
-    dockerfilePath: Dockerfile
-    healthCheckPath: /actuator/health
-    autoDeploy: true
-    envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
+          property: database
       - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
+        sync: false
       - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
-      - key: POSTGRES_USER
-        fromDatabase:
-          name: aircargo-db
-          property: user
-      - key: POSTGRES_PASSWORD
-        fromDatabase:
-          name: aircargo-db
-          property: password
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
+        sync: false
       - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
+        sync: false
       - key: RABBITMQ_USER
-        value: aircargo
+        sync: false
       - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+        sync: false
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
-      - aircargo-auth
-
-  # 7. Load Planning Service (stateless, sin BD propia)
-  - type: web
-    name: aircargo-load-planning
-    region: oregon
-    plan: starter
-    rootDir: backend/aircargo-load-planning-service
-    dockerfilePath: Dockerfile
-    healthCheckPath: /actuator/health
-    autoDeploy: true
-    envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
-      - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
-      - key: RABBITMQ_USER
-        value: aircargo
-      - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
-      - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
-    dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
-      - aircargo-redis
-      - aircargo-auth
       - aircargo-flight
       - aircargo-booking
-      - aircargo-uld
 
-  # 8. Export / BI Service (read-only analytics)
+  # 5. Warehouse Service (Feign → flight, mawb, booking, auth)
   - type: web
-    name: aircargo-export
+    name: aircargo-warehouse
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-export-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-warehouse-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -554,68 +281,194 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
+        sync: false
       - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
+        sync: false
       - key: RABBITMQ_USER
-        value: aircargo
+        sync: false
       - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+        sync: false
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
+      - key: SERVICE_AUTH_URL
+        value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
+      - aircargo-flight
+      - aircargo-mawb
+      - aircargo-booking
       - aircargo-auth
 
-  # 9. Notification Service (RabbitMQ listeners)
+  # 6. ULD Service (Feign → flight, mawb, booking, auth; SSE scan events)
+  - type: web
+    name: aircargo-uld
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: backend/aircargo-uld-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - fromGroup: aircargo-secrets
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: aircargo-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: aircargo-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        sync: false
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
+      - key: SERVICE_AUTH_URL
+        value: https://aircargo-auth.onrender.com
+      - key: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+    dependsOn:
+      - aircargo-db
+      - aircargo-flight
+      - aircargo-mawb
+      - aircargo-booking
+      - aircargo-auth
+
+  # 7. Load Planning Service (stateless, con caché + AMQP)
+  - type: web
+    name: aircargo-load-planning
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: backend/aircargo-load-planning-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - fromGroup: aircargo-secrets
+      - key: RABBITMQ_HOST
+        sync: false
+      - key: RABBITMQ_PORT
+        sync: false
+      - key: RABBITMQ_USER
+        sync: false
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_ULD_URL
+        value: https://aircargo-uld.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
+      - key: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+    dependsOn:
+      - aircargo-flight
+      - aircargo-uld
+      - aircargo-mawb
+      - aircargo-booking
+
+  # 8. Audit / Reports Service (read-only analytics + BI)
+  - type: web
+    name: aircargo-audit-reports
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: backend/aircargo-audit-reports-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - fromGroup: aircargo-secrets
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: aircargo-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: aircargo-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_ULD_URL
+        value: https://aircargo-uld.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
+      - key: SERVICE_WAREHOUSE_URL
+        value: https://aircargo-warehouse.onrender.com
+      - key: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
+    dependsOn:
+      - aircargo-db
+      - aircargo-flight
+      - aircargo-uld
+      - aircargo-mawb
+      - aircargo-booking
+      - aircargo-warehouse
+
+  # 9. Notification Service (AMQP listeners + email)
   - type: web
     name: aircargo-notification
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-notification-service
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-notification-service/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: POSTGRES_HOST
-        fromDatabase:
-          name: aircargo-db
-          property: host
-      - key: POSTGRES_PORT
-        fromDatabase:
-          name: aircargo-db
-          property: port
-      - key: POSTGRES_DB
-        fromDatabase:
-          name: aircargo-db
-          property: databaseName
+      - fromGroup: aircargo-secrets
       - key: POSTGRES_USER
         fromDatabase:
           name: aircargo-db
@@ -624,93 +477,67 @@ services:
         fromDatabase:
           name: aircargo-db
           property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: aircargo-db
+          property: database
+      - key: POSTGRES_HOST
+        sync: false
+      - key: POSTGRES_PORT
+        sync: false
+      - key: POSTGRES_SSLMODE
+        value: require
       - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
+        sync: false
       - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
+        sync: false
       - key: RABBITMQ_USER
-        value: aircargo
+        sync: false
       - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+        sync: false
+      - key: SERVICE_AUTH_URL
+        value: https://aircargo-auth.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
       - aircargo-db
-      - aircargo-redis
       - aircargo-auth
 
-  # 10. Gateway (último, enruta a los 9)
+  # 10. Gateway (enruta a los 9 servicios; punto de entrada /api)
   - type: web
     name: aircargo-gateway
+    runtime: docker
     region: oregon
     plan: starter
-    rootDir: backend/aircargo-gateway
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/aircargo-gateway/Dockerfile
+    dockerContext: .
     healthCheckPath: /actuator/health
     autoDeploy: true
     envVars:
-      - key: SPRING_PROFILES_ACTIVE
-        value: prod
-      - key: RABBITMQ_HOST
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: host
-      - key: RABBITMQ_PORT
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: port
-      - key: RABBITMQ_USER
-        value: aircargo
-      - key: RABBITMQ_PASSWORD
-        fromService:
-          type: redis
-          name: aircargo-redis
-          property: password
-      - key: JWT_SECRET
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.JWT_SECRET
-      - key: APP_ENCRYPTION_KEY
-        fromService:
-          type: web
-          name: aircargo-auth
-          property: envVars.APP_ENCRYPTION_KEY
+      - fromGroup: aircargo-secrets
+      - key: SERVICE_AUTH_URL
+        value: https://aircargo-auth.onrender.com
+      - key: SERVICE_FLIGHT_URL
+        value: https://aircargo-flight.onrender.com
+      - key: SERVICE_BOOKING_URL
+        value: https://aircargo-booking.onrender.com
+      - key: SERVICE_MAWB_URL
+        value: https://aircargo-mawb.onrender.com
+      - key: SERVICE_WAREHOUSE_URL
+        value: https://aircargo-warehouse.onrender.com
+      - key: SERVICE_ULD_URL
+        value: https://aircargo-uld.onrender.com
+      - key: SERVICE_LOAD_PLANNING_URL
+        value: https://aircargo-load-planning.onrender.com
+      - key: SERVICE_AUDIT_REPORTS_URL
+        value: https://aircargo-audit-reports.onrender.com
+      - key: SERVICE_NOTIFICATION_URL
+        value: https://aircargo-notification.onrender.com
       - key: CORS_ORIGINS
         value: https://aircargo-frontend.onrender.com
       - key: JAVA_OPTS
-        value: "-Xms256m -Xmx512m"
-      - key: LOG_DIR
-        value: /var/log/aircargo
+        value: "-Xms256m -Xmx512m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75"
     dependsOn:
-      - aircargo-common
-      - aircargo-feign-clients
-      - aircargo-redis
       - aircargo-auth
       - aircargo-flight
       - aircargo-booking
@@ -718,14 +545,18 @@ services:
       - aircargo-warehouse
       - aircargo-uld
       - aircargo-load-planning
-      - aircargo-export
+      - aircargo-audit-reports
       - aircargo-notification
 
   # ─────────────────────────────────────────────────────────────────
-  # FRONTEND (Static Site) — servido por CDN global
+  # FRONTEND (Static Site) — CDN global + proxy /api/* → gateway
+  # El cliente usa baseURL '/api' (frontend/src/api/client.js), por lo que el
+  # Static Site reescribe /api/* hacia el gateway (render.com → onrender.com).
+  # El orden de `routes` importa: primero el rewrite de /api, luego el SPA.
   # ─────────────────────────────────────────────────────────────────
-  - type: static
+  - type: web
     name: aircargo-frontend
+    runtime: static
     region: oregon
     plan: free
     rootDir: frontend
@@ -733,11 +564,10 @@ services:
     staticPublishPath: dist
     routes:
       - type: rewrite
+        source: /api/*
+        destination: https://aircargo-gateway.onrender.com/api/*
+      - type: rewrite
         source: /*
         destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://aircargo-gateway.onrender.com/api
-    # Depende del gateway para que la URL exista
     dependsOn:
       - aircargo-gateway
