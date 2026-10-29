@@ -68,6 +68,12 @@ export default {
     title: 'Cambiar contraseña',
   },
   privacy: { title: 'Política de Privacidad', version: 'Versión', link: 'Política de Privacidad' },
+  siteFooter: {
+    brand: 'AirCargo SaaS',
+    rights: 'Todos los derechos reservados.',
+    privacy: 'Política de Privacidad',
+    privacyLink: '/privacy',
+  },
   idle: {
     title: 'Sesión por cerrar',
     message: 'No detectamos actividad. Tu sesión se cerrará en:',

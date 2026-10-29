@@ -69,7 +69,7 @@
           </div>
         </div>
         <div class="flex min-w-0 items-center overflow-x-auto scrollbar-none" style="max-width:480px">
-          <div v-if="timelineSegments.length" class="relative w-full py-1 select-none" style="min-width:280px">
+          <div v-if="timelineSegments.length" class="relative w-full py-1 select-none" style="min-width: 0;">
             <div class="relative h-6 flex items-center mx-1">
               <div class="absolute left-0 right-0 h-1.5 bg-surface-hover rounded-full"></div>
               <div v-if="rangeStartSeg && rangeEndSeg" class="absolute h-1.5 rounded-full bg-slate-950/20" :style="rangeBarStyle"></div>

@@ -68,7 +68,7 @@
 
     <section class="ds-table-section">
       <div ref="scrollWrapRef" class="table-scroll-wrapper flex-1 min-h-0">
-      <div class="ds-table-header" style="min-width: 860px">
+      <div class="ds-table-header" style="min-width: 0; overflow-x: auto;">
         <div class="col-span-2 text-left relative">
           <span @click="toggleHeaderFilter('awb')" class="cursor-pointer select-none"
             :class="columnFilters.awb ? 'text-tertiary' : 'hover:text-white/80'">
@@ -160,7 +160,7 @@
         </button>
       </EmptyState>
 
-      <div v-else class="divide-y divide-default text-[13px] text-primary overflow-y-auto flex-1 min-h-0 scrollbar-none" style="min-width: 860px">
+      <div v-else class="divide-y divide-default text-[13px] text-primary overflow-y-auto flex-1 min-h-0 scrollbar-none table-scroll-wrapper" style="min-width: 0;">
         <div v-for="b in deduplicatedBookings" :key="b.id"
           class="ds-table-row group">
 
@@ -192,7 +192,7 @@
 
           <div class="col-span-1 text-center font-mono font-bold text-primary relative z-10 flex items-center justify-center gap-1">
             <template v-for="p in unitParts(b)" :key="p.type">
-              <span class="inline-block px-1.5 py-0.5 rounded text-[12px] font-mono font-bold whitespace-nowrap"
+              <span class="inline-block px-2 py-0.5 rounded text-[13px] font-mono font-bold whitespace-nowrap"
                 :title="p.type === 'SKID' ? t('bookings.skidPallet') : t('bookings.boxUnit')"
                 :class="p.type === 'SKID' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'">
                 {{ p.count }}{{ p.type === 'SKID' ? 'S' : 'B' }}
@@ -209,6 +209,7 @@
               {{ b.reservedKg ? Number(b.reservedKg).toLocaleString() : '—' }}<span class="text-[13px] text-primary font-normal font-mono">k</span>
             </template>
           </div>
+          <div class="col-span-1 text-center text-[12px] text-secondary relative z-10" :title="t('bookings.weightUnits')">{{ t('bookings.weightUnits') }}</div>
 
           <div class="col-span-1 flex items-center justify-center gap-2 relative z-10">
             <div class="flex items-center gap-2" :title="'MAWB: ' + getMawbStatus(b)">
@@ -343,7 +344,7 @@
         </div>
 
         <div class="overflow-auto flex-1 min-h-0">
-          <table class="data-table data-table--light w-full text-[13px] font-mono" style="min-width: 1100px">
+          <table class="data-table data-table--light w-full text-[13px] font-mono" style="min-width: 900px">
             <thead class="bg-surface-hover sticky top-0 z-10">
               <tr class="text-[12px] font-bold text-primary uppercase tracking-wider">
                 <th class="text-left px-5 py-3 border-b border-slate-400">#</th>

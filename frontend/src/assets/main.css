@@ -940,6 +940,10 @@ input:focus, select:focus, textarea:focus {
 
 /* Mobile: full-width sidebar overlay */
 @media (max-width: 767px) {
+  .app-layout {
+    height: 100dvh;
+    height: 100vh;
+  }
   .app-layout > aside {
     position: fixed !important;
     top: 0;
@@ -947,6 +951,13 @@ input:focus, select:focus, textarea:focus {
     left: 0;
     z-index: 50;
     transition: transform 0.3s ease-out;
+    transform: translateX(-100%);
+  }
+  .app-layout > aside.sidebar-mobile {
+    transform: translateX(0);
+  }
+  .app-layout > div {
+    margin-left: 0 !important;
   }
 }
 
@@ -972,6 +983,10 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 640px) {
   .p-5, .p-6 { padding: 12px !important; }
   .p-4 { padding: 10px !important; }
+  /* Permitir scroll horizontal en cualquier contenedor con overflow-x */
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  /* Mejorar legibilidad de tablas */
+  .table-scroll-wrapper table { min-width: 500px; }
   /* iOS seguro: usa 100dvh (dynamic viewport) para que la barra inferior
      del navegador/URL no oculte contenido; fallback vh + dvh para soporte. */
   .h-screen {
@@ -990,10 +1005,17 @@ input:focus, select:focus, textarea:focus {
   .ds-page {
     overflow-x: visible !important;
     overflow-y: visible !important;
+    padding-bottom: calc(var(--bottom-nav-h, 58px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .ds-page-flow {
+    padding-bottom: calc(var(--bottom-nav-h, 58px) + 16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
   /* Header wraps gracefully */
   header { flex-wrap: wrap; gap: 6px; }
+  .shell-header { padding: 6px 10px; }
+  .brand span { font-size: 13px; }
+  .brand small { display: none; }
 
   /* Hide verbose labels */
   .hide-mobile { display: none !important; }
@@ -1024,7 +1046,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Breakpoint tablet/desktop estrecho (NFO de columnas secundarias) */
-@media (min-width: 641px) and (max-width: 1023px) {
+@media (min-width: 641px) and (max-width: 1023px) { .table-scroll-wrapper { overflow-x: auto; }
   [data-col="hide-md"] { display: none !important; }
 }
 
@@ -1388,7 +1410,7 @@ input:focus, select:focus, textarea:focus {
 .chalk table {
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 820px;
+  min-width: 600px;
   width: 100%;
 }
 .chalk th {
@@ -1557,7 +1579,7 @@ input:focus, select:focus, textarea:focus {
 .lp-grid {
   display: grid;
   grid-template-columns: 6fr 56px 9fr 4fr 6fr 6fr 5fr 5fr 9fr 9fr 5fr;
-  min-width: 1120px;
+  min-width: 960px;
 }
 .lp-grid > div {
   padding: 9px 10px;

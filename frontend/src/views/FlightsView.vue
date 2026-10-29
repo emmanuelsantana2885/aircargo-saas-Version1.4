@@ -37,7 +37,7 @@
     <section class="ds-table-section">
 
       <div ref="scrollWrapRef" class="table-scroll-wrapper flex-1 min-h-0">
-      <div class="ds-table-header" style="min-width: 960px">
+      <div class="ds-table-header" style="min-width: 0;">
         <div class="col-span-2">{{ t('flights.table.flight') }}</div>
         <div class="col-span-2">{{ t('flights.table.route') }}</div>
         <div class="col-span-1">{{ t('flights.table.aircraft') }}</div>
@@ -58,7 +58,7 @@
         </button>
       </EmptyState>
 
-      <div v-else class="divide-y divide-slate-100 text-[13px] text-primary overflow-y-auto flex-1 min-h-0 scrollbar-none" style="min-width: 960px">
+      <div v-else class="divide-y divide-slate-100 text-[13px] text-primary overflow-y-auto flex-1 min-h-0 scrollbar-none" style="min-width: 0;">
         <div v-for="f in filteredFlights" :key="f.id"
           class="ds-table-row group"
           @click="selectFlight(f)">

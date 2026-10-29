@@ -68,6 +68,12 @@ export default {
     title: 'Change password',
   },
   privacy: { title: 'Privacy Policy', version: 'Version', link: 'Privacy Policy' },
+  siteFooter: {
+    brand: 'AirCargo SaaS',
+    rights: 'All rights reserved.',
+    privacy: 'Privacy Policy',
+    privacyLink: '/privacy',
+  },
   idle: {
     title: 'Session about to expire',
     message: 'We detected no activity. Your session will close in:',

@@ -9,11 +9,22 @@ export default defineConfig({
   server: {
     host: process.env.VITE_HOST || '127.0.0.1', // no exponer a la LAN por defecto
     port: 5173,
+    // Túneles de prueba:
+    //   Cloudflare quick tunnel → *.trycloudflare.com
+    //   localtunnel             → *.loca.lt
+    // Sin esto Vite 8 rechaza el Host del túnel (403 "This host is not allowed").
+    allowedHosts: ['.trycloudflare.com', '.loca.lt', '.ngrok-free.dev'],
     proxy: {
       '/api/': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
+        // El navegador habla con el túnel, pero el gateway solo permite
+        // CORS_ORIGINS (localhost). Al ser mismo origen, el navegador no
+        // necesita CORS: quitamos Origin para que el gateway no lo rechace.
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => proxyReq.removeHeader('origin'))
+        },
       }
     }
   },

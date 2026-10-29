@@ -3,7 +3,7 @@
     <Sidebar ref="sidebarRef" />
     <div class="flex flex-col flex-1 min-w-0 overflow-hidden" :style="{ marginLeft: sidebarMarginLeft }">
       <Header @toggle-sidebar="toggleSidebar" :collapsed="sidebarCollapsed" />
-      <main class="flex-1 overflow-auto relative">
+      <main class="flex-1 overflow-auto relative pb-[calc(var(--bottom-nav-h,58px)+env(safe-area-inset-bottom,0px)+12px)] md:pb-0">
         <ErrorBoundary>
           <router-view v-slot="{ Component }">
             <transition name="page">
@@ -37,6 +37,7 @@ import { useNotificationsStore } from './stores/notifications'
 import ErrorBoundary from './components/ErrorBoundary.vue'
 import Sidebar from './components/layout/Sidebar.vue'
 import Header from './components/layout/Header.vue'
+import Footer from './components/layout/Footer.vue'
 import BottomNav from './components/layout/BottomNav.vue'
 import ToastNotifications from './components/ToastNotifications.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -73,6 +74,8 @@ const sidebarMarginLeft = computed(() => {
   if (!s) return 'var(--sidebar-width)'
   // móvil: el sidebar es un overlay fijo (fuera del flujo) → sin margen
   if (s.isMobile) return '0px'
+  // tablet: colapso automático por CSS → ancho colapsado
+  if (s.isTablet) return 'var(--sidebar-width-collapsed)'
   return s.collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)'
 })
 

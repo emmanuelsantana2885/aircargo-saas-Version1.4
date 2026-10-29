@@ -82,7 +82,7 @@
         <button type="button" class="vm-pill ml-auto" @click="openScanModal">&#128247; {{ t('warehouse.scan.button') }}</button>
       </div>
       <div class="overflow-x-auto shrink-0">
-        <div class="bg-[#0d3b37] border-b border-[#12332f] receipt-list-header sticky top-0 z-10" style="min-width: 1000px">
+        <div class="bg-[#0d3b37] border-b border-[#12332f] receipt-list-header sticky top-0 z-10" >
           <div class="grid grid-cols-12 gap-0">
             <div class="col-span-2 text-left px-5">
               <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">MAWB</span>
@@ -110,7 +110,7 @@
       </div>
       <EmptyState v-if="store.mawbs.length === 0" :title="t('warehouse.empty')" :hint="t('warehouse.emptyHint')" :icon="icons.FileInvoice" />
       <EmptyState v-else-if="renderMawbs.length === 0" :title="t('warehouse.emptyFilter')" :hint="t('warehouse.emptyHint')" :icon="icons.Search" />
-      <div v-else class="divide-y divide-[var(--border-2)] text-[12.5px] text-[var(--text)] overflow-y-auto flex-1 min-h-0 thin-scrollbar">
+      <div v-else class="divide-y divide-[var(--border-2)] text-[12.5px] text-[var(--text)] overflow-y-auto flex-1 min-h-0 thin-scrollbar table-scroll-wrapper" >
         <template v-for="m in renderMawbs" :key="m.id">
           <div v-if="tableMode === 'byFlight' && flightGroupStarts().has(m.id)" class="fl-group-hd"
             :class="{ closed: isCollapsedGroup(flightKeyOf(m)) }" @click="toggleGroup(flightKeyOf(m))">
@@ -125,11 +125,10 @@
             :class="[
               expandedId === m.id ? 'row-selected' : '',
               rowFlash.has(m.id) ? 'row-flash' : '',
-            ]"
-            style="border-color: var(--border); min-width: 1000px;"
-            :data-awb="m.awbNumber || ''" :data-status="deriveMawbOperationalStatus(m)"
-            @click="toggleExpand(m)">
-            <div class="col-span-2 font-mono font-bold text-[var(--text)] relative z-10 flex items-center gap-1.5">
+            ]"style="border-color: var(--border); min-width: 0;"
+             :data-awb="m.awbNumber || ''" :data-status="deriveMawbOperationalStatus(m)"
+             @click="toggleExpand(m)">
+             <div class="col-span-2 font-mono font-bold text-[var(--text)] relative z-10 flex items-center gap-1.5">
               <span class="text-[12px] text-[var(--text)] transition-transform duration-200" :class="{ 'rotate-90': expandedId === m.id }">&#9654;</span>
               {{ m.awbNumber || m.id?.slice(0, 8) || '—' }}
               <span v-if="receiptHawbs[m.id] && receiptHawbs[m.id].length > 1"
@@ -318,11 +317,10 @@
                             class="text-tertiary ml-1">({{ receiptHawbs[m.id].length }} en DB)</span>
                         </div>
                       </div>
-                      <div class="overflow-x-auto p-2">
-                        <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 800px">
-                          <thead>
-                            <tr class="text-slate-800 font-bold uppercase tracking-wider">
-                              <th class="px-2 py-1 text-left border-b-2 border-strong"># HAWB</th>
+                      <div class="overflow-x-auto p-2"><table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" min-width="0" >
+                           <thead>
+                             <tr class="text-slate-800 font-bold uppercase tracking-wider">
+                               <th class="px-2 py-1 text-left border-b-2 border-strong"># HAWB</th>
                               <th class="px-2 py-1 text-left border-b-2 border-strong">Consignee</th>
                               <th class="px-2 py-1 text-center border-b-2 border-strong">Pcs</th>
                               <th class="px-2 py-1 text-right border-b-2 border-strong">Kg</th>
@@ -501,11 +499,10 @@
                       </span>
                       <span class="text-[12px] font-mono text-primary font-bold">{{ piecesByHawb(m.id, h._hawbId || h.id).reduce((s, p) => s + (p.pieces || 1), 0) }} pcs</span>
                     </div>
-                    <div class="overflow-x-auto">
-                      <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 850px">
-                        <thead>
-                          <tr class="bg-slate-600 text-white text-[13px] uppercase tracking-wider">
-                            <th class="px-1 py-0.5 border-r border-slate-500 w-5 text-center">#</th>
+                    <div class="overflow-x-auto"><table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" min-width="0" >
+                         <thead>
+                           <tr class="bg-slate-600 text-white text-[13px] uppercase tracking-wider">
+                             <th class="px-1 py-0.5 border-r border-slate-500 w-5 text-center">#</th>
                             <th class="px-1 py-0.5 border-r border-slate-500 w-10 text-center">Pcs</th>
                             <th class="px-1 py-0.5 border-r border-slate-500 w-14 text-center">L</th>
                             <th class="px-1 py-0.5 border-r border-slate-500 w-14 text-center">W</th>
@@ -589,7 +586,7 @@
                       <span class="text-[12px] font-mono text-slate-200">{{ totalPieces(m.id, null) }} piezas · {{ groupedSummary(m.id).length }} dim</span>
                     </div>
                     <div class="overflow-x-auto">
-                      <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" style="min-width: 900px">
+                      <table class="data-table data-table--static-head w-full text-[13px] font-mono border-collapse" >
                         <thead>
                           <tr class="bg-slate-200 text-slate-800 text-[13px] uppercase tracking-wider">
                             <th class="px-1 py-0.5 border-r border-strong w-5 text-center">#</th>
@@ -3434,7 +3431,8 @@ useLiveRefresh(refreshData,
 .fl-group-hd { display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer;
   background: color-mix(in srgb, var(--accent) 6%, transparent);
   border-top: 1px solid var(--border-2, #e2e8f0); border-bottom: 1px solid var(--border-2, #e2e8f0);
-  min-width: 1000px; user-select: none; transition: background .12s; }
+  }
+    /* Tablet: header adaptativo, sin min-width fijo */
 .fl-group-hd:hover { background: color-mix(in srgb, var(--accent) 11%, transparent); }
 .fl-group-hd.closed { background: color-mix(in srgb, var(--accent) 3%, transparent); }
 .fl-group-hd.closed .fl-caret { color: #64748b; }
@@ -3500,14 +3498,14 @@ useLiveRefresh(refreshData,
    La altura se adapta al viewport (dvh, funciona en móvil con barras de
    navegador) pero nunca se vuelve minúscula ni se estira a toda la pantalla. */
 .receipt-form { --receipt-form-h: 50dvh; }
-@media (min-width: 768px) { .receipt-form { --receipt-form-h: 58dvh; } }
+@media (min-width: 768px) { .receipt-form { --receipt-form-h: 45dvh; } }
 @media (min-height: 800px) { .receipt-form { --receipt-form-h: 56dvh; } }
 
 /* ── Responsive móvil: la lista MAWB principal fuerza min-width:700px con
    scroll horizontal. En <=640px dejamos que el grid colapse (wrap) para
    mostrar las columnas esenciales apiladas, y ocultamos las secundarias. */
 @media (max-width: 640px) {
-  .receipt-list-header { min-width: 0 !important; }
+  .receipt-list-header { min-width: 0; }
   .receipt-list-cell[data-col="shipper"],
   .receipt-list-cell[data-col="dest"],
   .receipt-list-cell[data-col="docs"],
@@ -3521,7 +3519,7 @@ useLiveRefresh(refreshData,
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; padding: 18px; }
 .ops-modal { width: min(940px,100%); height: auto; max-width: calc(100vw - 36px); max-height: calc(100dvh - 36px);
-  min-width: 560px; min-height: 380px; display: flex; flex-direction: column;
+  min-height: 380px; display: flex; flex-direction: column;
   background: var(--surface-2, #f6f8fd); border: 1px solid var(--border, #e2e8f0);
   border-top: 3px solid var(--accent, #3e7bfa);
   border-radius: 12px; box-shadow: var(--shadow-lg, 0 24px 60px -24px rgba(15,23,42,.35));
@@ -3599,7 +3597,7 @@ useLiveRefresh(refreshData,
 /* ——— Mockup App3 pasada: pipeline (s1) + teal ——— */
 .pipe { background: var(--surface-0, #fff); border: 1px solid var(--border); }
 .pipe-hd { border-bottom: 1px solid var(--border-2); }
-.pipe-total { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px;
+.pipe-total { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 22px;
   padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 800;
   color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .pipe-segs { gap: 6px; }
@@ -3616,7 +3614,7 @@ useLiveRefresh(refreshData,
 
 @media (max-width: 640px) {
   .ops-overlay { padding: 8px; }
-  .ops-modal { border-radius: 8px; max-height: 94dvh; max-width: 100%; min-width: 0; min-height: 0; resize: none; }
+  .ops-modal { border-radius: 8px; max-height: 94dvh; max-width: 100%; min-width: 280px; min-height: 0; resize: none; }
   .ops-modal::after { display: none; }
   .ops-slbl { display: none; }
   .ops-sdot { width: 24px; height: 24px; font-size: 11px; }

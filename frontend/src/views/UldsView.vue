@@ -173,7 +173,7 @@
                 <div ref="mawbTableRef" class="border border-strong rounded overflow-hidden mb-6" :class="sections.mawb ? '' : 'hidden md:block'">
                   <div class="hidden md:block overflow-x-auto">
                   <div class="table-scroll-wrapper">
-                  <div class="ds-table-header grid grid-cols-13 py-3 px-5 items-center gap-2" style="min-width: 750px">
+                  <div class="ds-table-header grid grid-cols-13 py-3 px-5 items-center gap-2" style="min-width: 0;">
                     <div class="col-span-3">MAWB</div>
                     <div class="col-span-1">{{ t('ulds.table.status') }}</div>
                     <div class="col-span-2">{{ t('ulds.table.description') }}</div>
@@ -184,7 +184,7 @@
                     <div class="col-span-2 text-center">{{ t('ulds.table.receipt') }}</div>
                     <div class="col-span-1"></div>
                   </div>
-                  <div class="divide-y divide-slate-100 max-h-[240px] overflow-y-auto scrollbar-none" style="min-width: 750px">
+                  <div class="divide-y divide-slate-100 max-h-[240px] overflow-y-auto table-scroll-wrapper scrollbar-none" style="min-width: 0;">
                     <div v-for="(mawb, mIdx) in uld.mawbs" :key="mawb._rowId" class="ds-table-row grid grid-cols-13 gap-2 text-sm">
                       <div class="col-span-3 min-w-0">
                         <select

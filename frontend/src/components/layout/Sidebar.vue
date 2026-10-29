@@ -95,6 +95,7 @@ const icons = useIcons()
 const collapsed = ref(false)
 const mobileOpen = ref(false)
 const isMobile = ref(false)
+const isTablet = ref(false)
 const showPasswordChange = ref(false)
 
 const roleConfig = {
@@ -116,6 +117,7 @@ const isActive = (path) => path === '/' ? route.path === '/' : route.path.starts
 function checkViewport() {
   const w = window.innerWidth
   isMobile.value = w < 768
+  isTablet.value = w >= 768 && w <= 1023
   if (isMobile.value) mobileOpen.value = false
 }
 
@@ -132,7 +134,7 @@ function handleLogout() {
   router.push('/login')
 }
 
-defineExpose({ mobileOpen, isMobile, collapsed })
+defineExpose({ mobileOpen, isMobile, isTablet, collapsed })
 onMounted(() => { checkViewport(); window.addEventListener('resize', checkViewport) })
 onUnmounted(() => { window.removeEventListener('resize', checkViewport) })
 

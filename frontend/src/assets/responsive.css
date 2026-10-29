@@ -543,6 +543,51 @@ html, body {
   }
 }
 
+/* ── Tablet (768px – 1023px) ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Sidebar colapsado automático para liberar ancho de contenido */
+  .app-layout > aside {
+    width: var(--sidebar-width-collapsed) !important;
+  }
+  .app-layout > div {
+    margin-left: var(--sidebar-width-collapsed) !important;
+  }
+  .sidebar-nav, .sidebar-user {
+    display: none !important;
+  }
+  .sidebar-logo span, .sidebar-site {
+    display: none !important;
+  }
+  .nav-item, .nav-item-collapsed {
+    justify-content: center !important;
+    padding: 10px 8px !important;
+    gap: 0 !important;
+  }
+  .nav-item span {
+    display: none !important;
+  }
+  /* Tablas: permitir scroll sin min-width forzado excesivo */
+  .data-table, .ds-table-header, .table-scroll-wrapper {
+    min-width: max-content !important;
+  }
+  .ds-table-section {
+    overflow-x: auto !important;
+  }
+  /* FilterBar: envolver en tablet */
+  .filter-bar {
+    flex-wrap: wrap !important;
+  }
+  /* Modales más anchos en tablet */
+  .ds-modal-panel {
+    max-width: 90vw !important;
+    width: 90vw !important;
+  }
+  /* Ocultar panel lateral de info MAWB en tablet para liberar ancho */
+  .mawb-info-panel, .md\:flex.w-72, [class*="mawb-info-panel"] {
+    display: none !important;
+  }
+}
+
 /* Print styles */
 @media print {
   .no-print, .sidebar, .header, .bottom-nav, .toast, .modal, .toast {
