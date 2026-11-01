@@ -1,5 +1,54 @@
 # Aircargo — agent notes
 
+## Recent session changes (Oct 30, 2026 (2) — Recibo: medidas reales del panel de funciones opcionales en tablet (CDP con Chromium) y fix del cajón colapsado)
+
+**Contexto**: tras dejar el panel de funciones opcionales cómodo para dedo, el usuario pidió **medirlo de verdad** con Chromium (la máquina no tiene Chrome). Se montó un arnés CDP propio (Node 25 + `WebSocket` global, sin dependencias) contra el Vite dev server, con token HS512 acuñado desde el `JWT_SECRET` del `.env` + cookie `aircargo_at` + `localStorage.aircargo_auth`, y emulación táctil (`Emulation.setTouchEmulationEnabled` + `Emulation.setEmulatedMedia` con `any-pointer/pointer: coarse`, `hover: none`).
+
+**Bug real encontrado por la medición**: en todos los tamaños táctiles el cajón `#rcp-fn-bar` se **comprimía** dentro del `.ops-modal` (que es `flex column`) porque el `overflow-y:auto` del bloque táctil anula su tamaño mínimo automático y `flex-shrink` por defecto lo achicaba: 44.8 px en teléfono, 106 px en 768×1024, 86 px en 1180×820 — el contenido real medía 219–279 px, así que **los interruptores quedaban fuera de la ventanita visible** (`elementFromPoint` no los alcanzaba).
+
+| File | Change |
+|------|--------|
+| `frontend/src/views/WarehouseReceiptsView.vue` | **FIX** — `.rcp-fn-bar { flex: 0 0 auto; ... }` en la regla base: el cajón toma su alto natural (hasta `max-height: 44dvh` del bloque táctil) y el que cede espacio es `.ops-body` (`flex:1 1 auto; min-height:0`), no el panel |
+
+**Medidas después del fix** (CDP, `document.elementFromPoint` verificado en el centro de cada interruptor):
+
+| Viewport | Cajón | Scroll interno | Interruptor | Cerrar ⚙ / ✕ | Pestañas | Input reservado | Cuerpo del recibo |
+|---|---|---|---|---|---|---|---|
+| 375×812 (teléfono) | 279 px | no | 133.5×44 | 44×44 / 44×44 | 44 alto | 44 px / 16 px | 74 px (cromo del modal domina) |
+| 768×1024 | 219 px | no | 133.5×44 | 44×44 / 44×44 | 44 alto | 44 px / 16 px | 329 px |
+| 820×1180 | 219 px | no | 133.5×44 | 44×44 / 44×44 | 44 alto | 44 px / 16 px | 481 px |
+| 1024×768 (landscape) | 145 px | no | 133.5×44 | 44×44 / 44×44 | 44 alto | 44 px / 16 px | 221 px |
+| 1180×820 (landscape) | 145 px | no | 133.5×44 | 44×44 / 44×44 | 44 alto | 44 px / 16 px | 271 px |
+| 1440×900 (escritorio real, sin emulación táctil) | 116 px | no | 108.3×26.7 | 36×36 / 26×26 | 29.8 alto | 38.9 px / 13.5 px | 308 px |
+
+Tipografía del panel en táctil: título 11 px, pista 11 px, etiqueta 13 px, ayuda 11.5 px, texto del interruptor 10.5 px, chip `RESERVADO/HABILITADO` 9 px, nota 11.5 px. Sin scroll horizontal de página en ninguna medida (375–1440) y sin desbordes dentro del modal en tablet.
+
+**Interacción real verificada en 820×1180** (click táctil sobre el interruptor): `aria-checked` false→true, el input fantasma se habilita en vivo (`disabled` true→false), `PUT /api/receipt-form-config` persiste `sealNumberEnabled:true`; segundo click vuelve a false y la API queda `false/false` (estado por defecto restaurado). Cero errores de consola.
+
+**Verificación**: `npm run lint` ✓ (0 errores; siguen 6 warnings preexistentes de espaciado/`Footer`), `npm test` ✓ **296/296**, `npm run build` ✓ (2.37 s). Arnés en `/tmp/tabmeas/` (`mint.mjs`, `full.mjs`, `desk.mjs`, `measure.json`/`full.json`) — el perfil de Chromium vive en `~/snap/chromium/common/tabmeas/` porque el snap no puede escribir `~/.cache`; `pkill -x chrome` para cerrarlo. Sin commit ni push.
+
+## Recent session changes (Oct 30, 2026 — Recibo: funciones opcionales activadas por función, dentro de la propia vista)
+
+**Contexto**: el usuario pidió que los campos en modo fantasma del formulario de recibo (Sello/Precinto y Muelle/Bahía) fueran activables por un SUPER_USER, y luego precisó: **la opción debe ser por función y vivir dentro de la vista donde está**. Por eso el ajuste **no** quedó en Configuración: es un panel de **funciones opcionales** dentro de `WarehouseReceiptsView`, con un interruptor independiente por función.
+
+| File | Change |
+|------|--------|
+| `backend/.../warehouse-service/.../db/migration/V9__add_receipt_form_config.sql` ≡ raíz `V73` | **NEW** — tabla singleton `warehouse.receipt_form_config` (`seal_number_enabled`, `dock_bay_enabled`, `updated_by`, `updated_at`) + columnas `seal_number` / `dock_bay` en `warehouse.warehouse_receipt` |
+| `backend/.../entity/ReceiptFormConfig.java` + `repository/ReceiptFormConfigRepository.java` + `dto/ReceiptFormConfigDTO.java` | **NEW** — banderas por función. El DTO deja los `Boolean` en **null** para que un PUT parcial (una sola función) no borre la otra |
+| `backend/.../service/ReceiptFormConfigService.java` | **NEW** — `get()` crea la fila con todo apagado; `save()` hace merge parcial bandera por bandera |
+| `backend/.../controller/ReceiptFormConfigController.java` | **NEW** — `GET/PUT /api/receipt-form-config`; el PUT exige `SUPER_USER` y audita `RECEIPT_FORM_CONFIG_SAVE` |
+| `backend/.../config/SecurityConfig.java` + gateway `RouteConfig.java` | GET con `CAN_READ_RECEIPT`; PUT solo `SUPER_USER`; ruta expuesta en el gateway |
+| `backend/.../entity/WarehouseReceipt.java` + `dto/WarehouseReceiptDTO.java` + `service/WarehouseServiceImpl.java` | `sealNumber` / `dockBay` se persisten en borrador, emisión y actualización |
+| `backend/.../service/ReceiptFormConfigServiceTest.java` | **NEW (4)** — un PUT con una sola bandera conserva la otra, se puede apagar una sin encender la otra, fila inicial con todo apagado, payload vacío no anula nada |
+| `frontend/src/views/WarehouseReceiptsView.vue` | **Panel de funciones opcionales en la vista**: botón ⚙ (solo `SUPER_USER`) en la cabecera del recibo que abre `rcp-fn-bar` con un **interruptor por función** (`OPTIONAL_RECEIPT_FUNCTIONS`); cada toggle hace su propio PUT parcial y refresca el estado. Los campos fantasma se generan desde ese registro (borde punteado + chip `RESERVADO` cuando está apagada, campo normal cuando está activa) y el payload arma cada campo opcional solo si SU función está activa |
+| `frontend/src/views/WarehouseReceiptsView.vue` (`<style scoped>`) | **Confort táctil (tablet)**: bloque nuevo `@media (max-width: 1023px), (any-pointer: coarse)` — el cajón `rcp-fn-bar` se desplaza solo (`max-height: 44dvh` + `overscroll-behavior: contain`), cada `rcp-fn-row` mide `min-height: 64px`, el interruptor `rcp-switch` pasa a **44 px de alto** con pista 34×18 (recorrido 16 px), `rcp-fn-close` y `rcp-icon-btn` (el ⚙) a **44×44**, inputs de campos reservados a 44 px y chip/nota con tipografía legible. Se usa `any-pointer: coarse` para cubrir también tablets en horizontal (≥1024 px), donde la media query de ancho no aplica |
+| `frontend/src/components/EditReceiptModal.vue` | Conserva `sealNumber`/`dockBay` al guardar la edición rápida en vez de borrarlos |
+| `frontend/src/api/receiptFormConfig.js` | **NEW** — `get` / `update` |
+| `frontend/src/views/SettingsView.vue` | **Sin pestaña de recibo**: el ajuste se movió a la vista donde se usa (se quitó el tab, su estado y su carga) |
+| `frontend/src/i18n/es.js` + `en.js` | Bloque `warehouse.optionalFn.*` (título, ayuda por función, etiquetas de estado, toasts); eliminadas las claves `settings.receiptForm.*` / `settings.tabs.receiptForm` |
+
+**Verificación**: backend `mvn -o -pl aircargo-warehouse-service -am test` → **BUILD SUCCESS** (common 30 + warehouse 68, incl. los 4 nuevos). Frontend `check:refs` ✓ (51 SFC, i18n 1616 es / 1628 en, 0 sin definir), `eslint` 0 errores, **296/296** tests, contraste WCAG AA ✓, `npm run build` ✓. **E2E real** con el jar recompilado y el servicio reiniciado: `PUT {sealNumberEnabled:true}` → 200; `PUT {dockBayEnabled:true}` → 200 y la respuesta conserva `sealNumberEnabled:true` (merge por función); `GET` con `CAN_READ_RECEIPT` → 200 y `PUT` con `WAREHOUSE_ASSISTANT` → denegado; estado devuelto a apagado. **Táctil**: las reglas se confirmaron presentes en el CSS compilado (`dist/assets/WarehouseReceiptsView*.css`, bloque `@media (max-width:1023px),(any-pointer:coarse)` con `rcp-fn-bar`/`rcp-fn-row`/`rcp-switch`/`rcp-switch-dot`/`rcp-fn-close`/`rcp-icon-btn`/`rcp-ghost`), revalidando después `check:refs` ✓, `eslint` 0 errores, **296/296** tests, contraste ✓ y `npm run build` ✓. Limitación: sin Chrome en esta máquina, el panel no se validó visualmente ni con medidas de layout reales en una tablet.
+
 ## Recent session changes (Oct 20, 2026 — Rediseño del cuadro de acceso (login) + mejoras de UX)
 
 **Contexto**: pedido del usuario para mejorar el login (`frontend/src/views/LoginView.vue`). Tras una pregunta de alcance el usuario eligió **"Rediseño + mejoras funcionales/UX"** (mostrar/ocultar contraseña, mejor manejo de errores, accesibilidad: labels/autocomplete/focus) **sin romper el flujo multi-step** (credentials → MFA → selección de sitio). Decisión de estilo: **no tocar las clases compartidas `auth-shell`/`auth-card`** (las usan también `MfaSetupView`, `SetPasswordView`, `ChangePasswordView`) — todo el estilo nuevo vive en `<style scoped>` + i18n propios.

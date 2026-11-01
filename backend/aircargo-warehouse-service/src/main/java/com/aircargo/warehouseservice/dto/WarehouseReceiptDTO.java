@@ -85,6 +85,14 @@ public class WarehouseReceiptDTO {
     private String correctionReason;
     private String correctedByName;
     private String status;
+    private String driverSignatures;
+    private String operationalChecks;
+    private String coldChain;
+    private String duaNumber;
+    private BigDecimal receivedTempC;
+    private Boolean coldChainOk;
+    private String sealNumber;
+    private String dockBay;
     @Valid
     private List<ReceiptPieceDTO> pieces;
     private OffsetDateTime createdAt;
@@ -216,6 +224,22 @@ public class WarehouseReceiptDTO {
     public void setCorrectedByName(String correctedByName) { this.correctedByName = correctedByName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getDriverSignatures() { return driverSignatures; }
+    public void setDriverSignatures(String driverSignatures) { this.driverSignatures = driverSignatures; }
+    public String getOperationalChecks() { return operationalChecks; }
+    public void setOperationalChecks(String operationalChecks) { this.operationalChecks = operationalChecks; }
+    public String getColdChain() { return coldChain; }
+    public void setColdChain(String coldChain) { this.coldChain = coldChain; }
+    public String getDuaNumber() { return duaNumber; }
+    public void setDuaNumber(String duaNumber) { this.duaNumber = duaNumber; }
+    public BigDecimal getReceivedTempC() { return receivedTempC; }
+    public void setReceivedTempC(BigDecimal receivedTempC) { this.receivedTempC = receivedTempC; }
+    public Boolean getColdChainOk() { return coldChainOk; }
+    public void setColdChainOk(Boolean coldChainOk) { this.coldChainOk = coldChainOk; }
+    public String getSealNumber() { return sealNumber; }
+    public void setSealNumber(String sealNumber) { this.sealNumber = sealNumber; }
+    public String getDockBay() { return dockBay; }
+    public void setDockBay(String dockBay) { this.dockBay = dockBay; }
     public List<ReceiptPieceDTO> getPieces() { return pieces; }
     public void setPieces(List<ReceiptPieceDTO> pieces) { this.pieces = pieces; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
@@ -287,6 +311,14 @@ public class WarehouseReceiptDTO {
         dto.setCorrectionReason(entity.getCorrectionReason());
         dto.setCorrectedByName(entity.getCorrectedByName());
         dto.setStatus(entity.getStatus());
+        dto.setDriverSignatures(entity.getDriverSignatures());
+        dto.setOperationalChecks(entity.getOperationalChecks());
+        dto.setColdChain(entity.getColdChain());
+        dto.setDuaNumber(entity.getDuaNumber());
+        dto.setReceivedTempC(entity.getReceivedTempC());
+        dto.setColdChainOk(entity.getColdChainOk());
+        dto.setSealNumber(entity.getSealNumber());
+        dto.setDockBay(entity.getDockBay());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -356,6 +388,14 @@ public class WarehouseReceiptDTO {
         entity.setCorrectionReason(dto.getCorrectionReason());
         entity.setCorrectedByName(dto.getCorrectedByName());
         entity.setStatus(dto.getStatus() != null ? dto.getStatus() : "EMITTED");
+        entity.setDriverSignatures(dto.getDriverSignatures());
+        entity.setOperationalChecks(dto.getOperationalChecks());
+        entity.setColdChain(dto.getColdChain());
+        entity.setDuaNumber(dto.getDuaNumber());
+        entity.setReceivedTempC(dto.getReceivedTempC());
+        entity.setColdChainOk(dto.getColdChainOk());
+        entity.setSealNumber(dto.getSealNumber());
+        entity.setDockBay(dto.getDockBay());
         return entity;
     }
 }

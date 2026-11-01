@@ -313,12 +313,23 @@ function removeGroup(i) {
 }
 function calcGroupDim(i) {
   const g = form.value.pieceGroups[i]
-  const l = g.lengthIn || 0
-  const w = g.widthIn  || 0
-  const h = g.heightIn || 0
+  // Unidades: si vienen en cm, convertir a pulgadas (1 cm = 0.393701 pulg)
+  const toInches = (v) => v != null ? v * 0.393701 : null
+  // Longueza, ancho, alto (todos esperados en pulgadas en la lógica)
+  const lInches = toInches(g.lengthIn)
+  const wInches = toInches(g.widthIn)
+  const hInches = toInches(g.heightIn)
   const q = g.qty      || 0
-  g.dimWeightLbs = (l > 0 && w > 0 && h > 0 && q > 0) ? (l * w * h / 194) * q : null
+  // Volumen en pulgadas³; factor IATA dim = 194 in³/lb (usa pulgadas)
+  g.dimWeightLbs = (lInches > 0 && wInches > 0 && hInches > 0 && q > 0) ? (lInches * wInches * hInches / 194) * q : null
 }
+function kgToLbs(v) {
+  return v != null ? v * 2.20462 : null
+}
+function lbsToKg(v) {
+  return v != null ? v / 2.20462 : null
+}
+
 function handleSubmit() {
   emit('submit', {
     ...form.value,

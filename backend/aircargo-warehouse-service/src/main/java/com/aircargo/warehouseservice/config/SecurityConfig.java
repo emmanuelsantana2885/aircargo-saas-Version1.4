@@ -35,6 +35,9 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/receipt-calc-config/**").hasAuthority(Permissions.CAN_READ_RECEIPT)
                 .requestMatchers("/api/receipt-calc-config/**").hasAuthority(Permissions.CAN_MANAGE_RECEIPT_CALC)
+                // Receipt-form settings: everyone who reads receipts sees them, only a SUPER_USER enables the reserved fields.
+                .requestMatchers(HttpMethod.GET, "/api/receipt-form-config/**").hasAuthority(Permissions.CAN_READ_RECEIPT)
+                .requestMatchers("/api/receipt-form-config/**").hasAuthority("SUPER_USER")
                 .requestMatchers(HttpMethod.GET, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_READ_RECEIPT)
                 .requestMatchers(HttpMethod.POST, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_CREATE_RECEIPT)
                 .requestMatchers(HttpMethod.PUT, "/api/receipts/**", "/api/warehouse/**").hasAuthority(Permissions.CAN_UPDATE_RECEIPT)

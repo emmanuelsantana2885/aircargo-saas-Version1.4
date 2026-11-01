@@ -8,6 +8,8 @@ import com.aircargo.common.error.ResourceNotFoundException;
 import com.aircargo.common.util.TextUtil;
 import com.aircargo.feign.client.MawbClient;
 import com.aircargo.feign.dto.HawbDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,25 @@ import java.util.stream.Collectors;
 public class ReceiptFullPdfService {
 
     private static final Logger log = LoggerFactory.getLogger(ReceiptFullPdfService.class);
+
+    /** Lectura de los JSON del flujo interactivo (checklist, cadena de frío, choferes). */
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Etiquetas del checklist operativo, en el mismo orden que el formulario. */
+    private static final Map<String, String> CHECK_LABELS = new LinkedHashMap<>();
+    private static final Map<String, String> DOC_LABELS = new LinkedHashMap<>();
+    static {
+        CHECK_LABELS.put("packagingIntact", "Embalaje íntegro");
+        CHECK_LABELS.put("noDamage", "Sin daños visibles ni humedad");
+        CHECK_LABELS.put("sealsIntact", "Precintos / sellos intactos");
+        CHECK_LABELS.put("labelsLegible", "Etiquetas y marcas legibles");
+        CHECK_LABELS.put("palletized", "Carga paletizada / asegurada");
+        CHECK_LABELS.put("noLeaks", "Sin derrames ni olores");
+        CHECK_LABELS.put("countVerified", "Conteo de piezas verificado");
+        DOC_LABELS.put("docsReceived", "Documentos físicos recibidos");
+        DOC_LABELS.put("customsDocs", "Documentación de aduana completa");
+        DOC_LABELS.put("duaAttached", "DUA adjunto");
+    }
 
     private final WarehouseReceiptRepository receiptRepository;
     private final ReceiptPieceRepository pieceRepository;
@@ -76,6 +97,7 @@ public class ReceiptFullPdfService {
         appendHead(sb, receipt);
         appendHeader(sb, receipt, dtf);
         appendFlags(sb, receipt);
+        appendOperationalControls(sb, receipt);
 
         Map<String, List<ReceiptPiece>> byHawb = pieces.stream()
                 .filter(p -> p.getHawbId() != null)
@@ -148,6 +170,18 @@ public class ReceiptFullPdfService {
         sb.append(".footer{text-align:center;font-size:7pt;color:#999;margin-top:12px;padding-top:4px;border-top:1px solid #ddd}");
         sb.append(".remarks{font-size:8.5pt;color:#333;margin:6px 0;padding:6px 8px;border:1px solid #ddd;border-radius:3px;background:#fefefe}");
         sb.append(".page-break{page-break-before:always}");
+        sb.append(".chk-grid{display:flex;flex-wrap:wrap;gap:4px 14px;margin:0 0 8px 0;font-size:8.5pt}");
+        sb.append(".chk{display:inline-block;min-width:46%}");
+        sb.append(".chk .box{display:inline-block;width:9px;height:9px;border:1px solid #555;margin-right:4px;text-align:center;font-size:7pt;line-height:9px}");
+        sb.append(".chk.on .box{background:#111;color:#fff;border-color:#111}");
+        sb.append(".chk.off{color:#666}");
+        sb.append(".cc-box{border:1px solid #ccc;border-radius:4px;padding:6px 9px;margin-bottom:10px;background:#fafafa;font-size:8.5pt;page-break-inside:avoid}");
+        sb.append(".cc-box .tt{font-weight:bold;text-transform:uppercase;font-size:8pt;letter-spacing:.03em;margin-bottom:4px;color:#333}");
+        sb.append(".cc-flag{display:inline-block;padding:1px 6px;border-radius:2px;font-size:7.5pt;font-weight:bold;border:1px solid #999}");
+        sb.append(".cc-flag.ok{background:#e7f6ec;color:#166534;border-color:#86c79b}");
+        sb.append(".cc-flag.bad{background:#fdeaea;color:#991b1b;border-color:#e79b9b}");
+        sb.append(".exc{background:#fdeaea;color:#991b1b;font-weight:bold}");
+        sb.append(".drv-sig{max-height:30px;max-width:150px}");
         sb.append("</style></head><body>");
     }
 
@@ -167,7 +201,16 @@ public class ReceiptFullPdfService {
         sb.append(infoRow("Piezas AWB", String.valueOf(receipt.getAwbReportedPieces() != null ? receipt.getAwbReportedPieces() : 0)));
         sb.append(infoRow("Peso MAWB", formatDec(receipt.getMawbWeightGreatest()) + " LBS"));
         sb.append(infoRow("Peso Shipper", formatDec(receipt.getShipperReportedWeight()) + " KG"));
+        sb.append(infoRow("DUA", esc(receipt.getDuaNumber())));
+        sb.append(infoRow("Temp. recepción", tempLabel(receipt)));
         sb.append("</div>");
+    }
+
+    private String tempLabel(WarehouseReceipt receipt) {
+        if (receipt.getReceivedTempC() == null) return "&#8212;";
+        String v = receipt.getReceivedTempC().setScale(1, RoundingMode.HALF_UP).toPlainString() + " &#176;C";
+        if (Boolean.FALSE.equals(receipt.getColdChainOk())) v += " (excursión)";
+        return v;
     }
 
     private void appendFlags(StringBuilder sb, WarehouseReceipt receipt) {
@@ -178,6 +221,120 @@ public class ReceiptFullPdfService {
         sb.append(flagSpan("Customs", receipt.getCustomsCompleted()));
         sb.append(flagSpan("Pre-built", receipt.getPreBuilt()));
         sb.append("</div>");
+    }
+
+    /* ── Checklist operativo, documentación/DUA y cadena de frío ─────────── */
+
+    private void appendOperationalControls(StringBuilder sb, WarehouseReceipt receipt) {
+        JsonNode checks = parseJson(receipt.getOperationalChecks());
+        JsonNode cold = parseJson(receipt.getColdChain());
+        boolean coldEnabled = cold != null && cold.path("enabled").asBoolean(false);
+        boolean hasChecks = checks != null && checks.size() > 0;
+        boolean hasDua = receipt.getDuaNumber() != null && !receipt.getDuaNumber().isBlank();
+
+        if (hasChecks) {
+            sb.append("<h2>Checklist operativo &#8212; integridad del embalaje</h2>");
+            sb.append("<div class='chk-grid'>");
+            for (Map.Entry<String, String> e : CHECK_LABELS.entrySet()) {
+                appendCheckItem(sb, e.getValue(), checks.path(e.getKey()).asBoolean(false));
+            }
+            sb.append("</div>");
+
+            sb.append("<div class='chk-grid'>");
+            for (Map.Entry<String, String> e : DOC_LABELS.entrySet()) {
+                appendCheckItem(sb, e.getValue(), checks.path(e.getKey()).asBoolean(false));
+            }
+            sb.append("</div>");
+
+            String notes = checks.path("notes").asText("");
+            if (!notes.isBlank()) {
+                sb.append("<div class='remarks'><strong>Observaciones del checklist:</strong> ")
+                        .append(esc(notes)).append("</div>");
+            }
+        }
+
+        if (hasDua) {
+            sb.append("<div class='cc-box'><span class='tt'>Documento Único Administrativo</span>")
+                    .append("DUA N.º <strong>").append(esc(receipt.getDuaNumber())).append("</strong>")
+                    .append("</div>");
+        }
+
+        if (coldEnabled || receipt.getReceivedTempC() != null) {
+            sb.append("<h2>Cadena de frío / perecederos</h2>");
+            sb.append("<div class='cc-box'>");
+            sb.append("<span class='tt'>Verificación en recepción</span>");
+            sb.append("Temp. de recepción: <strong>").append(tempLabel(receipt)).append("</strong>");
+            if (coldEnabled) {
+                String min = numOrDash(cold.path("minC"));
+                String max = numOrDash(cold.path("maxC"));
+                sb.append(" &#160;|&#160; Rango aceptado: ").append(min).append(" °C a ").append(max).append(" °C");
+            }
+            sb.append("</div>");
+
+            if (coldEnabled) {
+                JsonNode readings = cold.path("readings");
+                BigDecimal min = decOrNull(cold.path("minC"));
+                BigDecimal max = decOrNull(cold.path("maxC"));
+                int excursions = 0;
+                int i = 0;
+                if (readings.isArray() && readings.size() > 0) {
+                    sb.append("<table><thead><tr><th style='width:36px'>#</th><th>Fecha / hora</th>")
+                            .append("<th>Temperatura (°C)</th><th>Estado</th></tr></thead><tbody>");
+                    for (JsonNode r : readings) {
+                        BigDecimal value = decOrNull(r.path("valueC"));
+                        if (value == null) continue;
+                        i++;
+                        boolean out = (min != null && value.compareTo(min) < 0) || (max != null && value.compareTo(max) > 0);
+                        if (out) excursions++;
+                        String at = r.path("at").asText("");
+                        sb.append("<tr class='").append(out ? "exc" : "").append("'>")
+                                .append("<td>").append(i).append("</td>")
+                                .append("<td>").append(esc(at.replace('T', ' '))).append("</td>")
+                                .append("<td>").append(value.setScale(1, RoundingMode.HALF_UP).toPlainString()).append("</td>")
+                                .append("<td>").append(out ? "Excursión" : "Dentro de rango").append("</td>")
+                                .append("</tr>");
+                    }
+                    sb.append("</tbody></table>");
+                }
+                sb.append("<div style='font-size:8pt;margin-top:2px'>Lecturas: ").append(i)
+                        .append(" &#8212; Excursiones: ").append(excursions).append("</div>");
+            }
+        }
+    }
+
+    private void appendCheckItem(StringBuilder sb, String label, boolean checked) {
+        sb.append("<span class='chk ").append(checked ? "on" : "off").append("'>")
+                .append("<span class='box'>").append(checked ? "X" : "").append("</span>")
+                .append(esc(label)).append("</span>");
+    }
+
+    private String numOrDash(JsonNode node) {
+        BigDecimal v = decOrNull(node);
+        if (v == null) return "&#8212;";
+        return v.setScale(1, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private BigDecimal decOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) return null;
+        if (node.isNumber()) return node.decimalValue();
+        String txt = node.asText("").trim();
+        if (txt.isEmpty()) return null;
+        try {
+            return new BigDecimal(txt);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private JsonNode parseJson(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            JsonNode node = JSON.readTree(raw);
+            return node == null || node.isNull() ? null : node;
+        } catch (Exception e) {
+            log.warn("No se pudo interpretar el JSON del recibo: {}", e.getMessage());
+            return null;
+        }
     }
 
     private void appendRemarks(StringBuilder sb, WarehouseReceipt receipt) {
@@ -381,6 +538,48 @@ public class ReceiptFullPdfService {
         sb.append("</div>");
 
         sb.append("</div>");
+
+        appendDrivers(sb, receipt);
+    }
+
+    /** Choferes / camiones que entregaron la carga (una MAWB puede llegar en varios viajes). */
+    private void appendDrivers(StringBuilder sb, WarehouseReceipt receipt) {
+        JsonNode drivers = parseJson(receipt.getDriverSignatures());
+        if (drivers == null || !drivers.isArray() || drivers.size() == 0) return;
+
+        // Solo se imprimen los choferes con algún dato capturado.
+        List<JsonNode> list = new ArrayList<>();
+        for (JsonNode d : drivers) {
+            boolean any = !d.path("name").asText("").isBlank()
+                    || !d.path("idNum").asText("").isBlank()
+                    || !d.path("truckPlate").asText("").isBlank()
+                    || !d.path("sig").asText("").isBlank();
+            if (any) list.add(d);
+        }
+        if (list.isEmpty()) return;
+
+        sb.append("<h2>Choferes que entregaron / camiones</h2>");
+        sb.append("<table><thead><tr><th style='width:26px'>#</th><th>Nombre</th><th>ID / Cédula</th>")
+                .append("<th>Camión / Placa</th><th>Llegada</th><th style='width:120px'>Firma</th></tr></thead><tbody>");
+        int idx = 0;
+        for (JsonNode d : list) {
+            idx++;
+            String sig = d.path("sig").asText("");
+            sb.append("<tr>").append("<td>").append(idx).append("</td>")
+                    .append("<td style='text-align:left'>").append(esc(d.path("name").asText(""))).append("</td>")
+                    .append("<td>").append(esc(d.path("idNum").asText(""))).append("</td>")
+                    .append("<td>").append(esc(d.path("truckPlate").asText(""))).append("</td>")
+                    .append("<td>").append(esc(d.path("arrivedAt").asText("").replace('T', ' '))).append("</td>")
+                    .append("<td>");
+            if (!sig.isBlank() && sig.startsWith("data:image")) {
+                sb.append("<img class='drv-sig' src='").append(sig).append("' alt='Firma chofer ")
+                        .append(idx).append("' />");
+            } else {
+                sb.append("&#8212;");
+            }
+            sb.append("</td></tr>");
+        }
+        sb.append("</tbody></table>");
     }
 
     private String infoRow(String label, String value) {

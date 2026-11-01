@@ -38,6 +38,7 @@
 <script setup>
 import { ref, computed, nextTick, watch, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { registerStream, releaseStream, releaseAllStreams } from '../utils/mediaStreams'
 
 const { t } = useI18n()
 
@@ -113,14 +114,25 @@ async function openCamera() {
   }
 
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    })
+    // Liberar cualquier cámara que siga abierta (este u otro modal) evita el
+    // NotReadableError intermitente al reabrir el escáner en tablets.
+    releaseAllStreams()
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      })
+    } catch (primaryErr) {
+      const denied = primaryErr?.name === 'NotAllowedError' || primaryErr?.name === 'SecurityError'
+      if (denied) throw primaryErr
+      // Configuración mínima: algunos dispositivos rechazan facingMode/resolución.
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    }
+    registerStream(cameraStream)
 
     if (!props.show) { stopStream(); return }
 
@@ -265,7 +277,7 @@ async function retryCamera() {
 
 function stopStream() {
   if (cameraStream) {
-    cameraStream.getTracks().forEach((track) => track.stop())
+    releaseStream(cameraStream)
     cameraStream = null
   }
 }

@@ -84,7 +84,8 @@ public class RouteConfig {
                         .uri(svc("SERVICE_MAWB_URL", "http://localhost:9095")))
 
                 .route("warehouse-service", r -> r
-                        .path("/api/warehouse/**", "/api/receipts/**", "/api/receipt-calc-config/**")
+                        .path("/api/warehouse/**", "/api/receipts/**", "/api/receipt-calc-config/**",
+                                "/api/receipt-form-config/**")
                         .filters(f -> f
                                 .circuitBreaker(config -> config
                                         .setName("warehouse-service")

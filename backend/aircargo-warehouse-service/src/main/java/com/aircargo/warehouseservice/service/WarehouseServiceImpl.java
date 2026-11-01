@@ -204,6 +204,14 @@ public class WarehouseServiceImpl implements WarehouseService {
             existing.setPrintName(dto.getPrintName());
             existing.setCorrectionReason(dto.getCorrectionReason());
             existing.setCorrectedByName(dto.getCorrectedByName());
+            existing.setDriverSignatures(dto.getDriverSignatures());
+            existing.setOperationalChecks(dto.getOperationalChecks());
+            existing.setColdChain(dto.getColdChain());
+            existing.setDuaNumber(dto.getDuaNumber());
+            existing.setReceivedTempC(dto.getReceivedTempC());
+            existing.setColdChainOk(dto.getColdChainOk());
+            existing.setSealNumber(dto.getSealNumber());
+            existing.setDockBay(dto.getDockBay());
 
             // Resolve calc params: request > existing > profile > defaults, persist on entity+DTO
             CalcParams params = calcParamsResolver.resolveFor(dto, existing);

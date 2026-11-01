@@ -218,6 +218,34 @@ public class WarehouseReceipt {
             columnDefinition = "varchar(20) not null default 'EMITTED'")
     private String status = "EMITTED";
 
+    @Column(name = "driver_signatures", columnDefinition = "TEXT")
+    private String driverSignatures;
+
+    @Column(name = "operational_checks", columnDefinition = "TEXT")
+    private String operationalChecks;
+
+    @Column(name = "cold_chain", columnDefinition = "TEXT")
+    private String coldChain;
+
+    @Column(name = "dua_number", length = 50)
+    private String duaNumber;
+
+    /** Temperatura (°C) registrada en la recepción de carga refrigerada / perecederos. */
+    @Column(name = "received_temp_c", precision = 6, scale = 2)
+    private BigDecimal receivedTempC;
+
+    /** Resultado de la verificación de cadena de frío en recepción (true = sin excursión). */
+    @Column(name = "cold_chain_ok")
+    private Boolean coldChainOk;
+
+    /** Sello / precinto de seguridad capturado en la recepción (opcional, campo habilitable). */
+    @Column(name = "seal_number", length = 64)
+    private String sealNumber;
+
+    /** Muelle / bahía asignada a la recepción (opcional, campo habilitable). */
+    @Column(name = "dock_bay", length = 64)
+    private String dockBay;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -352,6 +380,22 @@ public class WarehouseReceipt {
     public void setCorrectedByName(String correctedByName) { this.correctedByName = correctedByName; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getDriverSignatures() { return driverSignatures; }
+    public void setDriverSignatures(String driverSignatures) { this.driverSignatures = driverSignatures; }
+    public String getOperationalChecks() { return operationalChecks; }
+    public void setOperationalChecks(String operationalChecks) { this.operationalChecks = operationalChecks; }
+    public String getColdChain() { return coldChain; }
+    public void setColdChain(String coldChain) { this.coldChain = coldChain; }
+    public String getDuaNumber() { return duaNumber; }
+    public void setDuaNumber(String duaNumber) { this.duaNumber = duaNumber; }
+    public BigDecimal getReceivedTempC() { return receivedTempC; }
+    public void setReceivedTempC(BigDecimal receivedTempC) { this.receivedTempC = receivedTempC; }
+    public Boolean getColdChainOk() { return coldChainOk; }
+    public void setColdChainOk(Boolean coldChainOk) { this.coldChainOk = coldChainOk; }
+    public String getSealNumber() { return sealNumber; }
+    public void setSealNumber(String sealNumber) { this.sealNumber = sealNumber; }
+    public String getDockBay() { return dockBay; }
+    public void setDockBay(String dockBay) { this.dockBay = dockBay; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

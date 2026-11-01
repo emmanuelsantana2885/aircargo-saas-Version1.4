@@ -1,0 +1,264 @@
+ORGANIC DRIVEN DEVELOPMENT (ODD) REPORT
+========================================
+
+Project: Aircargo SaaS Version 1.4 - Monorepo with Vue 3 Frontend + Spring Boot Microservices
+Scope: Comprehensive analysis of bugs, camera issues, and tablet UI/UX
+Date: October 31, 2026
+Goal: Generate organic-driven development roadmap for full tablet usability
+
+1. PROJECT OVERVIEW
+
+Architecture: 
+- Frontend: Vue 3 + Vite + Pinia + Vue Router + Tailwind CSS
+- Backend: 10 Spring Boot microservices (auth, flight, booking, mawb, warehouse, uld, load-planning, export, notification, gateway)
+- Database: PostgreSQL with Flyway migrations, RabbitMQ for event-driven sync
+- Deployment: Docker Compose (dev), Kubernetes (prod), AWS EC2 (production)
+
+Target Devices: Tablets (iPad, Android tablets) with touch input, varying screen sizes (375-1440px wide)
+
+2. BUG AND FUNCTIONAL FAILURE REPORT
+
+=== CRITICAL FRONTEND BUGS ===
+
+| ID | File | Bug | Severity | Fix Status |
+|----|------|-----|----------|------------|
+| B1 | EvidenceCaptureModal.vue | video.readyState < 2 not checked before canvas draw → 0×0 canvas, unusable images | Critical | ✅ Fixed |
+| B2 | CameraCapture.vue | No video.readyState >= 2 check → captures before stream decodes → blank canvas | Critical | ✅ Fixed |
+| B3 | ScanPanel.vue | No shouldScan de-dupe window (3s) → codes re-disparate → duplicate pieces | High | ✅ Fixed |
+| B4 | BarcodeCameraModal.vue | No waitForFrame(video, 5s) → detectors fire before frame ready → infinite GPS | High | ✅ Fixed |
+| B5 | EvidenceCaptureModal.vue | Stream colgado if modal closes during getUserMedia → camera light on without UI | High | ✅ Fixed |
+| B6 | App.vue | <transition name="page" mode="out-in"> leaves UI white screen when prefers-reduced-motion: reduce active or rapid view changes | Critical | ✅ Fixed |
+| B7 | FilterBar.vue | shrink-0 on flex items → items never wrap → toolbars wider than viewport → inaccesible | High | ✅ Fixed |
+| B8 | Various tables | text-slate-950 vs text-slate-900 inconsistency → visual fatigue | Medium | ✅ Homogenized |
+| B9 | MawbsView.vue | Toolbar 954px wide in 500px viewport → recortada e inalcanzable | High | ✅ Fixed |
+| B10 | DashboardView.vue | Table Weight Report tableW=836px in 470px client → columnas ilegibles | Medium | ✅ Fixed |
+
+=== BACKEND BUGS ===
+
+| ID | Service | Bug | Severity |
+|----|---------|-----|----------|
+| B11 | auth-service | JwtAuthFilter UUID.fromString(userId) on service tokens → IllegalArgumentException → 401 en todos los servicios | Critical | ✅ Fixed |
+| B12 | warehouse-service | WarehouseServiceImpl.getPieces() compartía caché warehouse-receipts con getAll() → ClassCastException | Critical | ✅ Fixed |
+| B13 | auth-service | Login révélaba estado de cuenta antes que password → attacker podía confirmar emails vivos | Critical | ✅ Fixed |
+| B14 | notification-service | Cola aircargo.notifications sin DLX → PRECONDITION_FAILED en cada arranque | Critical | ✅ Fixed |
+| B15 | load-planning-service | DOS @RabbitListener en misma cola → round-robin → ~50% eventos perdidos | Critical | ✅ Fixed |
+
+=== SESSION & AUTH BUGS ===
+
+| ID | Service | Bug | Severity |
+|----|---------|-----|----------|
+| B16 | auth-service | Refresh token stateless → atacante con cookie aircargo_rt podía re-refrescar indefinidamente | Critical | ✅ Fixed |
+| B17 | auth-service | Loop infinito 401 al expirar sesión → clearLocalSession() no limpía Pinia store → isAuthenticated quedaba true | Critical | ✅ Fixed |
+| B18 | auth-service | Cierre navegador no revocaba sesión → heartbeats se detenían → SessionRevocationGuard revoca centralmente ~5 min después | High | ✅ Fixed |
+
+3. CAMERA IMAGE CAPTURE ERRORS ANALYSIS
+
+=== 3 SURFACES ANALYSIS ===
+
+1. EvidenceCaptureModal.vue - Receipt evidence photos
+2. ScanPanel.vue - ULD code scanner (BarcodeDetector + ZBar WASM fallback)
+3. BarcodeCameraModal.vue - Reusable camera modal (ZBar WASM + native BarcodeDetector)
+
+=== ROOT CAUSES IDENTIFIED ===
+
+| Error Type | Cause | Affected Component(s) | Fix |
+|------------|-------|----------------------|-----|
+| Blank canvas / 0×0 image | Capture before video.readyState >= 2 + real videoWidth/videoHeight | EvidenceCaptureModal.vue, CameraCapture.vue | ✅ Added readiness check |
+| Camera stuck / light on without UI | getUserMedia resolves → stream.getTracks().stop() not called when modal closes | All camera components | ✅ Added stream cleanup |
+| iOS camera disabled | No muted attribute on <video> → iOS blocks autoplay without mute | BarcodeCameraModal.vue | ✅ Added muted attribute |
+| No frame ready → detector GPS | Detectors fire before any frame decoded → infinite scan loops | ScanPanel.vue, BarcodeCameraModal.vue | ✅ Added waitForFrame(video, 5s) |
+| ZBar WASM init failure | Rollup module bundling breaks ZBar inlined import | BarcodeCameraModal.vue | ✅ Served from /public/zbar-inlined/ |
+| getUserMedia only in secure contexts | HTTPS or localhost required → fails on HTTP tablets | All camera components | ✅ Fallback to input[type="file"] with capture="environment" |
+| NotAllowedError / SecurityError | User denied camera permission → no feedback, user stuck | All camera components | ✅ Map to concrete messages + "Retry" button |
+| Device not found | No camera hardware → graceful error + retry | All camera components | ✅ Specific error messages per error name |
+
+=== FIX PATTERNS APPLIED ===
+
+1. Readiness check: video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0 before any canvas operations
+2. Stream cleanup: releaseAllStreams() called before new getUserMedia, in watch(show), on beforeUnmount
+3. Error mapping: Specific messages per NamePattern (NotAllowedError, NotFoundError, NotReadableError)
+4. Fallback chain: getUserMedia → device enumeration → video: true basic → file input with capture="environment"
+5. 3-second de-dupe: shouldScan(code) with lastDetectedCode + Date.now() window
+6. iOS support: muted attribute + environment facing mode fallback
+
+4. TABLET UI/UX COMPONENT-BY-COMPONENT ANALYSIS
+
+=== 4.1 MAWBSView.vue (Matrix Table) ===
+
+Tablet Issues (tested at innerWidth 500px):
+- ❌ Toolbar 954px wide → recortada, inalcanzable
+- ❌ FilterBar shrink-0 → items never wrap, espacio muerto
+- ❌ Select de vuelo no encoge adecuadamente
+- ❌ Chips de estado apilados sin wrapping explícito en móviles
+
+Fixes Applied:
+- .ds-page { overflow-x: visible !important; overflow-y: visible !important; } en @media max-width 640px
+- FilterBar raíz: flex flex-wrap items-end gap-2 min-w-0 (quitado shrink-0, añadido min-w-0)
+- Toolbar matriz: flex flex-wrap items-center gap-2 (chips + botones fluyen a su línea)
+- Slider de fechas: flex min-w-0 items-center overflow-x-auto scrollbar-none (sin flex-1)
+
+Verification: CDP at innerWidth 500 → 10 rutas sin scroll horizontal de página, toolbar envuelto, todo alcanzable.
+
+=== 4.2 ULDSView.vue (ULD Manager) ===
+
+Tablet Issues:
+- ❌ Layout franja inferior → panel lateral → en móvil se apila pero en desktop aside superpuesto
+- ❌ Cards ordenadas por peso → sortedUlDsByGross computed nuevo, pero chips usan filteredUlDs
+- ❌ Input % Volumen → inputmode="decimal" pero spinners nativos visibles en Firefox
+- ❌ Date picker → meses vacíos por t() interpretando arrays como candidatos de pluralización
+
+Fixes Applied:
+- Layout: flex flex-col lg:flex-row → aside shrink-0 w-full lg:w-[420px] con borde lateral en ≥lg
+- Cards ordenadas por grossWeightLbs descendente
+- Spinners: input[type="number"] { -moz-appearance: textfield; appearance: textfield } (ocultar flechas Firefox)
+- Date picker: generar meses/días con Intl.DateTimeFormat según locale (no depender de claves array i18n)
+
+=== 4.3 DASHBOARDView.vue ===
+
+Tablet Issues:
+- ❌ Tabla Weight Report → tableW=836px en cliente 470px → columnas ~76px ilegibles
+- ❌ Tarjetas ULD en franja inferior no ordenadas por peso
+- ❌ Homogeneidad tipográfica → font-black en algunas celdas que debían ser font-bold
+
+Fixes Applied:
+- min-width: 1100px en tabla Weight Report (misma patrón que tabla Estados Mawbs)
+- Orden cards por grossWeightLbs descendente
+- font-black → font-bold en todas las vistas (0 font-black en todo src/)
+
+=== 4.4 BOOKINGSView.vue ===
+
+Tablet Issues:
+- ❌ Header filters → popups cerraban mal al click fuera
+- ❌ Típografía → font-black en popups y controles
+- ❌ Iconos unicode → ↑/↓/+ por iconos del design system
+
+Fixes Applied:
+- Popups: closest('.ds-table-section') → containerSelector: '.ds-table-section'
+- Típografía: font-black → font-bold, text-slate-950 → text-slate-900/700/600
+- Iconos: icons.FileUpload, icons.Download, icons.Plus en lugar de glifos unicode
+
+=== 4.5 SECURITYView.vue ===
+
+Tablet Issues:
+- ❌ Vista en blanco → filteredAuditLogs computed nunca declarada → Uncaught TypeError
+- ❌ No scrollee → raíz .ds-page es h-screen max-h-screen overflow-hidden → contenido atrapado
+- ❌ Heartbeat → poll de 30s no suficiente, usuario creía que sesión caía
+
+Fixes Applied:
+- Añadido filteredAuditLogs = computed(() => auditFilter ? auditLogs.filter(l => l.action === auditFilter) : auditLogs)
+- Raíz cambiada al patrón min-h-screen + padding → <main class="flex-1 overflow-auto"> es contenedor de scroll único
+- Heartbeat global bajado a 30s, tiempos relativos "hace 12 s", indicador "En vivo · actualizado hace Xs"
+- Flash azul en filas que cambian o son nuevas (diff por firma ignorando lastHeartbeat)
+
+=== 4.6 WAREHOUSE RECEIPTSView.vue ===
+
+Tablet Issues:
+- ❌ Filtro EN_PROCESO → rama especial comparaba !isReceiptComplete(m) equivalía a PENDIENTE
+- ❌ Pipeline segmentado → ancho visualizaba volumen pero filas no se colapsaban
+- ❌ Botón emit desaparecía en renderMawbs/useLiveRefresh
+
+Fixes Applied:
+- filteredMawbs filtra TODOS los estados uniformemente mawbOperationalStatusMap[m.id] === statusFilter
+- Pipeline segmentado con 6 segmentos proporcionales al conteo (seg.width = count/total %)
+- setStatusFilter(key) - click en segmento = filtro; re-click = limpiar
+- receiptTotals/receiptById excluyen DRAFT (isDraftReceipt(r))
+- executeEmit() usa updateEmit (PUT /{id}/emit) en lugar de createCorrection
+
+5. ORGANIC DRIVEN DEVELOPMENT (ODD) ROADMAP
+
+=== Phase 1: Foundation (Weeks 1-2) ===
+- ✅ Homogenize typography: font-black → font-bold en todo src/ (0 remaining)
+- ✅ Fix all table min-width issues (1100px pattern for 11-column tables)
+- ✅ Fix FilterBar shrink-0 → min-w-0 en todas las vistas
+- ✅ Fix mobile overflow: .ds-page { overflow-x/y: visible } en @media max-width 640px
+
+=== Phase 2: Tablet-First UI (Weeks 3-4) ===
+- [ ] Redesign FilterBar for touch: targets más grandes (44px mínimo), touch-action: manipulation
+- [ ] Improve toolbar wrapping: min-width en selects y chips para que envuelvan a 44px touch targets
+- [ ] Fix drawer móvil: position: fixed fuera del flujo, z-index management, backdrop con backdrop-filter: blur(6px)
+- [ ] Implement theme toggle con persistencia: data-theme en <html> + localStorage 'aircargo_accent'
+
+=== Phase 3: Camera & Media (Weeks 5-6) ===
+- [ ] Unify camera error messages across all 3 surfaces (EvidenceCapture, ScanPanel, BarcodeCameraModal)
+- [ ] Add "Take Photo" fallback for HTTP/non-tablet contexts (already done, verify UX)
+- [ ] Optimize ZBar WASM load: preloading, progress indication, graceful fallback
+- [ ] Test on actual tablets (if available) or iPad simulator
+
+=== Phase 4: Accessibility & Polish (Weeks 7-8) ===
+- [ ] WCAG AA compliance verification on all views (contrast, focus order, touch targets 44px minimum)
+- [ ] Screen reader support verification (ARIA labels, roles, landmark regions)
+- [ ] Reduce motion support: prefers-reduced-motion: reduce already handled for transitions
+- [ ] Font persistence: localStorage 'aircargo_font' + data-font selector working across sessions
+
+=== Phase 5: Cross-Platform (Ongoing) ===
+- [ ] Windows 11 / WSL2 testing: scripts already ported, verify no Git Bash dependencies
+- [ ] Fedora/Ubuntu/AArch64: detect_pkg_mgr() + pkg_hint() already in start scripts
+- [ ] i18n consistency: verify 0 missing keys in both es.js and en.js (already verified)
+
+6. RECOMMENDED IMPROVEMENTS
+
+=== Immediate (Critical for Tablet Usability) ===
+1. Apply .ds-page { overflow-x: visible !important; } fix globally - Already done but verify all views respect it
+2. Fix FilterBar wrapping - Already done (min-w-0), but test on actual tablets
+3. Enlarge touch targets - Ensure all buttons/inputs are ≥44px tall on tablet
+4. Fix table min-width - Already done with 1100px pattern for 11-column tables
+
+=== Short-term (Weeks 1-2) ===
+1. Unify camera error UX - Consistent error messages + retry pattern across all surfaces
+2. Fix drawer móvil - position: fixed fuera del flujo, test on iPad/Android tablet
+3. Improve theme persistence - data-theme + data-theme en <html> persiste en sessionStorage
+4. Verify all 0 font-black remaining - Already achieved, confirm build passes
+
+=== Medium-term (Weeks 3-4) ===
+1. Tablet-first breakpoint - Re-evaluate @media (max-width: 1023px) vs (max-width: 640px)
+2. Touch gesture support - pan, pinch for table zoom/navigate
+3. Offline mode - Cache critical assets, graceful degradation
+4. Performance optimization - Reduce re-renders, virtualize large tables
+
+=== Long-term (Roadmap) ===
+1. PWA features - Add manifest, service worker for offline
+2. Dark mode - Already supported via data-theme='tokyo', verify all components
+3. Multi-language support - Already es/en, add more languages if needed
+4. Advanced analytics - Track feature usage on different device types
+
+7. VERIFICATION CHECKLIST
+
+=== Build & Tests ===
+- ✅ npm run build ✓ (exit 0)
+- ✅ npm run lint ✓ (0 errores)
+- ✅ vitest ✓ (18/18 or 15/15 depending on test suite)
+- ✅ check:refs ✓ (43 SFC 0 refs sin resolver)
+
+=== Tablet-Specific Tests ===
+- [ ] Test at innerWidth 375px (teléfono): all views render, no horizontal scroll on page
+- [ ] Test at innerWidth 768px (tablet portrait): toolbar wraps, touch targets OK
+- [ ] Test at innerWidth 1024px (tablet landscape): layout desktop intact
+- [ ] Test at innerWidth 1440px (desktop): no regression
+- [ ] Test with prefers-reduced-motion: reduce - no white screen on view transitions
+- [ ] Test camera on tablet (if available): stream opens, captures work, errors show properly
+
+=== Accessibility Tests ===
+- [ ] Contrast WCAG AA on all views (already verified)
+- [ ] Touch targets ≥44px (verify visually or with dev tools)
+- [ ] Focus order logical (Tab key through forms)
+- [ ] ARIA labels on interactive elements
+- [ ] lang attribute propagation
+
+=== Browser Compatibility ===
+- [ ] Chrome/Edge latest on tablet
+- [ ] Safari iPad latest
+- [ ] Firefox latest on tablet
+- [ ] No font-black remaining (visual fatigue fix verified)
+
+8. CONCLUSION
+
+The project has made significant progress toward tablet usability in this session, with 35+ bugs fixed across frontend and backend. The ODD analysis reveals:
+
+1. Critical remaining work: Camera UX unification, drawer móvil behavior on tablets, touch target sizing
+2. Already completed: Typography homogenization, table min-width fixes, overflow fixes, FilterBar wrapping
+3. Architecture is sound: The microservice architecture with shared common library enables consistent fixes across services
+
+Next priority: Complete the camera error UX unification and verify tablet-specific layouts on actual devices or good simulators. The foundation is solid - now it's about polish and device-specific testing.
+
+---
+ODD Report generated via Organic Driven Development methodology - analysis based on codebase review, recent session changes, and CDP deterministic testing.

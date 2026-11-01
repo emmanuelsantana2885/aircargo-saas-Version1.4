@@ -143,6 +143,7 @@ import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useIcons } from '../composables/useIcons'
 import { setCapturing } from '../composables/captureState'
+import { registerStream, releaseStream, releaseAllStreams } from '../utils/mediaStreams'
 
 const icons = useIcons()
 const { t } = useI18n()
@@ -190,6 +191,76 @@ function reset() {
 
 /* ── Cámara en vivo ───────────────────────────────────────────────────── */
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Abre la cámara probando varias configuraciones, de la más deseable a la más
+ * básica. En tablets es habitual que `facingMode` + resolución alta no existan
+ * o que el sensor esté ocupado un instante: se reintenta y se prueban los
+ * dispositivos enumerados antes de rendirse, en vez de mostrar "en uso".
+ */
+async function acquireStream() {
+  if (!navigator.mediaDevices?.getUserMedia) return { stream: null, error: null }
+
+  // Cualquier stream previo (este modal u otro) debe liberarse antes de pedir
+  // la cámara: dejar una pista viva provoca NotReadableError.
+  releaseAllStreams()
+
+  const base = [
+    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+    { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+    { video: true, audio: false },
+  ]
+
+  let lastErr = null
+  for (const constraints of base) {
+    try {
+      return { stream: await navigator.mediaDevices.getUserMedia(constraints), error: null }
+    } catch (err) {
+      lastErr = err
+      // Solo se insiste cuando la configuración es insuficiente; un permiso
+      // denegado o una cámara inexistente no mejoran reintentando.
+      if (err?.name === 'NotAllowedError' || err?.name === 'SecurityError' || err?.name === 'NotFoundError') {
+        return { stream: null, error: err }
+      }
+    }
+  }
+
+  // Último recurso: probar deviceId por deviceId (otra cámara puede estar libre).
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    for (const device of devices.filter((d) => d.kind === 'videoinput')) {
+      try {
+        return {
+          stream: await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: device.deviceId } },
+            audio: false,
+          }),
+          error: null,
+        }
+      } catch (err) {
+        lastErr = err
+      }
+    }
+  } catch {
+    /* enumerateDevices no disponible */
+  }
+
+  // El sensor suele tardar unos ms en liberarse tras cerrar la app/tab anterior.
+  if (lastErr?.name === 'NotReadableError' || lastErr?.name === 'TrackStartError' || lastErr?.name === 'AbortError') {
+    await wait(600)
+    releaseAllStreams()
+    try {
+      return { stream: await navigator.mediaDevices.getUserMedia({ video: true, audio: false }), error: null }
+    } catch (err) {
+      lastErr = err
+    }
+  }
+
+  return { stream: null, error: lastErr }
+}
+
 async function startLive() {
   setCapturing(true)
   const id = ++runId
@@ -198,37 +269,21 @@ async function startLive() {
   starting.value = true
   liveError.value = ''
 
-  const constraintsList = [
-    { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
-    { video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
-  ]
-
-  let stream = null
-  let lastErr = null
-  for (const constraints of constraintsList) {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints)
-      break
-    } catch (err) {
-      lastErr = err
-      if (err?.name === 'OverconstrainedError') continue
-      break
-    }
-  }
+  const { stream, error } = await acquireStream()
 
   // El modal pudo cerrarse (o reintentarse) mientras se resolvía el stream.
   if (id !== runId || !props.show) {
-    stream?.getTracks().forEach((t) => t.stop())
+    releaseStream(stream)
     return
   }
 
   if (!stream) {
     starting.value = false
-    liveError.value = mapCameraError(lastErr)
+    liveError.value = mapCameraError(error)
     return
   }
 
-  mediaStream = stream
+  mediaStream = registerStream(stream)
   const video = videoRef.value
   if (!video) {
     stopStream()
@@ -240,8 +295,23 @@ async function startLive() {
   video.srcObject = stream
   try {
     await video.play()
-    // Un frame real debe existir antes de permitir la captura (evita canvas 0x0).
-    if (id !== runId || !props.show) { stopStream(); return }
+    // Esperar a que el video tenga dimensiones válidas antes de habilitar captura.
+    // En algunos navegadores (especialmente móviles) el videoWidth puede ser 0
+    // inmediatamente después de play(). Usamos un pequeño retry para estabilidad.
+    let attempts = 0
+    while ((video.videoWidth === 0 || video.videoHeight === 0) && attempts < 10) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      attempts++
+    }
+    if (id !== runId || !props.show) {
+      stopStream()
+      return
+    }
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      starting.value = false
+      liveError.value = t('warehouse.evidence.cameraNotReady')
+      return
+    }
     streamReady.value = true
     starting.value = false
   } catch {
@@ -256,8 +326,8 @@ function mapCameraError(err) {
     return t('warehouse.evidence.cameraDenied')
   if (name === 'NotFoundError' || name === 'OverconstrainedError' || name === 'DevicesNotFoundError')
     return t('warehouse.evidence.cameraNotFound')
-  if (name === 'NotReadableError' || name === 'TrackStartError')
-    return t('warehouse.evidence.cameraBusy')
+  if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError')
+    return t('warehouse.evidence.cameraBusyHint')
   if (!liveSupported.value)
     return t('warehouse.evidence.cameraUnavailable')
   return err?.message
@@ -267,7 +337,7 @@ function mapCameraError(err) {
 
 function stopStream() {
   if (mediaStream) {
-    mediaStream.getTracks().forEach((track) => track.stop())
+    releaseStream(mediaStream)
     mediaStream = null
   }
   const video = videoRef.value
@@ -281,6 +351,7 @@ function retryLive() {
 async function shutter() {
   const video = videoRef.value
   if (!video) return
+  // Check robusto: readyState y dimensiones visibles
   if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
     liveError.value = t('warehouse.evidence.cameraNotReady')
     return
@@ -419,9 +490,39 @@ function buildName(rawName, isImage) {
   return `Foto_${stamp}.jpg`
 }
 
+// Asegurar que la foto se guarda y no se pierde al cerrar el modal
+// Si la fuente es 'camera' y hay una URL de datos, la almacenamos en sessionStorage
+// para que el padre pueda recuperarla después del re-login o flujo MFA
+function saveEvidenceToSession(url, name, source) {
+  if (source === 'camera' && typeof url === 'string' && url.startsWith('data:image')) {
+    try {
+      const evidenceData = {
+        url,
+        name: buildName(name, true),
+        source: 'camera',
+        capturedAt: new Date().toISOString()
+      }
+      sessionStorage.setItem('lastEvidencePhoto', JSON.stringify(evidenceData))
+    } catch (e) {
+      console.warn('[Evidence] No se pudo guardar en sessionStorage:', e)
+    }
+  }
+}
+
 /* ── Ciclo de vida ───────────────────────────────────────────────────── */
 
 function close() {
+  // Varias fotos seguidas desde "Tomar foto": guardar evidencia antes de cerrar
+  // para que no se pierda al re-login o flujo MFA
+  if (liveSupported.value && videoRef.value && videoRef.value.readyState >= 2) {
+    const video = videoRef.value
+    if (video.videoWidth && video.videoHeight) {
+      const url = grabCanvas(video)
+      if (url && url !== 'data:,') {
+        saveEvidenceToSession(url, 'Foto', 'camera')
+      }
+    }
+  }
   reset()
   emit('close')
 }
