@@ -79,7 +79,12 @@
           <button v-for="fo in flightOptions" :key="fo.key" type="button" class="vm-pill" :class="{ on: flightFilter === fo.key }" @click="flightFilter = fo.key">{{ fo.label }}</button>
         </div>
         <span v-if="tableMode === 'byFlight'" class="text-[11px] italic" style="color: var(--muted)">{{ t('warehouse.pipeHint') }}</span>
-        <button type="button" class="vm-pill ml-auto" @click="openScanModal">&#128247; {{ t('warehouse.scan.button') }}</button>
+        <div class="ml-auto flex items-center gap-1.5">
+          <button type="button" class="vm-pill" @click="openQueueModal" title="Cargar un recibo desde la cola de MAWBs pendientes">
+            &#9203; {{ t('warehouse.queue.load') }}
+          </button>
+          <button type="button" class="vm-pill" @click="openScanModal">&#128247; {{ t('warehouse.scan.button') }}</button>
+        </div>
       </div>
       <div class="overflow-x-auto shrink-0">
         <div class="bg-[#0d3b37] border-b border-[#12332f] receipt-list-header sticky top-0 z-10" >
@@ -210,17 +215,82 @@
 
 <Teleport to="body">
   <div v-if="expandedId === m.id && receiptForms[m.id]" class="ops-overlay" @click.self="cancelForm">
-            <div class="ops-modal" role="dialog" aria-modal="true">
-              <div class="ops-hdr">
-                <div class="ops-fl">
-                  <span class="ops-tt">{{ t('warehouse.title') }}</span>
-                  <span class="ops-sub">{{ m.awbNumber || '—' }} · {{ m.shipperName || '—' }}</span>
+            <div class="ops-modal rcp-pop" role="dialog" aria-modal="true">
+              <!-- Cabecera del popup: identidad del recibo + KPIs en vivo + herramientas -->
+              <header class="rcp-pop-hdr">
+                <div class="rcp-pop-id">
+                  <span class="rcp-pop-kicker">{{ t('warehouse.title') }} · DOCK RECEIPT</span>
+                  <div class="rcp-pop-awbline">
+                    <h2 class="rcp-pop-awb">{{ m.awbNumber || '—' }}</h2>
+                    <span class="rcp-pop-chip">{{ receiptForms[m.id].origin || '—' }} &#8594; {{ receiptForms[m.id].destination || '—' }}</span>
+                    <span class="rcp-pop-chip" :class="receiptById[m.id] ? 'ok' : 'warn'">
+                      {{ receiptById[m.id] ? 'Recibo emitido' : 'Borrador' }}
+                    </span>
+                  </div>
+                  <span class="rcp-pop-meta">{{ m.shipperName || '—' }} · {{ m.consigneeName || '—' }}</span>
                 </div>
-                <div class="ops-fr">
-                  <button class="btn-ghost" @click="printPreview(m)" title="Vista previa para impresión">&#128424; PDF / Imprimir</button>
-                  <button class="xbtn" @click="cancelForm" title="Cerrar">&#10005;</button>
+
+                <div class="rcp-pop-kpis">
+                  <div class="rcp-pop-kpi">
+                    <small>Piezas</small>
+                    <strong>{{ stepRecap?.pcs ?? 0 }}</strong>
+                  </div>
+                  <div class="rcp-pop-kpi">
+                    <small>Cobrable</small>
+                    <strong>{{ stepRecap?.kg ?? 0 }}<i> kg</i></strong>
+                  </div>
+                  <div class="rcp-pop-kpi">
+                    <small>Paso</small>
+                    <strong>{{ localStep }}<i>/{{ steps.length }}</i></strong>
+                  </div>
                 </div>
-              </div>
+
+                <div class="rcp-pop-tools">
+                  <div class="rcp-viewtog" role="tablist" aria-label="Vistas del recibo">
+                    <button type="button" role="tab" :aria-selected="receiptView === 'ops'"
+                      :class="{ on: receiptView === 'ops' }" @click="setReceiptView('ops')">Operativa</button>
+                    <button type="button" role="tab" :aria-selected="receiptView === 'skids'"
+                      :class="{ on: receiptView === 'skids' }" @click="setReceiptView('skids')">Skids</button>
+                    <button type="button" role="tab" :aria-selected="receiptView === 'preview'"
+                      :class="{ on: receiptView === 'preview' }" @click="setReceiptView('preview')">Previa</button>
+                  </div>
+                  <button class="rcp-icon-btn" @click="printPreview(m)" title="Vista previa para impresión" aria-label="PDF / Imprimir">&#128424;</button>
+                  <button v-if="canConfigureOptional" class="rcp-icon-btn rcp-fn-btn" :class="{ on: optionalFnOpen }"
+                    @click="optionalFnOpen = !optionalFnOpen"
+                    :aria-expanded="optionalFnOpen" aria-controls="rcp-fn-bar"
+                    :title="t('warehouse.optionalFn.buttonTitle')" :aria-label="t('warehouse.optionalFn.buttonTitle')">&#9881;</button>
+                  <button class="rcp-icon-btn x" @click="cancelForm" title="Cerrar" aria-label="Cerrar">&#10005;</button>
+                </div>
+              </header>
+
+              <!-- Funciones opcionales del recibo: cada utilidad (sello, muelle…)
+                   se activa por separado, aquí mismo, sin salir de la vista. -->
+              <section v-if="canConfigureOptional && optionalFnOpen" id="rcp-fn-bar" class="rcp-fn-bar"
+                role="region" :aria-label="t('warehouse.optionalFn.title')">
+                <div class="rcp-fn-hd">
+                  <div class="min-w-0">
+                    <strong class="rcp-fn-tt">{{ t('warehouse.optionalFn.title') }}</strong>
+                    <p class="rcp-fn-sub">{{ t('warehouse.optionalFn.hint') }}</p>
+                  </div>
+                  <button type="button" class="rcp-fn-close" @click="optionalFnOpen = false"
+                    :aria-label="t('common.close')" :title="t('common.close')">&#10005;</button>
+                </div>
+                <div class="rcp-fn-rows">
+                  <div v-for="fn in OPTIONAL_RECEIPT_FUNCTIONS" :key="fn.key" class="rcp-fn-row">
+                    <div class="rcp-fn-lbl">
+                      <strong>{{ t(fn.labelKey) }}</strong>
+                      <small>{{ t(fn.helpKey) }}</small>
+                    </div>
+                    <button type="button" role="switch" :aria-checked="isOptionalOn(fn)"
+                      :disabled="optionalFnSaving === fn.key"
+                      class="rcp-switch" :class="{ on: isOptionalOn(fn), busy: optionalFnSaving === fn.key }"
+                      @click="toggleOptional(fn)">
+                      <span class="rcp-switch-dot" aria-hidden="true"></span>
+                      <span>{{ isOptionalOn(fn) ? t('warehouse.optionalFn.on') : t('warehouse.optionalFn.off') }}</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
 
               <div class="ops-steps">
                 <div v-for="(step, si) in steps" :key="si" class="ops-step">
@@ -230,19 +300,80 @@
                     <span v-else-if="stepError(si)">&#33;</span>
                     <span v-else>{{ si + 1 }}</span>
                   </div>
-                  <span class="ops-slbl" @click="goToStep(si + 1)">{{ step }}</span>
+                  <span class="ops-slbl" @click="goToStep(si + 1)">{{ STEP_LABELS[si] || step }}</span>
                   <div v-if="si < steps.length - 1" class="ops-sln" :class="{ dn: stepDone(si) || localStep > si + 1 }"></div>
                 </div>
               </div>
 
               <!-- Aviso de validación (bloqueante) y advertencias de integridad (no bloquean) -->
-              <div v-if="stepErrorMsg" class="ops-err" role="alert">&#9888; {{ stepErrorMsg }}</div>
-              <div v-else-if="stepWarnings.length" class="ops-warn">
+              <div v-if="stepErrorMsg && receiptView === 'ops'" class="ops-err" role="alert">&#9888; {{ stepErrorMsg }}</div>
+              <div v-else-if="stepWarnings.length && receiptView === 'ops'" class="ops-warn">
                 <span v-for="(w, wi) in stepWarnings" :key="wi">&#9888; {{ w }}</span>
               </div>
 
               <!-- ═══ Scrollable step content ═══ -->
-              <div class="ops-body thin-scrollbar overscroll-contain">
+              <div v-if="receiptView === 'ops'" class="px-4 pb-1">
+                  <!-- Cockpit de recepción: pesos, cubicaje y discrepancias en vivo -->
+                  <div v-if="activeCockpit" class="rcp-cockpit">
+                    <div class="rcp-cockpit-hd">
+                      <span class="rcp-cockpit-tt">Cockpit de recepción</span>
+                      <div class="flex items-center gap-2 min-w-0">
+                        <span class="rcp-badge" :class="activeCockpit.deltaOk ? 'ok' : 'warn'">
+                          {{ activeCockpit.deltaOk ? 'Dentro de reserva' : 'Discrepancia vs reserva' }}
+                        </span>
+                        <button type="button" class="rcp-toggle" :aria-expanded="cockpitOpen"
+                          @click="cockpitOpen = !cockpitOpen"
+                          :title="cockpitOpen ? 'Ocultar cockpit' : 'Mostrar cockpit'">
+                          {{ cockpitOpen ? '▾' : '▸' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div v-show="cockpitOpen" class="rcp-cockpit-grid">
+                      <div class="rcp-kpi">
+                        <span class="rcp-kpi-l">Reserva</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.reservedKg.toFixed(1) }} kg</strong>
+                        <small>{{ activeCockpit.reservedLbs.toFixed(0) }} lbs</small>
+                      </div>
+                      <div class="rcp-kpi">
+                        <span class="rcp-kpi-l">Peso báscula</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.actualKg.toFixed(1) }} kg</strong>
+                        <small>{{ activeCockpit.actualLbs.toFixed(0) }} lbs</small>
+                      </div>
+                      <div class="rcp-kpi">
+                        <span class="rcp-kpi-l">Peso volumétrico</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.dimKg.toFixed(1) }} kg</strong>
+                        <small>{{ activeCockpit.dimLbs.toFixed(0) }} lbs</small>
+                      </div>
+                      <div class="rcp-kpi rcp-kpi-accent">
+                        <span class="rcp-kpi-l">Peso cobrable</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.chargeKg.toFixed(1) }} kg</strong>
+                        <small>{{ activeCockpit.chargeLbs.toFixed(0) }} lbs</small>
+                      </div>
+                      <div class="rcp-kpi">
+                        <span class="rcp-kpi-l">Cubicaje</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.cubicFt3.toFixed(2) }} ft³</strong>
+                        <small>{{ activeCockpit.cubicM3.toFixed(3) }} m³ · {{ Math.round(activeCockpit.cubicIn3).toLocaleString() }} in³</small>
+                      </div>
+                      <div class="rcp-kpi">
+                        <span class="rcp-kpi-l">Piezas</span>
+                        <strong class="rcp-kpi-v">{{ activeCockpit.pcs }}</strong>
+                        <small>detalle del recibo</small>
+                      </div>
+                    </div>
+                    <div v-show="cockpitOpen" class="rcp-delta" :class="activeCockpit.deltaOk ? 'ok' : 'bad'">
+                      <span v-if="activeCockpit.reservedKg > 0">
+                        Δ vs reserva:
+                        <strong>{{ activeCockpit.deltaKg > 0 ? '+' : '' }}{{ activeCockpit.deltaKg.toFixed(1) }} kg</strong>
+                        ({{ activeCockpit.deltaPct > 0 ? '+' : '' }}{{ activeCockpit.deltaPct.toFixed(1) }}%)
+                      </span>
+                      <span v-else>Sin reserva registrada: se compara con el peso reportado del MAWB ({{ activeCockpit.reservedKg.toFixed(1) }} kg).</span>
+                      <span v-if="activeCockpit.volumeWarning">⚠ Cobrable volumétrico ({{ activeCockpit.dimKg.toFixed(1) }} kg &gt; {{ activeCockpit.actualKg.toFixed(1) }} kg).</span>
+                      <span v-if="activeCockpit.excessWarning">⚠ Excede la reserva en más del 5%.</span>
+                    </div>
+                  </div>
+              </div>
+
+              <div v-if="receiptView === 'ops'" class="ops-body thin-scrollbar overscroll-contain">
               <div v-if="localStep === 1" class="space-y-1.5">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-1.5">
                   <!-- Left column -->
@@ -287,6 +418,39 @@
                           class="ds-input uppercase" />
                       </div>
                     </div>
+                    <div>
+                      <label class="ds-label">Commodity <span class="rcp-inh">heredado del booking</span></label>
+                      <div class="rcp-inh-field">
+                        <span class="rcp-inh-val">{{ m.commodityType || 'DRY_CARGO' }}</span>
+                        <span class="rcp-inh-hint">Tipo macro · sin desglose por SKU</span>
+                      </div>
+                    </div>
+
+                    <!-- Campos reservados: visibles en modo fantasma (baja opacidad
+                         + borde punteado) hasta que un SUPER_USER los habilite en
+                         Configuración. Habilitados se capturan y se guardan con el
+                         recibo (seal_number / dock_bay). -->
+                    <div class="rcp-ghost-grid">
+                      <div v-for="fn in OPTIONAL_RECEIPT_FUNCTIONS" :key="fn.key" class="rcp-ghost"
+                        :class="{ 'rcp-ghost--live': isOptionalOn(fn) }">
+                        <label class="ds-label">
+                          {{ t(fn.labelKey) }}
+                          <span class="rcp-ghost-tag" :class="{ 'rcp-ghost-tag--on': isOptionalOn(fn) }">
+                            {{ isOptionalOn(fn) ? t('warehouse.optionalFn.tagOn') : t('warehouse.optionalFn.tagOff') }}
+                          </span>
+                        </label>
+                        <input v-model="receiptForms[m.id][fn.key]" type="text" maxlength="64" class="ds-input"
+                          :placeholder="isOptionalOn(fn) ? t(fn.placeholderKey) : t('warehouse.optionalFn.offPlaceholder')"
+                          :disabled="!isOptionalOn(fn)"
+                          :tabindex="isOptionalOn(fn) ? 0 : -1" />
+                      </div>
+                    </div>
+                    <p v-if="!allOptionalOn" class="rcp-ghost-note">
+                      {{ canConfigureOptional
+                        ? t('warehouse.optionalFn.noteSuper')
+                        : t('warehouse.optionalFn.noteRestricted') }}
+                    </p>
+
                     <div class="grid grid-cols-2 gap-2">
                       <div>
                         <label class="ds-label">AWB Reported Pieces</label>
@@ -332,25 +496,25 @@
                           <tbody>
                             <tr v-for="(entry, ei) in receiptForms[m.id].hawbEntries" :key="ei"
                               class="hover:bg-surface-hover">
-                              <td class="px-2 py-1 border-b border-default">
+                              <td class="px-1 py-1 border-b border-default">
                                 <input v-model="entry.hawbNumber" placeholder="HAWB #"
-                                  class="w-20 border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] font-bold text-primary" />
+                                  class="w-[92px] border border-strong rounded px-1.5 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] font-bold text-primary" />
                               </td>
-                              <td class="px-2 py-1 border-b border-default">
+                              <td class="px-1 py-1 border-b border-default">
                                 <input v-model="entry.consigneeName" placeholder="Consignee"
-                                  class="w-full min-w-[100px] border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
+                                  class="w-[100px] border border-strong rounded px-1.5 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-default">
+                              <td class="px-1 py-1 border-b border-default">
                                 <input v-model.number="entry.pieces" type="number" min="0" placeholder="0"
-                                  class="w-14 text-center border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
+                                  class="w-11 text-center border border-strong rounded px-1 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-default">
+                              <td class="px-1 py-1 border-b border-default">
                                 <input v-model.number="entry.weightKg" type="number" step="0.1" min="0" placeholder="0"
-                                  class="w-20 text-right border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
+                                  class="w-[60px] text-right border border-strong rounded px-1.5 py-1 outline-none focus:border-slate-700 bg-surface text-[13px]" />
                               </td>
-                              <td class="px-2 py-1 border-b border-default">
+                              <td class="px-1 py-1 border-b border-default">
                                 <input v-model="entry.destination" maxlength="3" placeholder="MIA"
-                                  class="w-14 text-center border border-strong rounded px-2 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] uppercase" />
+                                  class="w-11 text-center border border-strong rounded px-1 py-1 outline-none focus:border-slate-700 bg-surface text-[13px] uppercase" />
                               </td>
                               <td v-if="(receiptForms[m.id].hawbEntries || []).length > 1"
                                 class="px-2 py-1 text-center border-b border-default">
@@ -637,17 +801,121 @@
                     </div>
                   </div>
                 </template>
+
               </div>
 
-              <!-- ═══ STEP 3: REMARKS ═══ -->
-              <div v-if="localStep === 3" class="space-y-1.5">
+              <!-- STEP 3: CONTROLES (checklist, cadena de frío, documentación) -->
+              <div v-if="localStep === 3" class="space-y-2">
+                <div class="rcp-panel">
+                  <div class="rcp-panel-hd">
+                    <span class="rcp-panel-tt">Checklist operativo — integridad del embalaje</span>
+                    <span class="rcp-badge" :class="checksSummary(m).ok ? 'ok' : 'warn'">
+                      {{ checksSummary(m).done }}/{{ checksSummary(m).total }} verificados
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                    <label v-for="c in CHECK_ITEMS" :key="c.key"
+                      class="flex items-center gap-2 cursor-pointer select-none text-[12.5px] text-primary">
+                      <input type="checkbox" v-model="receiptForms[m.id].operationalChecks[c.key]"
+                        class="accent-slate-700 rounded w-3.5 h-3.5" />
+                      <span>{{ c.label }}</span>
+                    </label>
+                  </div>
+                  <div class="mt-2">
+                    <label class="ds-label text-[11px]">Observaciones del checklist</label>
+                    <input v-model="receiptForms[m.id].operationalChecks.notes" type="text"
+                      placeholder="Daños, faltantes, observaciones del embalaje..." class="ds-input" />
+                  </div>
+                </div>
+
+                <div class="rcp-panel">
+                  <div class="rcp-panel-hd">
+                    <span class="rcp-panel-tt">Documentación física y DUA</span>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                    <label v-for="c in DOC_ITEMS" :key="c.key"
+                      class="flex items-center gap-2 cursor-pointer select-none text-[12.5px] text-primary">
+                      <input type="checkbox" v-model="receiptForms[m.id].operationalChecks[c.key]"
+                        class="accent-slate-700 rounded w-3.5 h-3.5" />
+                      <span>{{ c.label }}</span>
+                    </label>
+                    <div>
+                      <label class="ds-label text-[11px]">N.º DUA</label>
+                      <input v-model="receiptForms[m.id].duaNumber" type="text" placeholder="Ej. 2026-000123"
+                        class="ds-input font-mono uppercase" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rcp-panel">
+                  <div class="rcp-panel-hd">
+                    <span class="rcp-panel-tt">Cadena de frío / perecederos</span>
+                    <label class="flex items-center gap-2 cursor-pointer select-none text-[12px] text-primary">
+                      <input type="checkbox" v-model="receiptForms[m.id].coldChain.enabled"
+                        class="accent-slate-700 rounded w-3.5 h-3.5" />
+                      <span>Aplica</span>
+                    </label>
+                  </div>
+                  <!-- Registro de la temperatura de recepción (queda guardado en el recibo) -->
+                  <div class="rcp-temp">
+                    <div class="min-w-0 flex-1">
+                      <label class="ds-label text-[11px]">Temperatura de recepción (°C)</label>
+                      <input v-model.number="receiptForms[m.id].coldChain.receivedTempC" type="number" step="0.1"
+                        inputmode="decimal" placeholder="Ej. 4.5" class="ds-input rcp-temp-input"
+                        @change="markReceptionTemp(m)" />
+                    </div>
+                    <div class="rcp-temp-actions">
+                      <button type="button" @click="registerReceptionTemp(m)"
+                        class="rcp-btn-mini">Registrar temperatura</button>
+                      <span v-if="receiptForms[m.id].coldChain.receivedAt" class="text-[10.5px] font-mono text-secondary whitespace-nowrap">
+                        {{ fmtStamp(receiptForms[m.id].coldChain.receivedAt) }}
+                      </span>
+                    </div>
+                  </div>
+                  <div v-if="receiptForms[m.id].coldChain.enabled" class="space-y-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+                      <div>
+                        <label class="ds-label text-[11px]">Temp. mín (°C)</label>
+                        <input v-model.number="receiptForms[m.id].coldChain.minC" type="number" step="0.1"
+                          class="ds-input" />
+                      </div>
+                      <div>
+                        <label class="ds-label text-[11px]">Temp. máx (°C)</label>
+                        <input v-model.number="receiptForms[m.id].coldChain.maxC" type="number" step="0.1"
+                          class="ds-input" />
+                      </div>
+                      <div class="sm:col-span-2 pb-1">
+                        <span class="rcp-badge" :class="coldStatus(m).ok ? 'ok' : 'bad'">{{ coldStatus(m).label }}</span>
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <div v-for="(r, ri) in receiptForms[m.id].coldChain.readings" :key="ri"
+                        class="flex items-center gap-2">
+                        <input v-model.number="r.valueC" type="number" step="0.1" placeholder="°C"
+                          class="w-20 border border-strong rounded px-2 py-1 text-[13px] font-mono bg-surface text-primary outline-none focus:border-slate-500" />
+                        <input v-model="r.at" type="datetime-local"
+                          class="flex-1 min-w-0 border border-strong rounded px-2 py-1 text-[12px] font-mono bg-surface text-primary outline-none focus:border-slate-500" />
+                        <button type="button" @click="removeColdReading(m, ri)"
+                          class="text-tertiary hover:text-secondary text-[12px] font-bold" aria-label="Eliminar lectura">✕</button>
+                      </div>
+                      <div v-if="!receiptForms[m.id].coldChain.readings.length"
+                        class="text-[11px] font-mono text-tertiary">Sin lecturas de temperatura registradas.</div>
+                      <button type="button" @click="addColdReading(m)"
+                        class="text-[12px] font-mono uppercase tracking-wider text-primary hover:text-primary transition">+ Registrar temperatura</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ═══ STEP 4: REMARKS ═══ -->
+              <div v-if="localStep === 4" class="space-y-1.5">
                 <label class="ds-label">Remarks / Observaciones</label>
                 <textarea v-model="receiptForms[m.id].remarks" rows="3" placeholder="Notas, observaciones, instrucciones especiales..."
                   class="ds-input resize-none"></textarea>
               </div>
 
-              <!-- ═══ STEP 4: EVIDENCE ═══ -->
-              <div v-if="localStep === 4" class="space-y-2">
+              <!-- ═══ STEP 5: EVIDENCE ═══ -->
+              <div v-if="localStep === 5" class="space-y-2">
                 <div class="flex items-center justify-between gap-2">
                   <p class="text-[12px] font-mono text-primary">{{ t('warehouse.evidence.subtitle') }}</p>
                   <span class="shrink-0 text-[11px] font-mono text-secondary tabular-nums">
@@ -720,8 +988,8 @@
                 </div>
               </div>
 
-              <!-- ═══ STEP 5: SIGNATURES ═══ -->
-              <div v-if="localStep === 5" class="space-y-1.5">
+              <!-- ═══ STEP 6: SIGNATURES ═══ -->
+              <div v-if="localStep === 6" class="space-y-1.5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label class="ds-label">Dock Signature</label>
@@ -783,9 +1051,226 @@
                     <SignaturePad v-model="receiptForms[m.id].brokerSig" :width="280" :height="50" />
                   </div>
                 </div>
+
+                <!-- Choferes / camiones: una MAWB puede llegar en varios viajes -->
+                <div class="border-t border-strong pt-2 mt-2">
+                  <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <div>
+                      <span class="ds-label !mb-0">Choferes que entregan / camiones</span>
+                      <p class="text-[11px] font-mono text-secondary mt-0.5">
+                        Registra cada chofer cuando la carga llega en varios camiones o viajes.
+                      </p>
+                    </div>
+                    <button type="button" @click="addDriver(m)"
+                      class="shrink-0 text-[12px] font-mono font-bold uppercase tracking-wider text-primary hover:text-primary transition">
+                      + Agregar chofer
+                    </button>
+                  </div>
+                  <div v-if="!receiptForms[m.id].driverSignatures.length"
+                    class="border border-dashed border-strong rounded px-3 py-2 text-[11px] font-mono text-tertiary">
+                    Sin choferes adicionales registrados.
+                  </div>
+                  <div v-else class="space-y-2">
+                    <div v-for="(d, di) in receiptForms[m.id].driverSignatures" :key="di"
+                      class="border border-strong rounded p-2 bg-surface">
+                      <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">
+                          Chofer {{ di + 1 }}
+                        </span>
+                        <button type="button" @click="removeDriver(m, di)"
+                          class="text-tertiary hover:text-secondary text-[12px] font-bold" aria-label="Eliminar chofer">✕</button>
+                      </div>
+                      <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-1">
+                        <div>
+                          <label class="ds-label text-[11px]">Nombre</label>
+                          <input v-model="d.name" type="text" placeholder="Nombre del chofer" class="ds-input" />
+                        </div>
+                        <div>
+                          <label class="ds-label text-[11px]">ID / Cédula</label>
+                          <input v-model="d.idNum" type="text" placeholder="Cédula" class="ds-input" />
+                        </div>
+                        <div>
+                          <label class="ds-label text-[11px]">Camión / Placa</label>
+                          <input v-model="d.truckPlate" type="text" placeholder="Placa del camión"
+                            class="ds-input uppercase" />
+                        </div>
+                        <div>
+                          <label class="ds-label text-[11px]">Fecha / hora de llegada</label>
+                          <input v-model="d.arrivedAt" type="datetime-local" class="ds-input" />
+                        </div>
+                      </div>
+                      <SignaturePad v-model="d.sig" :width="280" :height="46" />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               </div> <!-- end scrollable step content -->
+
+              <!-- ═══ Vista: Detalle de Skids (métrico + imperial) ═══ -->
+              <div v-if="receiptView === 'skids'" class="ops-body thin-scrollbar overscroll-contain">
+                <div class="rcp-vw-hd">
+                  <div class="min-w-0">
+                    <h3 class="rcp-vw-tt">Detalle de skids y piezas</h3>
+                    <p class="rcp-vw-sub">Dimensiones individuales en pulgadas y centímetros, volumen (CBM / CFT) y pesos por línea.</p>
+                  </div>
+                  <button class="btn-ghost" @click="setReceiptView('ops'); goToStep(2)">&#9998; Editar skids</button>
+                </div>
+
+                <div class="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+                  <table class="data-table w-full text-[13px] font-mono border-collapse">
+                    <thead>
+                      <tr class="rcp-sheet-thead">
+                        <th class="rcp-num">#</th>
+                        <th class="text-left">HAWB</th>
+                        <th class="rcp-num">Pzs</th>
+                        <th class="rcp-num">L in</th>
+                        <th class="rcp-num">W in</th>
+                        <th class="rcp-num">H in</th>
+                        <th class="rcp-num">L cm</th>
+                        <th class="rcp-num">W cm</th>
+                        <th class="rcp-num">H cm</th>
+                        <th class="rcp-num">CBM</th>
+                        <th class="rcp-num">CFT</th>
+                        <th class="rcp-num">Báscula kg</th>
+                        <th class="rcp-num">Vol. kg</th>
+                        <th class="rcp-num">Cobrable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="r in skidRows" :key="r.key">
+                        <td class="rcp-num">{{ r.index }}</td>
+                        <td class="text-left font-bold">{{ r.hawb }}</td>
+                        <td class="rcp-num">{{ r.qty }}</td>
+                        <td class="rcp-num">{{ r.l ? r.l : '—' }}</td>
+                        <td class="rcp-num">{{ r.w ? r.w : '—' }}</td>
+                        <td class="rcp-num">{{ r.h ? r.h : '—' }}</td>
+                        <td class="rcp-num">{{ r.cm.l ? r.cm.l : '—' }}</td>
+                        <td class="rcp-num">{{ r.cm.w ? r.cm.w : '—' }}</td>
+                        <td class="rcp-num">{{ r.cm.h ? r.cm.h : '—' }}</td>
+                        <td class="rcp-num">{{ r.cbm ? r.cbm.toFixed(4) : '—' }}</td>
+                        <td class="rcp-num">{{ r.cft ? r.cft.toFixed(3) : '—' }}</td>
+                        <td class="rcp-num">{{ r.scaleKg ? r.scaleKg.toFixed(1) : '—' }}</td>
+                        <td class="rcp-num">{{ r.dimKg ? r.dimKg.toFixed(1) : '—' }}</td>
+                        <td class="rcp-num rcp-cell-strong">{{ r.chargeKg ? r.chargeKg.toFixed(1) : '—' }}</td>
+                      </tr>
+                      <tr v-if="!skidRows.length">
+                        <td colspan="14" class="text-center py-8 text-secondary">Aún no hay piezas capturadas en este recibo.</td>
+                      </tr>
+                    </tbody>
+                    <tfoot v-if="skidRows.length">
+                      <tr class="rcp-sheet-tfoot">
+                        <td colspan="2">Totales</td>
+                        <td class="rcp-num">{{ skidTotals.qty }}</td>
+                        <td colspan="6"></td>
+                        <td class="rcp-num">{{ skidTotals.cbm.toFixed(4) }}</td>
+                        <td class="rcp-num">{{ skidTotals.cft.toFixed(3) }}</td>
+                        <td class="rcp-num">{{ skidTotals.scaleKg.toFixed(1) }}</td>
+                        <td class="rcp-num">{{ skidTotals.dimKg.toFixed(1) }}</td>
+                        <td class="rcp-num rcp-cell-strong">{{ skidTotals.chargeKg.toFixed(1) }}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <!-- ═══ Vista: Previa del recibo oficial ═══ -->
+              <div v-if="receiptView === 'preview'" class="ops-body thin-scrollbar overscroll-contain rcp-prev-wrap">
+                <div class="rcp-sheet">
+                  <header class="rcp-sheet-hd">
+                    <div class="min-w-0">
+                      <div class="rcp-sheet-brand">AIRCARGO · RECIBO DE BODEGA</div>
+                      <div class="rcp-sheet-awb">{{ m.awbNumber || '—' }}</div>
+                      <div class="rcp-sheet-sub">Dock Receipt · {{ receiptForms[m.id].gatewayCfs || 'SDQ' }}</div>
+                    </div>
+                    <div class="rcp-sheet-meta">
+                      <div><span>Ruta</span><strong>{{ receiptForms[m.id].origin || '—' }} → {{ receiptForms[m.id].destination || '—' }}</strong></div>
+                      <div><span>Estado</span><strong>{{ receiptById[m.id] ? 'Emitido' : 'Borrador' }}</strong></div>
+                      <div><span>Commodity</span><strong>{{ m.commodityType || 'DRY_CARGO' }}</strong></div>
+                    </div>
+                  </header>
+
+                  <section class="rcp-sheet-fields">
+                    <div><span>Shipper</span><strong>{{ receiptForms[m.id].shipperName || '—' }}</strong></div>
+                    <div><span>Consignee</span><strong>{{ receiptForms[m.id].consigneeName || '—' }}</strong></div>
+                    <div><span>Piezas AWB</span><strong>{{ receiptForms[m.id].awbReportedPieces ?? '—' }}</strong></div>
+                    <div><span>Peso AWB</span><strong>{{ receiptForms[m.id].mawbWeightGreatest ?? '—' }}</strong></div>
+                    <div v-if="receiptForms[m.id].sealNumber">
+                      <span>Sello / Precinto</span><strong>{{ receiptForms[m.id].sealNumber }}</strong>
+                    </div>
+                    <div v-if="receiptForms[m.id].dockBay">
+                      <span>Muelle / Bahía</span><strong>{{ receiptForms[m.id].dockBay }}</strong>
+                    </div>
+                  </section>
+
+                  <section class="rcp-sheet-block">
+                    <h4>Resumen de carga</h4>
+                    <div class="rcp-sheet-kpis">
+                      <div><small>Piezas</small><strong>{{ skidTotals.qty }}</strong></div>
+                      <div><small>Báscula</small><strong>{{ skidTotals.scaleKg.toFixed(1) }} kg</strong></div>
+                      <div><small>Volumétrico</small><strong>{{ skidTotals.dimKg.toFixed(1) }} kg</strong></div>
+                      <div class="accent"><small>Cobrable</small><strong>{{ skidTotals.chargeKg.toFixed(1) }} kg</strong></div>
+                    </div>
+                  </section>
+
+                  <section class="rcp-sheet-block">
+                    <h4>Skids</h4>
+                    <table class="rcp-sheet-table">
+                      <thead>
+                        <tr><th>#</th><th>HAWB</th><th>Pzs</th><th>Dimensiones</th><th>CBM</th><th>Cobrable kg</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="r in skidRows" :key="'p-' + r.key">
+                          <td>{{ r.index }}</td>
+                          <td>{{ r.hawb }}</td>
+                          <td>{{ r.qty }}</td>
+                          <td class="rcp-num">{{ r.dimsLabel }}</td>
+                          <td class="rcp-num">{{ r.cbm ? r.cbm.toFixed(3) : '—' }}</td>
+                          <td class="rcp-num">{{ r.chargeKg ? r.chargeKg.toFixed(1) : '—' }}</td>
+                        </tr>
+                        <tr v-if="!skidRows.length"><td colspan="6" class="text-center">Sin piezas capturadas</td></tr>
+                      </tbody>
+                    </table>
+                  </section>
+
+                  <section class="rcp-sheet-block">
+                    <h4>HAWBs</h4>
+                    <div class="rcp-sheet-tags">
+                      <span v-for="(h, hi) in (receiptForms[m.id].hawbEntries || [])" :key="'h-' + hi" class="rcp-sheet-tag">
+                        {{ h.hawbNumber || 'S/N' }} · {{ h.pieces || 0 }} pzs · {{ h.destination || '—' }}
+                      </span>
+                      <span v-if="!(receiptForms[m.id].hawbEntries || []).length" class="rcp-sheet-tag">Sin HAWBs</span>
+                    </div>
+                  </section>
+
+                  <section class="rcp-sheet-block">
+                    <h4>Inspección y evidencias</h4>
+                    <div class="rcp-sheet-tags">
+                      <span class="rcp-sheet-tag" :class="{ ok: receiptForms[m.id].operationalChecks?.packagingIntact }">Embalaje intacto</span>
+                      <span class="rcp-sheet-tag" :class="{ ok: receiptForms[m.id].operationalChecks?.noDamage }">Sin daños</span>
+                      <span class="rcp-sheet-tag" :class="{ ok: receiptForms[m.id].operationalChecks?.sealsIntact }">Precintos</span>
+                      <span class="rcp-sheet-tag" :class="{ ok: receiptForms[m.id].operationalChecks?.countVerified }">Conteo verificado</span>
+                      <span class="rcp-sheet-tag">Evidencias: {{ (receiptForms[m.id].evidence || []).length }}</span>
+                      <span class="rcp-sheet-tag">Evidencias MAWB: {{ (receiptForms[m.id].mawbEvidence || []).length }}</span>
+                    </div>
+                  </section>
+
+                  <footer class="rcp-sheet-sigs">
+                    <div class="rcp-sig">
+                      <img v-if="receiptForms[m.id].dockSignature" :src="receiptForms[m.id].dockSignature" alt="Firma de entrega" />
+                      <span>Entrega · {{ receiptForms[m.id].printName || '—' }}</span>
+                    </div>
+                    <div class="rcp-sig">
+                      <img v-if="receiptForms[m.id].receivedBySig" :src="receiptForms[m.id].receivedBySig" alt="Firma de recepción" />
+                      <span>Recibe · {{ receiptForms[m.id].receivedByName || '—' }}</span>
+                    </div>
+                    <div class="rcp-sig">
+                      <img v-if="receiptForms[m.id].brokerSig" :src="receiptForms[m.id].brokerSig" alt="Firma del corredor" />
+                      <span>Broker · {{ receiptForms[m.id].brokerName || '—' }}</span>
+                    </div>
+                  </footer>
+                </div>
+              </div>
 
               <div class="ops-foot">
                 <div class="ops-fl">
@@ -797,7 +1282,11 @@
                   <span v-if="stepRecap" class="ops-recap">{{ stepRecap.pcs }} pzs · {{ stepRecap.kg }} kg</span>
                   <span v-if="successMsg" class="ops-ok">{{ successMsg }}</span>
                 </div>
-                <div v-if="localStep < 5" class="ops-fr">
+                <div v-if="receiptView !== 'ops'" class="ops-fr">
+                  <button class="btn-ghost" @click="setReceiptView('ops')">&#9664; Volver al formulario</button>
+                  <button v-if="receiptView === 'preview'" class="btn-ok" @click="printPreview(m)">PDF / Imprimir</button>
+                </div>
+                <div v-else-if="localStep < 6" class="ops-fr">
                   <button class="btn-ok" @click="nextStep">Siguiente &#9654;</button>
                 </div>
                 <div v-else class="ops-fr">
@@ -1015,6 +1504,45 @@
       @close="closeScanModal"
     />
 
+    <!-- ═══ SELECTOR DE MAWBs PENDIENTES (cola de recepción) ═══
+         Permite cargar un recibo directamente desde la cola de MAWBs que
+         aún no tienen recepción, sin buscarlo en la tabla. -->
+    <Teleport to="body">
+      <div v-if="showQueueModal" class="ops-overlay" @click.self="closeQueueModal">
+        <div class="ops-modal" role="dialog" aria-modal="true" style="max-width: 720px;">
+          <div class="ops-hdr">
+            <div class="ops-fl">
+              <span class="ops-tt">{{ t('warehouse.queue.title') }}</span>
+              <span class="ops-sub">{{ pendingMawbQueue.length }} · {{ t('warehouse.queue.subtitle') }}</span>
+            </div>
+            <button class="xbtn" @click="closeQueueModal" title="Cerrar">&#10005;</button>
+          </div>
+          <div class="px-4 py-2 border-b" style="border-color: var(--border)">
+            <div class="ds-search max-w-none">
+              <component :is="icons.Search" :size="14" class="ds-search-icon" :stroke-width="2" />
+              <input v-model="queueSearch" type="text" :placeholder="t('warehouse.queue.search')"
+                class="ds-input w-full pl-9" />
+            </div>
+          </div>
+          <div class="ops-body thin-scrollbar">
+            <div v-if="!pendingMawbQueue.length" class="text-[12px] font-mono text-tertiary py-6 text-center">
+              {{ t('warehouse.queue.empty') }}
+            </div>
+            <div v-else class="divide-y" style="border-color: var(--border)">
+              <button v-for="qm in pendingMawbQueue" :key="qm.id" type="button"
+                class="w-full flex items-center gap-3 px-4 py-2 text-left hover:bg-[var(--surface-2)] transition"
+                @click="openQueueMawb(qm)">
+                <span class="font-mono font-bold text-[12.5px] text-[var(--text)]">{{ qm.awbNumber || qm.id?.slice(0, 8) }}</span>
+                <span class="text-[11.5px] text-[var(--text-2)] truncate flex-1">{{ qm.shipperName || '—' }}</span>
+                <span class="text-[11px] font-mono" style="color: var(--muted)">{{ fmtFlight(qm) }}</span>
+                <span class="text-[11px] font-bold" style="color: var(--accent)">{{ t('warehouse.queue.open') }} &#8594;</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- SDD §7: barra sticky Scan MAWB/HAWB siempre visible en móvil -->
     <div class="scan-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
       <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
@@ -1040,6 +1568,7 @@ import { ref, computed, onMounted, onUnmounted, watch, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '../stores/app'
+import { useAuthStore } from '../stores/auth'
 
 const { t } = useI18n()
 import SignaturePad from '../components/SignaturePad.vue'
@@ -1056,6 +1585,7 @@ import { mawbsApi } from '../api/mawbs'
 import { receiptsApi } from '../api/receipts'
 import { scanApi } from '../api/scan'
 import { calcConfigApi } from '../api/receiptCalcConfig'
+import { receiptFormConfigApi } from '../api/receiptFormConfig'
 import { useToastStore } from '../stores/toast'
 import { extractError } from '../utils/error'
 import { normalizeAwb } from '../utils/awb'
@@ -1064,6 +1594,7 @@ import { useConfirm } from '../composables/useConfirm'
 import { useLiveRefresh } from '../composables/useLiveRefresh'
 
 const store = useAppStore()
+const auth = useAuthStore()
 const toast = useToastStore()
 const { confirm } = useConfirm()
 const route = useRoute()
@@ -1233,7 +1764,8 @@ function deriveMawbOperationalStatus(m) {
 }
 
 function isReceiptComplete(m) {
-  return (activeReceiptForMawb(m, store.receipts)?.pieceCount || 0) > 0
+  const receipt = activeReceiptForMawb(m, store.receipts)
+  return receipt && !receipt.superseded && receipt.pieceCount > 0
 }
 
 // True cuando el MAWB está en ULDs pero el total montado < piezas recibidas
@@ -1305,18 +1837,214 @@ const mawbOperationalStatusMap = computed(() => {
   return map
 })
 
+// ── Cola de MAWBs pendientes de recepción (selector "Cargar de la cola") ──
+const pendingMawbQueue = computed(() => {
+  const q = queueSearch.value.trim().toLowerCase()
+  return (store.mawbs || [])
+    .filter(m => mawbOperationalStatusMap.value[m.id] === 'PENDIENTE')
+    .filter(m => !q
+      || String(m.awbNumber || '').toLowerCase().includes(q)
+      || String(m.shipperName || '').toLowerCase().includes(q))
+    .slice(0, 150)
+})
+
+function openQueueModal() {
+  queueSearch.value = ''
+  showQueueModal.value = true
+}
+
+function closeQueueModal() {
+  showQueueModal.value = false
+}
+
+function openQueueMawb(m) {
+  showQueueModal.value = false
+  queueSearch.value = ''
+  if (!m) return
+  if (expandedId.value === m.id) return
+  toggleExpand(m)
+}
+
+// ── Cockpit de recepción (pesos, cubicaje y discrepancias en vivo) ────────
+const activeMawb = computed(() => (store.mawbs || []).find(x => x.id === expandedId.value) || null)
+
+function reservedKgFor(m) {
+  if (!m) return 0
+  const target = normalizeAwb(m.awbNumber)
+  const booking = (store.bookings || []).find(b =>
+    (b.mawbId && b.mawbId === m.id)
+    || (target && normalizeAwb(b.awbNumber) === target))
+  const fromBooking = Number(booking?.reservedKg) || 0
+  if (fromBooking > 0) return fromBooking
+  return Number(m.reportedWeightKg) || 0
+}
+
+function cockpitFor(m) {
+  if (!m || !receiptForms[m.id]) return null
+  const f = receiptForms[m.id]
+  const actualKg = totalScaleKg(m.id, null)
+  const actualLbs = totalScaleLbs(m.id, null)
+  const dimKg = totalDimKg(m.id, null)
+  const dimLbs = totalDimLbs(m.id, null)
+  const chargeKg = totalChargeableKg(m.id, null)
+  const chargeLbs = totalChargeableLbs(m.id, null)
+  const cubicIn3 = (f.pieces || []).reduce((s, p) => {
+    const vol = (Number(p.lengthIn) || 0) * (Number(p.widthIn) || 0) * (Number(p.heightIn) || 0)
+    return s + vol * (Number(p.pieces) || 1)
+  }, 0)
+  const reservedKg = reservedKgFor(m)
+  const deltaKg = chargeKg - reservedKg
+  const deltaPct = reservedKg > 0 ? (deltaKg / reservedKg) * 100 : 0
+  const deltaOk = reservedKg <= 0 || Math.abs(deltaPct) <= 5
+  return {
+    actualKg, actualLbs, dimKg, dimLbs, chargeKg, chargeLbs,
+    cubicIn3, cubicFt3: cubicIn3 / 1728, cubicM3: cubicIn3 / 61023.7,
+    reservedKg, reservedLbs: reservedKg * 2.20462,
+    deltaKg, deltaPct, deltaOk,
+    excessWarning: reservedKg > 0 && deltaPct > 5,
+    volumeWarning: dimKg > actualKg && dimKg > 0,
+    pcs: totalPieces(m.id, null),
+  }
+}
+
+const activeCockpit = computed(() => cockpitFor(activeMawb.value))
+
+// ── Checklist operativo / documentación / cadena de frío ──────────────────
+const CHECK_ITEMS = [
+  { key: 'packagingIntact', label: 'Embalaje íntegro' },
+  { key: 'noDamage', label: 'Sin daños visibles ni humedad' },
+  { key: 'sealsIntact', label: 'Precintos / sellos intactos' },
+  { key: 'labelsLegible', label: 'Etiquetas y marcas legibles' },
+  { key: 'palletized', label: 'Carga paletizada / asegurada' },
+  { key: 'noLeaks', label: 'Sin derrames ni olores' },
+  { key: 'countVerified', label: 'Conteo de piezas verificado' },
+]
+const DOC_ITEMS = [
+  { key: 'docsReceived', label: 'Documentos físicos recibidos' },
+  { key: 'customsDocs', label: 'Documentación de aduana completa' },
+  { key: 'duaAttached', label: 'DUA adjunto' },
+]
+
+function checksSummary(m) {
+  const f = m ? receiptForms[m.id] : null
+  const all = [...CHECK_ITEMS, ...DOC_ITEMS]
+  if (!f) return { done: 0, total: all.length, ok: false }
+  const done = all.filter(c => !!f.operationalChecks?.[c.key]).length
+  return { done, total: all.length, ok: done === all.length }
+}
+
+function nowLocalInput() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Marca que la temperatura capturada es la lectura tomada en la recepción
+// (se guarda como receivedTempC + receivedAt y alimenta el detalle de lecturas).
+function markReceptionTemp(m) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (!cc) return
+  const v = Number(cc.receivedTempC)
+  if (cc.receivedTempC === null || cc.receivedTempC === '' || !Number.isFinite(v)) return
+  cc.enabled = true
+  if (!cc.receivedAt) cc.receivedAt = nowLocalInput()
+}
+
+function registerReceptionTemp(m) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (!cc) return
+  const v = Number(cc.receivedTempC)
+  if (cc.receivedTempC === null || cc.receivedTempC === '' || !Number.isFinite(v)) {
+    toast.warning('Ingresa la temperatura de recepción en °C')
+    return
+  }
+  cc.enabled = true
+  cc.receivedAt = nowLocalInput()
+  if (!Array.isArray(cc.readings)) cc.readings = []
+  cc.readings.push({ valueC: v, at: cc.receivedAt, reception: true })
+  toast.success(`Temperatura de recepción registrada: ${v} °C`)
+}
+
+function fmtStamp(value) {
+  if (!value) return ''
+  return String(value).replace('T', ' ')
+}
+
+function addColdReading(m) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (!cc) return
+  cc.enabled = true
+  if (!Array.isArray(cc.readings)) cc.readings = []
+  cc.readings.push({ valueC: null, at: nowLocalInput() })
+}
+
+function removeColdReading(m, idx) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (cc?.readings) cc.readings.splice(idx, 1)
+}
+
+function tempValueOrNull(raw) {
+  if (raw === null || raw === undefined || raw === '') return null
+  const v = Number(raw)
+  return Number.isFinite(v) ? v : null
+}
+
+// true = sin excursión, false = excursión, null = no aplica cadena de frío.
+function coldChainOkFlag(m) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (!cc?.enabled) return null
+  return coldStatus(m).ok
+}
+
+function coldStatus(m) {
+  const cc = m ? receiptForms[m.id]?.coldChain : null
+  if (!cc?.enabled) return { ok: true, label: 'No aplica' }
+  const readings = (cc.readings || []).filter(r => r.valueC !== null && r.valueC !== '' && Number.isFinite(Number(r.valueC)))
+  const hasRange = cc.minC !== null && cc.minC !== '' && cc.maxC !== null && cc.maxC !== ''
+  const excursions = hasRange
+    ? readings.filter(r => Number(r.valueC) < Number(cc.minC) || Number(r.valueC) > Number(cc.maxC))
+    : []
+  if (!readings.length) return { ok: true, label: 'Sin lecturas' }
+  if (excursions.length) {
+    return { ok: false, label: `⚠ Excursión en ${excursions.length} lectura(s)` }
+  }
+  return { ok: true, label: `OK · ${readings.length} lectura(s)` }
+}
+
+function addDriver(m) {
+  const f = m ? receiptForms[m.id] : null
+  if (!f) return
+  if (!Array.isArray(f.driverSignatures)) f.driverSignatures = []
+  f.driverSignatures.push({ name: '', idNum: '', truckPlate: '', arrivedAt: nowLocalInput(), sig: '' })
+}
+
+function removeDriver(m, idx) {
+  const f = m ? receiptForms[m.id] : null
+  if (Array.isArray(f?.driverSignatures)) f.driverSignatures.splice(idx, 1)
+}
+
+function parseJsonValue(v, fallback) {
+  if (v === null || v === undefined || v === '') return fallback
+  if (typeof v === 'object') return v
+  try { return JSON.parse(v) } catch { return fallback }
+}
+
 // (Pedido del usuario, oct 2026) Ya no se oculta ninguna MAWB por antigüedad:
 // se muestran siempre las trabajadas (recibo emitido), las procesadas o en
 // proceso con borrador y TODAS las reservadas por los vuelos.
 
 const expandedId = ref(localStorage.getItem('WAREHOUSE_EXPANDED_MAWB') || null)
 const showScanModal = ref(false)
+const showQueueModal = ref(false)
+const queueSearch = ref('')
 const scanBusy = ref(false)
 const queueExpanded = ref(true)
+// El cockpit arranca abierto en escritorio/tablet y plegado en móvil (espacio).
+const cockpitOpen = ref(typeof window === 'undefined' ? true : window.innerWidth >= 768)
 const localStep = ref(1)
 // Validación por paso: `touchedSteps[si]` se marca al intentar avanzar (guía al operador sin
 // marcar en rojo un formulario recién abierto). `stepErrorMsg` es el primer error visible.
-const touchedSteps = reactive([false, false, false, false, false])
+const touchedSteps = reactive([false, false, false, false, false, false])
 const stepErrorMsg = ref('')
 const submitting = ref(false)
 const draftSaving = ref(false)
@@ -1347,6 +2075,70 @@ let successTimer = null
 const receiptForms = reactive({})
 const receiptHawbs = reactive({})
 const generatedReceiptId = ref(null)
+
+// ── Funciones opcionales del recibo (se activan una por una desde esta vista) ──
+// Cada entrada es una función independiente: su propio interruptor, su propia
+// bandera persistida y su propio campo en el recibo. Añadir una función nueva
+// es añadir una entrada aquí (más su columna/bandera en el backend).
+const OPTIONAL_RECEIPT_FUNCTIONS = [
+  {
+    key: 'sealNumber',
+    cfgFlag: 'sealNumberEnabled',
+    labelKey: 'warehouse.optionalFn.sealLabel',
+    helpKey: 'warehouse.optionalFn.sealHelp',
+    placeholderKey: 'warehouse.optionalFn.sealPlaceholder',
+  },
+  {
+    key: 'dockBay',
+    cfgFlag: 'dockBayEnabled',
+    labelKey: 'warehouse.optionalFn.dockLabel',
+    helpKey: 'warehouse.optionalFn.dockHelp',
+    placeholderKey: 'warehouse.optionalFn.dockPlaceholder',
+  },
+]
+
+const receiptFormCfg = reactive({ sealNumberEnabled: false, dockBayEnabled: false })
+const optionalFnOpen = ref(false)
+const optionalFnSaving = ref('')
+const canConfigureOptional = computed(() => auth.role === 'SUPER_USER')
+const allOptionalOn = computed(() => OPTIONAL_RECEIPT_FUNCTIONS.every(fn => isOptionalOn(fn)))
+
+function isOptionalOn(fn) {
+  return !!receiptFormCfg[fn.cfgFlag]
+}
+
+function applyReceiptFormConfig(data) {
+  receiptFormCfg.sealNumberEnabled = !!data?.sealNumberEnabled
+  receiptFormCfg.dockBayEnabled = !!data?.dockBayEnabled
+}
+
+async function loadReceiptFormConfig() {
+  try {
+    const res = await receiptFormConfigApi.get()
+    applyReceiptFormConfig(res.data)
+  } catch {
+    // Keep both disabled: the fields stay in ghost mode rather than silently
+    // accepting data the backend settings say are off.
+    applyReceiptFormConfig(null)
+  }
+}
+
+// Toggle a single optional function and persist only that function's flag.
+async function toggleOptional(fn) {
+  if (!canConfigureOptional.value || optionalFnSaving.value) return
+  const next = !isOptionalOn(fn)
+  optionalFnSaving.value = fn.key
+  try {
+    const res = await receiptFormConfigApi.update({ [fn.cfgFlag]: next })
+    applyReceiptFormConfig(res.data)
+    const name = t(fn.labelKey)
+    toast.success(t(next ? 'warehouse.optionalFn.fnEnabled' : 'warehouse.optionalFn.fnDisabled', { name }))
+  } catch (e) {
+    toast.error(extractError(e))
+  } finally {
+    optionalFnSaving.value = ''
+  }
+}
 
 // Draft persistence (auto-save)
 const DRAFT_PREFIX = 'warehouse_draft_'
@@ -1399,6 +2191,12 @@ function saveDraft(mawbId) {
       brokerName: f.brokerName,
       brokerIdNum: f.brokerIdNum,
       brokerSig: f.brokerSig || '',
+      driverSignatures: JSON.parse(JSON.stringify(f.driverSignatures || [])),
+      operationalChecks: { ...(f.operationalChecks || {}) },
+      coldChain: JSON.parse(JSON.stringify(f.coldChain || {})),
+      duaNumber: f.duaNumber || '',
+      sealNumber: f.sealNumber || '',
+      dockBay: f.dockBay || '',
     }
     localStorage.setItem(DRAFT_PREFIX + mawbId, JSON.stringify(data))
     lastDraftSave.value = new Date().toLocaleTimeString()
@@ -1465,6 +2263,12 @@ function applyDraftToForm(mawbId) {
       brokerName: draft.brokerName ?? f.brokerName,
     brokerIdNum: draft.brokerIdNum ?? f.brokerIdNum,
     brokerSig: draft.brokerSig ?? f.brokerSig,
+    driverSignatures: draft.driverSignatures ?? f.driverSignatures,
+    operationalChecks: { ...f.operationalChecks, ...(draft.operationalChecks || {}) },
+    coldChain: { ...f.coldChain, ...(draft.coldChain || {}) },
+    duaNumber: draft.duaNumber ?? f.duaNumber,
+    sealNumber: draft.sealNumber ?? f.sealNumber,
+    dockBay: draft.dockBay ?? f.dockBay,
   })
   lastDraftSave.value = 'borrador'
   f.pieces.forEach((_, pi) => calcPiece(mawbId, pi))
@@ -1735,7 +2539,7 @@ function matchAnyField(m, fn) {
   return fields.some(fn)
 }
 
-const steps = ['HEADER', 'PIECES', 'REMARKS', 'EVIDENCE', 'SIGNATURES']
+const steps = ['HEADER', 'PIECES', 'CONTROLES', 'REMARKS', 'EVIDENCE', 'SIGNATURES']
 
 function editOrExpandReceipt(m) {
   const rid = receiptById.value[m.id]
@@ -1830,6 +2634,16 @@ function initForm(m) {
       receivedByName: '',
       receivedByIdNum: '',
       receivedBySig: '',
+      driverSignatures: [],
+      operationalChecks: {
+        packagingIntact: false, noDamage: false, sealsIntact: false, labelsLegible: false,
+        palletized: false, noLeaks: false, countVerified: false, notes: '',
+        docsReceived: false, customsDocs: false, duaAttached: false,
+      },
+      coldChain: { enabled: false, minC: null, maxC: null, receivedTempC: null, receivedAt: '', readings: [] },
+      duaNumber: '',
+      sealNumber: '',
+      dockBay: '',
       receiptDate: null,
       startDatetime: null,
       _piecesLoadedFromDb: false,
@@ -1884,6 +2698,17 @@ async function loadExistingReceiptData(m) {
   f.brokerName = sourceReceipt.brokerName ?? f.brokerName
   f.brokerIdNum = sourceReceipt.brokerIdNum ?? f.brokerIdNum
   f.brokerSig = sourceReceipt.brokerSigUrl ?? f.brokerSig
+  f.driverSignatures = parseJsonValue(sourceReceipt.driverSignatures, f.driverSignatures || [])
+  f.operationalChecks = { ...f.operationalChecks, ...parseJsonValue(sourceReceipt.operationalChecks, {}) }
+  f.coldChain = { ...f.coldChain, ...parseJsonValue(sourceReceipt.coldChain, {}) }
+  // La temperatura de recepción también vive en su propia columna: priorizarla
+  // cuando el JSON histórico no la traiga.
+  if (sourceReceipt.receivedTempC !== null && sourceReceipt.receivedTempC !== undefined) {
+    f.coldChain.receivedTempC = Number(sourceReceipt.receivedTempC)
+  }
+  f.duaNumber = sourceReceipt.duaNumber ?? f.duaNumber
+  f.sealNumber = sourceReceipt.sealNumber ?? f.sealNumber ?? ''
+  f.dockBay = sourceReceipt.dockBay ?? f.dockBay ?? ''
   f.receivedByName = sourceReceipt.receivedByName ?? f.receivedByName
   f.receivedByIdNum = sourceReceipt.receivedByIdNum ?? f.receivedByIdNum
   f.receivedBySig = sourceReceipt.receivedBySigUrl ?? f.receivedBySig
@@ -2185,9 +3010,10 @@ function stepDone(si) {
   if (!d) return false
   if (si === 0) return !!(d.shipperName && d.consigneeName && d.origin && d.destination)
   if (si === 1) return d.pieces.length > 0 && d.pieces.some(p => p.lengthIn || p.widthIn || p.heightIn)
-  if (si === 2) return true // remarks optional
-  if (si === 3) return true // evidence optional
-  if (si === 4) return !!(d.printName || d.dockSignature)
+  if (si === 2) return checksSummary(activeMawb.value).ok // checklist operativo
+  if (si === 3) return true // remarks optional
+  if (si === 4) return true // evidence optional
+  if (si === 5) return !!(d.printName || d.dockSignature)
   return false
 }
 
@@ -2228,7 +3054,7 @@ function validateStep(si) {
     const partial = pieces.filter(hasPartialDims).length
     if (partial > 0) errs.push(partial + ' pieza(s) con dimensiones incompletas (L × W × H)')
     if (pieces.some(p => Number(p.pieces) < 0 || Number(p.scaleWeightLbs) < 0)) errs.push('No se permiten valores negativos en piezas o pesos')
-  } else if (si === 4) {
+  } else if (si === 5) {
     if (!String(d.printName || '').trim() && !d.dockSignature) errs.push('Firma de quien entrega o nombre impreso es obligatorio')
   }
   return errs
@@ -2262,12 +3088,12 @@ function warnStep(si) {
 const stepWarnings = computed(() => warnStep(localStep.value - 1))
 
 function firstInvalidStep() {
-  for (let s = 0; s < 5; s++) { if (validateStep(s).length) return s }
+  for (let s = 0; s < 6; s++) { if (validateStep(s).length) return s }
   return -1
 }
 
 function resetStepValidation() {
-  for (let i = 0; i < 5; i++) touchedSteps[i] = false
+  for (let i = 0; i < 6; i++) touchedSteps[i] = false
   stepErrorMsg.value = ''
 }
 
@@ -2275,6 +3101,7 @@ function resetStepValidation() {
 function goToStep(target) {
   const mId = expandedId.value
   if (!receiptForms[mId]) return
+  receiptView.value = 'ops'
   if (target <= localStep.value) { stepErrorMsg.value = ''; localStep.value = target; return }
   for (let s = localStep.value - 1; s < target - 1; s++) {
     touchedSteps[s] = true
@@ -2296,6 +3123,55 @@ const stepRecap = computed(() => {
   const kg = (d.pieces || []).reduce((s, p) => s + (Number(p.chargeableKg) || 0), 0)
   return { pcs, kg: Math.round(kg * 10) / 10 }
 })
+
+// ── Vistas del popup (tablet): formulario guiado · detalle de skids · previa
+const STEP_LABELS = ['Datos', 'Skids', 'Controles', 'Notas', 'Evidencias', 'Firmas']
+const RECEIPT_VIEWS = ['ops', 'skids', 'preview']
+const receiptView = ref('ops')
+function setReceiptView(v) {
+  receiptView.value = RECEIPT_VIEWS.includes(v) ? v : 'ops'
+}
+// Al abrir/cerrar otro recibo el popup vuelve siempre a la vista operativa.
+watch(expandedId, () => { receiptView.value = 'ops' })
+
+const IN_TO_CM = 2.54
+const skidRows = computed(() => {
+  const m = activeMawb.value
+  const f = m ? receiptForms[m.id] : null
+  if (!f) return []
+  return (f.pieces || []).map((p, i) => {
+    const hawb = (f.hawbEntries || []).find(h => h._hawbId === p.hawbId)
+    const qty = Number(p.pieces) || 1
+    const l = Number(p.lengthIn) || 0
+    const w = Number(p.widthIn) || 0
+    const h = Number(p.heightIn) || 0
+    const cm = { l: l ? Math.round(l * IN_TO_CM * 10) / 10 : 0, w: w ? Math.round(w * IN_TO_CM * 10) / 10 : 0, h: h ? Math.round(h * IN_TO_CM * 10) / 10 : 0 }
+    const cbm = l && w && h ? l * w * h * qty * 0.0000163871 : 0
+    return {
+      key: `${p.hawbId || 'x'}-${i}`,
+      index: i + 1,
+      hawb: hawb?.hawbNumber || '—',
+      qty,
+      l, w, h,
+      cm,
+      dimsLabel: l && w && h ? `${l}x${w}x${h} in (${cm.l}x${cm.w}x${cm.h} cm)` : '—',
+      cbm,
+      cft: cbm ? cbm * 35.3147 : 0,
+      scaleKg: Number(p.scaleWeightKg) || 0,
+      dimKg: Number(p.dimWeightKg) || 0,
+      chargeKg: Number(p.chargeableKg) || 0,
+    }
+  })
+})
+
+const skidTotals = computed(() => skidRows.value.reduce((t, r) => ({
+  qty: t.qty + r.qty,
+  cbm: t.cbm + r.cbm,
+  cft: t.cft + r.cft,
+  scaleKg: t.scaleKg + r.scaleKg,
+  dimKg: t.dimKg + r.dimKg,
+  chargeKg: t.chargeKg + r.chargeKg,
+}), { qty: 0, cbm: 0, cft: 0, scaleKg: 0, dimKg: 0, chargeKg: 0 }))
 
 function openScanModal() {
   showScanModal.value = true
@@ -2400,7 +3276,7 @@ async function toggleExpand(m) {
 }
 
 function nextStep() {
-  if (localStep.value >= 5) return
+  if (localStep.value >= 6) return
   goToStep(localStep.value + 1)
 }
 function prevStep() {
@@ -2687,7 +3563,7 @@ function openConfirmModal(m) {
   if (!f) return
   f.pieces = f.pieces.filter(p => p.hawbId != null || p.lengthIn || p.widthIn || p.heightIn || p.scaleWeightLbs)
   // Validación completa de todos los pasos antes de confirmar
-  for (let s = 0; s < 5; s++) touchedSteps[s] = true
+  for (let s = 0; s < 6; s++) touchedSteps[s] = true
   const bad = firstInvalidStep()
   if (bad !== -1) {
     const errs = validateStep(bad)
@@ -2846,6 +3722,19 @@ function buildReceiptPayload(m, f, hawbs, pieceList, remarkSuffix) {
     brokerName: f.brokerName || '',
     brokerIdNum: f.brokerIdNum || '',
     brokerSigUrl: f.brokerSig || '',
+    driverSignatures: JSON.stringify((f.driverSignatures || []).filter(d =>
+      (d.name && String(d.name).trim()) || (d.idNum && String(d.idNum).trim())
+      || (d.truckPlate && String(d.truckPlate).trim()) || d.sig)),
+    operationalChecks: JSON.stringify(f.operationalChecks || {}),
+    coldChain: JSON.stringify(f.coldChain || {}),
+    duaNumber: f.duaNumber || '',
+    // Cada función opcional solo viaja al backend cuando SU ajuste está activo,
+    // así un recibo nunca guarda datos que el operador no puede ver/editar.
+    ...Object.fromEntries(OPTIONAL_RECEIPT_FUNCTIONS.map(fn => [
+      fn.key, isOptionalOn(fn) ? (f[fn.key] || '') : '',
+    ])),
+    receivedTempC: tempValueOrNull(f.coldChain?.receivedTempC),
+    coldChainOk: coldChainOkFlag(m),
     startDatetime: f.startDatetime || new Date().toISOString(),
     receiptDate: f.receiptDate || new Date().toISOString(),
     pieces: pieceList.map((p, i) => ({
@@ -2969,7 +3858,7 @@ async function executeEmit(m, hawbs, payload) {
   await store.loadReceipts()
   await loadExistingReceiptData(m)
   bumpFormVersion()
-  localStep.value = 5
+  localStep.value = 6
   clearDraft(m.id)
 
   // Universo completo — ver nota en saveChanges (loadAllMawbs siempre).
@@ -3014,9 +3903,15 @@ const attentionQueue = computed(() => {
   for (const m of store.mawbs) {
     if (seen.has(m.id)) continue
     const st = mawbOperationalStatusMap.value[m.id]
-    if ((st === 'CARGADA' || st === 'EN_PROCESO') && !isReceiptComplete(m)) {
+    // Incluye: CARGAda/EN_PROCESO con recibo incompleto, PENDIENTE sin recibo
+    const hasReceipt = activeReceiptForMawb(m, store.receipts) && !isDraftReceipt(activeReceiptForMawb(m, store.receipts)) && !isReceiptComplete(m)
+    if ((st === 'CARGADA' || st === 'EN_PROCESO') && !hasReceipt) {
       seen.add(m.id)
       items.push({ mawb: m, flight: flightMap[m.flightId] || null, whyKey: st === 'EN_PROCESO' ? 'warehouse.attention.whyPartial' : 'warehouse.attention.whyLoaded' })
+    }
+    if (st === 'PENDIENTE' && !hasReceipt) {
+      seen.add(m.id)
+      items.push({ mawb: m, flight: flightMap[m.flightId] || null, whyKey: 'warehouse.attention.whyNoReceipt' })
     }
   }
   return items
@@ -3173,10 +4068,12 @@ async function printPreview(m) {
 }
 
 onMounted(async () => {
+  // Enabled reserved fields come from Settings; load them before the first form opens.
+  await loadReceiptFormConfig()
   if (!store.airlines.length) await store.loadAirlines()
   if (!store.flights.length) await store.loadFlights()
   await store.loadReceipts()
-  await Promise.all([store.loadUldAwbs(), store.loadAllMawbs(), store.loadUlds()])
+  await Promise.all([store.loadUldAwbs(), store.loadAllMawbs(), store.loadUlds(), store.loadBookings()])
   if (route.query.mawbId && store.mawbs.length) {
     const m = store.mawbs.find(x => x.id === route.query.mawbId)
     if (m) {
@@ -3382,6 +4279,7 @@ async function refreshData() {
     store.loadReceipts({ silent: true }),
     store.loadUldAwbs({ silent: true }),
     store.loadAllMawbs({ silent: true }),
+    store.loadBookings(undefined, { silent: true }),
   ])
   statusSnapshot.value = takeStatusSnapshot()
   flashChangedRows(prev)
@@ -3622,5 +4520,381 @@ useLiveRefresh(refreshData,
   .ops-err, .ops-warn { margin-left: 12px; margin-right: 12px; }
   .ops-hdr { padding: 10px 12px; }
   .ops-foot { padding: 10px 12px; }
+}
+
+/* ── Tablet (≤1023px): el wizard ocupa la pantalla y los controles crecen
+   para uso táctil. Antes el modal mantenía el ancho de escritorio (940px) y
+   las tarjetas quedaban apretadas en iPad / tablets Android. */
+@media (max-width: 1023px) {
+  .ops-overlay { padding: 8px; align-items: stretch; }
+  .ops-modal { width: 100%; max-width: 100%; height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px); min-height: 0; resize: none; border-radius: 10px; }
+  .ops-modal::after { display: none; }
+  .ops-hdr { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .ops-tt { font-size: 13.5px; }
+  .ops-sub { font-size: 10.5px; }
+  .ops-steps { padding: 9px 12px; }
+  .ops-sdot { width: 26px; height: 26px; }
+  .ops-slbl { font-size: 8px; }
+  .ops-sln { width: 16px; }
+  .ops-body { padding: 12px; }
+  .ops-err, .ops-warn { margin-left: 12px; margin-right: 12px; }
+  .ops-foot { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+  .ops-fl { gap: 6px; flex: 1 1 auto; }
+  .ops-fr { flex: 1 1 100%; }
+  .ops-fr .btn-ok { width: 100%; justify-content: center; padding: 12px 16px; font-size: 14px; }
+  .btn-ghost { min-height: 36px; padding: 8px 12px; }
+
+  /* Cockpit: 3 columnas legibles en vez de 6 apretadas */
+  .rcp-cockpit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .rcp-kpi-v { font-size: 14px; }
+  .rcp-kpi small { font-size: 10px; }
+  .rcp-delta { font-size: 12px; padding: 8px 10px; }
+  .rcp-panel-hd { padding: 9px 12px; flex-wrap: wrap; }
+  .rcp-panel > .grid, .rcp-panel > .mt-2, .rcp-panel > .space-y-2, .rcp-temp { padding: 10px 12px; }
+
+  /* Objetivos táctiles: checkbox y filas del checklist */
+  .rcp-panel label input[type="checkbox"] { width: 18px; height: 18px; }
+  .rcp-panel label { min-height: 34px; }
+  .rcp-cockpit-hd { padding: 8px 12px; }
+}
+
+/* Móvil: titulares más pequeños y cockpit en 2 columnas */
+@media (max-width: 640px) {
+  .rcp-cockpit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rcp-kpi-v { font-size: 13px; }
+  .rcp-panel-hd { align-items: flex-start; }
+  .rcp-panel-tt { font-size: 10.5px; }
+}
+
+/* ── Cockpit de recepción + checklist / cadena de frío ────────────────── */
+.rcp-cockpit { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface, #fff); }
+.rcp-cockpit-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 10px; background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-bottom: 1px solid var(--border); }
+.rcp-cockpit-tt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text); }
+.rcp-cockpit-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 9px 10px; }
+@media (min-width: 640px) { .rcp-cockpit-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.rcp-kpi { display: flex; flex-direction: column; gap: 1px; min-width: 0;
+  padding: 6px 7px; border: 1px solid var(--border-2, #e2e8f0); border-radius: 6px; background: var(--surface-2, #f8fafc); }
+.rcp-kpi-accent { border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.rcp-kpi-l { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcp-kpi-v { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.rcp-kpi small { font-size: 9.5px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcp-delta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+  padding: 7px 10px; border-top: 1px solid var(--border); font-size: 11.5px; }
+.rcp-delta.ok { background: color-mix(in srgb, #10b981 9%, transparent); color: #047857; }
+.rcp-delta.bad { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #b45309; }
+.rcp-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.rcp-badge.ok { background: color-mix(in srgb, #10b981 16%, transparent); color: #047857; border: 1px solid color-mix(in srgb, #10b981 40%, transparent); }
+.rcp-badge.warn { background: color-mix(in srgb, #f59e0b 18%, transparent); color: #b45309; border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent); }
+.rcp-badge.bad { background: color-mix(in srgb, #ef4444 16%, transparent); color: #b91c1c; border: 1px solid color-mix(in srgb, #ef4444 40%, transparent); }
+.rcp-toggle { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-2);
+  font-size: 12px; line-height: 1; cursor: pointer; }
+.rcp-toggle:hover { background: var(--surface-hover, #eef2f7); color: var(--text); }
+
+/* Temperatura de recepción (se persiste en el recibo) */
+.rcp-temp { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px;
+  padding: 9px 10px; border-bottom: 1px dashed var(--border); }
+.rcp-temp-input { max-width: 140px; font-variant-numeric: tabular-nums; }
+.rcp-temp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rcp-btn-mini { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent);
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+  cursor: pointer; transition: all .12s; }
+.rcp-btn-mini:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rcp-btn-mini:active { transform: scale(.97); }
+
+.rcp-panel { border: 1px solid var(--border); border-radius: 8px; background: var(--surface, #fff); overflow: hidden; }
+.rcp-panel-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 10px; background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-bottom: 1px solid var(--border); }
+.rcp-panel-tt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--text); }
+.rcp-panel > .grid, .rcp-panel > .mt-2, .rcp-panel > .space-y-2 { padding: 9px 10px; }
+[data-theme='tokyo'] .rcp-delta.ok,
+[data-theme='tokyo'] .rcp-badge.ok { color: #6ee7b7; }
+[data-theme='tokyo'] .rcp-delta.bad,
+[data-theme='tokyo'] .rcp-badge.warn { color: #fbbf24; }
+[data-theme='tokyo'] .rcp-badge.bad { color: #fca5a5; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   POPUP DE RECEPCIÓN — diseño tablet-first (cabecera industrial oscura,
+   raíl de pasos, tres vistas: operativa / skids / previa oficial).
+   Solo redefine la cáscara: el contenido de los pasos no se toca.
+   ═══════════════════════════════════════════════════════════════════════ */
+.ops-overlay { padding: 14px; }
+.ops-modal.rcp-pop { width: min(1120px, 100%); max-width: calc(100vw - 28px);
+  max-height: calc(100dvh - 28px); min-height: 460px;
+  border: 1px solid var(--border, #e2e8f0); border-top: none; border-radius: 16px;
+  background: var(--surface-2, #f6f8fd); resize: none;
+  box-shadow: 0 32px 80px -32px rgba(15, 23, 42, .55); }
+.ops-modal.rcp-pop::after { display: none; }
+
+/* — Cabecera — */
+.rcp-pop-hdr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center;
+  gap: 12px 18px; padding: 13px 18px; color: #f8fafc;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 58%, #0f2b2a 100%);
+  border-bottom: 3px solid var(--accent, #3e7bfa); }
+.rcp-pop-id { min-width: 0; }
+.rcp-pop-kicker { display: block; font-size: 9.5px; font-weight: 800; letter-spacing: .14em;
+  text-transform: uppercase; color: #94a3b8; }
+.rcp-pop-awbline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 2px 0; }
+.rcp-pop-awb { margin: 0; font-family: var(--font-family-mono, monospace); font-size: 23px;
+  line-height: 1.1; font-weight: 800; color: #ffffff; letter-spacing: .01em; }
+.rcp-pop-chip { padding: 2px 8px; border-radius: 999px; font-size: 9.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+  background: rgba(255, 255, 255, .10); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, .16); }
+.rcp-pop-chip.ok { background: rgba(16, 185, 129, .18); color: #6ee7b7; border-color: rgba(16, 185, 129, .45); }
+.rcp-pop-chip.warn { background: rgba(245, 158, 11, .18); color: #fcd34d; border-color: rgba(245, 158, 11, .45); }
+.rcp-pop-meta { display: block; font-size: 11.5px; color: #cbd5e1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcp-pop-kpis { display: flex; align-items: stretch; gap: 8px; }
+.rcp-pop-kpi { display: flex; flex-direction: column; gap: 1px; min-width: 62px;
+  padding: 6px 10px; border-radius: 10px;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); }
+.rcp-pop-kpi small { font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #94a3b8; white-space: nowrap; }
+.rcp-pop-kpi strong { font-size: 15px; font-weight: 800; color: #f8fafc;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rcp-pop-kpi strong i { font-style: normal; font-size: 10px; font-weight: 700; color: #94a3b8; }
+.rcp-pop-tools { display: flex; align-items: center; gap: 8px; }
+.rcp-viewtog { display: flex; gap: 2px; padding: 3px; border-radius: 10px;
+  background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); }
+.rcp-viewtog button { padding: 6px 12px; border: none; border-radius: 8px; background: transparent;
+  color: #cbd5e1; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; white-space: nowrap;
+  cursor: pointer; transition: background .15s, color .15s; }
+.rcp-viewtog button:hover { background: rgba(255, 255, 255, .10); color: #ffffff; }
+.rcp-viewtog button.on { background: #f8fafc; color: #0f172a; box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+.rcp-icon-btn { display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px; font-size: 15px; cursor: pointer;
+  background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .16);
+  color: #e2e8f0; transition: background .14s, color .14s, border-color .14s; }
+.rcp-icon-btn:hover { background: rgba(255, 255, 255, .16); color: #ffffff; }
+.rcp-icon-btn.x:hover { background: rgba(239, 68, 68, .88); border-color: rgba(239, 68, 68, .9); color: #ffffff; }
+.rcp-fn-btn.on { background: rgba(255, 255, 255, .22); border-color: rgba(255, 255, 255, .45); color: #ffffff; }
+
+/* — Funciones opcionales: un interruptor por función, dentro de la vista — */
+/* flex: 0 0 auto — el cajón nunca se comprime dentro del modal (que es flex
+   column): si se deja encoger, el max-height/overflow táctil lo colapsa a una
+   ventanita de ~45 px y los interruptores quedan fuera de la vista. */
+.rcp-fn-bar { flex: 0 0 auto; padding: 10px 18px 12px; background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border, #e2e8f0); }
+.rcp-fn-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rcp-fn-tt { display: block; font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text, #0f172a); }
+.rcp-fn-sub { margin: 2px 0 0; font-size: 11px; line-height: 1.35; color: var(--muted, #5b6b85); }
+.rcp-fn-close { flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px;
+  color: var(--muted, #5b6b85); background: transparent; border: 1px solid var(--border, #e2e8f0);
+  transition: color .14s, border-color .14s; }
+.rcp-fn-close:hover { color: var(--text, #0f172a); border-color: var(--accent, #3e7bfa); }
+.rcp-fn-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 8px; margin-top: 8px; }
+.rcp-fn-row { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0); background: var(--surface-2, #f6f8fd); }
+.rcp-fn-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rcp-fn-lbl strong { font-size: 12px; font-weight: 700; color: var(--text, #0f172a); }
+.rcp-fn-lbl small { font-size: 10.5px; line-height: 1.3; color: var(--muted, #5b6b85); }
+.rcp-switch { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  padding: 5px 9px 5px 6px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted, #5b6b85); background: var(--surface, #fff);
+  border: 1px solid var(--border-2, #cbd5e1); transition: color .16s, border-color .16s, background .16s; }
+.rcp-switch-dot { position: relative; width: 26px; height: 14px; border-radius: 999px;
+  background: color-mix(in srgb, var(--muted, #5b6b85) 28%, transparent); transition: background .16s; }
+.rcp-switch-dot::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, .35);
+  transition: transform .16s; }
+.rcp-switch.on { color: var(--ok, #047857); border-color: color-mix(in srgb, var(--ok, #047857) 45%, transparent);
+  background: color-mix(in srgb, var(--ok, #047857) 10%, transparent); }
+.rcp-switch.on .rcp-switch-dot { background: var(--ok, #047857); }
+.rcp-switch.on .rcp-switch-dot::after { transform: translateX(12px); }
+.rcp-switch:disabled { cursor: progress; opacity: .65; }
+
+/* — Raíl de pasos — */
+.rcp-pop .ops-steps { flex-wrap: nowrap; padding: 9px 16px; overflow-x: auto;
+  scrollbar-width: none; background: var(--surface, #fff); }
+.rcp-pop .ops-steps::-webkit-scrollbar { height: 0; }
+.rcp-pop .ops-step { flex: 0 0 auto; }
+.rcp-pop .ops-sdot { width: 25px; height: 25px; border-radius: 8px; font-size: 11.5px; }
+.rcp-pop .ops-slbl { font-size: 10px; letter-spacing: .05em; white-space: nowrap; }
+.rcp-pop .ops-sln { width: 14px; }
+
+/* — Cuerpo y pie — */
+.rcp-pop .ops-body { padding: 14px 18px; background: var(--surface-2, #f6f8fd); }
+/* Cabeceras de tabla en el mismo tono pizarra que la cabecera del popup:
+   el acento del tema teñía de morado/dorado las tablas del formulario. */
+.rcp-pop .ops-body .data-table thead th { background: #1e293b; background-image: none; color: #f8fafc; }
+.rcp-pop .ops-body .ds-input { background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0);
+  border-radius: 9px; padding: 8px 10px; min-height: 38px; font-size: 13.5px; }
+.rcp-pop .ops-body .ds-input:focus { border-color: var(--accent, #3e7bfa);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(62, 123, 250, .12)); }
+.rcp-pop .ops-foot { padding: 11px 18px; background: var(--surface, #fff);
+  box-shadow: 0 -10px 22px -18px rgba(15, 23, 42, .45); }
+.rcp-pop .btn-ghost, .rcp-pop .btn-ok { min-height: 40px; }
+
+/* — Campo heredado del booking — */
+.rcp-inh { font-size: 8px; font-weight: 700; text-transform: none; letter-spacing: 0;
+  color: var(--muted, #5b6b85); opacity: .9; }
+.rcp-inh-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: 9px; background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2e8f0); }
+.rcp-inh-val { font-family: var(--font-family-mono, monospace); font-size: 12.5px;
+  font-weight: 800; color: var(--text, #0f172a); }
+.rcp-inh-hint { font-size: 10.5px; color: var(--muted, #5b6b85); }
+
+/* — Campos fantasma / reservados (sello, muelle) — */
+.rcp-ghost-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.rcp-ghost { padding: 7px 10px 9px; border-radius: 10px; opacity: .6;
+  border: 1.5px dashed color-mix(in srgb, var(--muted, #5b6b85) 55%, transparent);
+  background: color-mix(in srgb, var(--muted, #5b6b85) 4%, transparent); }
+.rcp-ghost .ds-label { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rcp-ghost input.ds-input { background: transparent; border-style: dashed; cursor: not-allowed; }
+.rcp-ghost-tag { padding: 1px 6px; border-radius: 999px; font-size: 8px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .06em; color: var(--muted, #5b6b85);
+  border: 1px dashed currentColor; }
+/* Un campo habilitado por el SUPER_USER deja de ser fantasma y se captura. */
+.rcp-ghost--live { opacity: 1; border-style: solid;
+  border-color: color-mix(in srgb, var(--accent, #3e7bfa) 40%, var(--border, #e2e8f0));
+  background: var(--surface, #fff); }
+.rcp-ghost--live input.ds-input { background: var(--surface, #fff); border-style: solid; cursor: text; }
+.rcp-ghost-tag--on { color: var(--ok, #047857); border-style: solid;
+  background: color-mix(in srgb, var(--ok, #047857) 12%, transparent); }
+.rcp-ghost-note { margin-top: 4px; font-size: 10.5px; line-height: 1.35;
+  color: var(--muted, #5b6b85); }
+
+/* — Vista: detalle de skids — */
+.rcp-vw-hd { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.rcp-vw-tt { margin: 0; font-size: 15px; font-weight: 800; color: var(--text, #0f172a); }
+.rcp-vw-sub { margin: 2px 0 0; font-size: 11.5px; color: var(--muted, #5b6b85); }
+.ops-body thead tr.rcp-sheet-thead { background: #1e293b; }
+.ops-body thead tr.rcp-sheet-thead th { color: #f8fafc; font-size: 10.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em; padding: 8px 6px; white-space: nowrap; }
+.rcp-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rcp-cell-strong { font-weight: 800; color: var(--accent, #3e7bfa); }
+.ops-body tfoot tr.rcp-sheet-tfoot { background: var(--accent-soft, #eaf0ff); font-weight: 800; }
+.ops-body tfoot tr.rcp-sheet-tfoot td { color: var(--text, #0f172a); font-weight: 800; padding: 7px 6px; }
+
+/* — Vista: previa del recibo oficial (hoja clara, como el impreso) — */
+.rcp-prev-wrap { background: var(--surface-3, #eef2f7); }
+.rcp-sheet { max-width: 860px; margin: 0 auto; background: #ffffff; color: #0f172a;
+  border: 1px solid #d8e0ea; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 20px 44px -30px rgba(15, 23, 42, .55); }
+.rcp-sheet-hd { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; padding: 15px 18px; color: #f8fafc;
+  background: linear-gradient(135deg, #0f172a, #1e293b); }
+.rcp-sheet-brand { font-size: 9.5px; font-weight: 800; letter-spacing: .16em;
+  text-transform: uppercase; color: #94a3b8; }
+.rcp-sheet-awb { font-family: var(--font-family-mono, monospace); font-size: 22px;
+  font-weight: 800; line-height: 1.15; margin-top: 2px; }
+.rcp-sheet-sub { font-size: 11px; color: #cbd5e1; }
+.rcp-sheet-meta { display: flex; gap: 18px; flex-wrap: wrap; }
+.rcp-sheet-meta div { display: flex; flex-direction: column; gap: 1px; }
+.rcp-sheet-meta span { font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .08em; color: #94a3b8; }
+.rcp-sheet-meta strong { font-size: 12px; color: #f1f5f9; }
+.rcp-sheet-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px; padding: 13px 18px; border-bottom: 1px solid #e2e8f0; }
+.rcp-sheet-fields div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.rcp-sheet-fields span { font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .07em; color: #64748b; }
+.rcp-sheet-fields strong { font-size: 13px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rcp-sheet-block { padding: 11px 18px; border-bottom: 1px solid #eef2f7; }
+.rcp-sheet-block h4 { margin: 0 0 8px; font-size: 9.5px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .1em; color: #475569; }
+.rcp-sheet-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; }
+.rcp-sheet-kpis div { padding: 7px 10px; border-radius: 8px;
+  background: #f8fafc; border: 1px solid #e2e8f0; }
+.rcp-sheet-kpis div.accent { background: #eff6ff; border-color: #bfdbfe; }
+.rcp-sheet-kpis small { display: block; font-size: 9px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+.rcp-sheet-kpis strong { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rcp-sheet-table { width: 100%; border-collapse: collapse;
+  font-size: 11.5px; font-family: var(--font-family-mono, monospace); }
+.rcp-sheet-table th { text-align: left; font-size: 9px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: .05em; color: #475569;
+  padding: 5px 6px; border-bottom: 1.5px solid #cbd5e1; white-space: nowrap; }
+.rcp-sheet-table td { padding: 5px 6px; border-bottom: 1px solid #eef2f7; }
+.rcp-sheet-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.rcp-sheet-tag { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  color: #334155; background: #f1f5f9; border: 1px solid #dbe3ec; }
+.rcp-sheet-tag.ok { background: #ecfdf5; border-color: #a7f3d0; color: #047857; }
+.rcp-sheet-sigs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px; padding: 15px 18px; background: #f8fafc; }
+.rcp-sig { display: flex; flex-direction: column; gap: 4px; justify-content: flex-end;
+  min-height: 76px; padding-bottom: 4px; border-bottom: 1px solid #cbd5e1; }
+.rcp-sig img { max-height: 54px; object-fit: contain; align-self: flex-start; }
+.rcp-sig span { font-size: 10.5px; font-weight: 700; color: #475569; }
+
+/* ——— Tablet: popup a pantalla completa con controles táctiles ——— */
+@media (max-width: 1023px) {
+  .ops-overlay { padding: 0; }
+  .ops-modal.rcp-pop { width: 100%; max-width: 100%; height: 100dvh;
+    max-height: 100dvh; min-height: 0; border-radius: 0; border-left: none; border-right: none; }
+  .rcp-pop-hdr { grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "id kpis" "tools tools"; gap: 8px 12px; padding: 10px 12px; }
+  .rcp-pop-id { grid-area: id; }
+  .rcp-pop-kpis { grid-area: kpis; }
+  .rcp-pop-tools { grid-area: tools; justify-content: space-between; }
+  .rcp-pop-awb { font-size: 19px; }
+  .rcp-pop-meta { font-size: 10.5px; }
+  .rcp-pop-kpi { min-width: 50px; padding: 4px 8px; }
+  .rcp-pop-kpi strong { font-size: 13px; }
+  .rcp-viewtog { flex: 1 1 auto; }
+  .rcp-viewtog button { flex: 1 1 0; padding: 9px 8px; font-size: 12.5px; }
+  .rcp-icon-btn { width: 42px; height: 42px; font-size: 16px; }
+  .rcp-pop .ops-steps { padding: 8px 10px; }
+  .rcp-pop .ops-sdot { width: 27px; height: 27px; }
+  .rcp-pop .ops-slbl { font-size: 9.5px; }
+  .rcp-pop .ops-sln { width: 10px; }
+  .rcp-pop .ops-body { padding: 12px; }
+  /* 16px evita el zoom automático de iOS al enfocar un input */
+  .rcp-pop .ops-body .ds-input { font-size: 16px; min-height: 44px; }
+  .rcp-pop .ops-foot { padding: 10px 12px; }
+  .rcp-pop .btn-ghost, .rcp-pop .btn-ok { min-height: 44px; }
+  .rcp-vw-hd .btn-ghost { width: 100%; justify-content: center; }
+  .rcp-ghost-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .rcp-fn-bar { padding: 10px 12px 12px; }
+  .rcp-fn-rows { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .rcp-pop-hdr { grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "id" "kpis" "tools"; }
+  .rcp-pop-kpis { justify-content: space-between; }
+  .rcp-pop-awb { font-size: 17px; }
+  .rcp-pop .ops-slbl { font-size: 8.5px; letter-spacing: .02em; }
+  .rcp-pop .ops-sdot { width: 24px; height: 24px; }
+  .rcp-sheet-fields { grid-template-columns: 1fr; }
+  .rcp-sheet-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ——— Táctil (tablet en cualquier orientación): funciones opcionales cómodas.
+   Cada interruptor es un objetivo de toque de 44 px y el cajón se desplaza
+   solo cuando hay muchas funciones, sin comerse el cuerpo del recibo. ——— */
+@media (max-width: 1023px), (any-pointer: coarse) {
+  .rcp-fn-bar { padding: 12px 14px 14px; max-height: 44dvh;
+    overflow-y: auto; overscroll-behavior: contain; }
+  .rcp-fn-row { padding: 10px 12px; gap: 12px; min-height: 64px; }
+  .rcp-fn-lbl strong { font-size: 13px; }
+  .rcp-fn-lbl small { font-size: 11.5px; line-height: 1.4; }
+  .rcp-fn-close { width: 44px; height: 44px; border-radius: 12px; font-size: 16px; }
+  .rcp-switch { min-height: 44px; padding: 8px 14px 8px 10px; gap: 8px; font-size: 10.5px; }
+  .rcp-switch-dot { width: 34px; height: 18px; }
+  .rcp-switch-dot::after { width: 14px; height: 14px; }
+  .rcp-switch.on .rcp-switch-dot::after { transform: translateX(16px); }
+  .rcp-icon-btn { width: 44px; height: 44px; }
+  .rcp-ghost { padding: 9px 11px 11px; }
+  .rcp-pop .ops-body .rcp-ghost input.ds-input { min-height: 44px; }
+  .rcp-ghost-tag { font-size: 9px; padding: 2px 7px; }
+  .rcp-ghost-note { font-size: 11.5px; line-height: 1.45; }
 }
 </style>

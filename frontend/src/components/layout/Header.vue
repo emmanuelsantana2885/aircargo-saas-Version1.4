@@ -177,7 +177,6 @@ defineProps({
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const isMobile = ref(false)
 const mode = ref(getMode())
 const appearanceOpen = ref(false)
 const notificationsOpen = ref(false)
@@ -189,6 +188,8 @@ const themeKey = ref(getTheme())
 const tone = ref(getTone())
 const font = ref(getFont())
 const density = ref(getDensity())
+const isMobile = ref(false)
+const isTablet = ref(false)
 const icons = useIcons()
 const notif = useNotificationsStore()
 const auth = useAuthStore()
@@ -332,7 +333,12 @@ function onKeydown(e) {
 }
 
 function checkViewport() {
-  isMobile.value = window.innerWidth < 768
+  const w = window.innerWidth
+  isMobile.value = w < 768
+  isTablet.value = w >= 768 && w <= 1023
+  // On tablets and desktop, ensure sidebar is open/visible
+  // On mobile, close it
+  if (isTablet.value || !isMobile.value) mobileOpen.value = false
   if (notificationsOpen.value) positionNotifPop()
   if (appearanceOpen.value) positionAppearancePop()
 }

@@ -586,7 +586,53 @@ html, body {
   .mawb-info-panel, .md\:flex.w-72, [class*="mawb-info-panel"] {
     display: none !important;
   }
+  /* ── Formularios tablet ── */
+  .tablet-form .ds-form-row, .tablet-form .form-row, .tablet-form .grid-cols-2, .tablet-form .grid-cols-3, .tablet-form .grid-cols-4, .tablet-form .sm\:grid-cols-2, .tablet-form .sm\:grid-cols-3, .tablet-form .sm\:grid-cols-4, .tablet-form .md\:grid-cols-2, .tablet-form .md\:grid-cols-3, .tablet-form .md\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .tablet-form .flex-col-md {
+    flex-direction: column !important;
+  }
+  .tablet-form .flex-wrap-md {
+    flex-wrap: wrap !important;
+  }
+  /* Touch targets for form inputs in tablet */
+  .tablet-form input, .tablet-form select, .tablet-form textarea, .tablet-form .ds-input, .tablet-form .ds-select {
+    min-height: 48px !important;
+    font-size: 16px !important;
+    padding: 12px 12px !important;
+  }
+  .tablet-form select {
+    padding-right: 40px !important;
+  }
+  .tablet-form .ds-input {
+    min-height: 48px !important;
+    font-size: 16px !important;
+  }
+  /* Larger touch targets for buttons in tablet form */
+  .tablet-form .ds-btn-primary, .tablet-form .ds-btn-secondary, .tablet-form .ds-btn-danger {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+  }
+  /* Stack form groups vertically in tablet */
+  .tablet-form .ds-form-group, .tablet-form .form-group, .tablet-form .row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .tablet-form .ds-label {
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+  }
+  /* Tablet modal adjustments */
+  .tablet-form .ds-modal-panel {
+    max-width: 95vw !important;
+    width: 95vw !important;
+  }
 }
+
 
 /* Print styles */
 @media print {

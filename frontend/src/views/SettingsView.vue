@@ -899,7 +899,6 @@
       </div>
     </template>
 
-    <!-- ============ BACKUPS TAB ============ -->
     <template v-if="activeTab === 'backups'">
       <div class="space-y-4 overflow-y-auto flex-1 pr-1">
 

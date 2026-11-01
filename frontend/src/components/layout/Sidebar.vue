@@ -118,7 +118,9 @@ function checkViewport() {
   const w = window.innerWidth
   isMobile.value = w < 768
   isTablet.value = w >= 768 && w <= 1023
-  if (isMobile.value) mobileOpen.value = false
+  // On tablets and desktop, ensure sidebar is open/visible
+  // On mobile, close it
+  if (isTablet.value || !isMobile.value) mobileOpen.value = false
 }
 
 function closeMobileSidebar() {
