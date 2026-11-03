@@ -361,7 +361,7 @@ import: {
     },
     status: {
       BOOKED: 'Pendiente',
-      RECEIVED: 'Recibido',
+      RECEIVED: 'RECEIVE',
       MANIFESTED: 'Manifestado',
       DEPARTED: 'Despachado',
       ARRIVED: 'Llegado',
@@ -1012,7 +1012,7 @@ import: {
     draft: {
       badge: 'Borrador',
       badgeTitle: 'Borrador guardado — no cuenta como recibido',
-      continue: 'Continuar',
+      continue: 'BORRADOR',
       continueTitle: 'Reanudar este borrador',
       continueToast: 'Borrador de {awb} cargado para continuar',
       save: 'Guardar borrador',
@@ -1967,5 +1967,17 @@ import: {
     hint: 'La dirección no corresponde a ninguna vista de AirCargo. Puede que el enlace sea viejo o que la ruta haya cambiado.',
     back: 'Volver',
     home: 'Ir al dashboard',
+  },
+  warehouse: {
+    attention: {
+      title: 'Requiere atención',
+      whyNoReceipt: 'No hay recibo',
+      whyLoaded: 'Cargado parcialmente',
+      whyPartial: 'Recibido parcialmente',
+      whyOverdue: 'Atrasado',
+      go: 'Recibir',
+      expand: 'Expandir',
+      hide: 'Ocultar',
+    },
   },
 }

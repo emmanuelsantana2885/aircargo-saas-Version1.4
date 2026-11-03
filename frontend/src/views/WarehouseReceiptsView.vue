@@ -49,7 +49,7 @@
     </section>
 
     <!-- Cola “Por atender” (s1) -->
-    <section v-if="attentionQueue.length" class="exq mx-3 mb-2 rounded-lg overflow-hidden">
+    <section v-if="attentionQueue.length" class="exq mx-3 mb-2 rounded-lg overflow-y-auto">
       <button type="button" class="exq-hd w-full flex items-center gap-2 px-4 py-2 text-left cursor-pointer"
         @click="queueExpanded = !queueExpanded">
         <span class="text-[var(--warn)] text-[14px] leading-none">&#9888;</span>
@@ -141,7 +141,7 @@
                 title="Múltiples HAWBs">{{ receiptHawbs[m.id].length }} HAWBs</span>
               <span v-else-if="receiptHawbs[m.id] && receiptHawbs[m.id].length === 1"
                 class="text-[13px] font-bold text-[var(--text)] bg-[var(--surface-3)] px-1.5 py-0.5 rounded leading-none">1 HAWB</span>
-              <span v-if="draftForMawb(m)" class="badge-draft" :title="t('warehouse.draft.badgeTitle')">&#9998; {{ t('warehouse.draft.badge') }}</span>
+              <span v-if="draftForMawb(m)" class="badge-draft" :title="'DRAFT'">DRAFT</span>
             </div>
             <div class="col-span-2 text-[var(--text)] font-semibold relative z-10 truncate pr-3 receipt-list-cell" data-col="shipper">{{ m.shipperName || '—' }}</div>
             <div class="col-span-2 text-left font-mono font-bold text-[var(--text)] relative z-10 text-[12px] receipt-list-cell" data-col="flight">{{ fmtFlight(m) }}</div>
@@ -155,9 +155,7 @@
               {{ receiptTotals[m.id]?.weightKg ? Number(receiptTotals[m.id].weightKg).toLocaleString() : (m.reportedWeightKg ? Number(m.reportedWeightKg).toLocaleString() : '—') }}
               <span v-if="receiptTotals[m.id]?.weightKg > 0 && receiptTotals[m.id]?.weightKg !== Number(m.reportedWeightKg)" class="text-[13px] text-[var(--muted)] block leading-tight">recibo</span>
             </div>
-            <div class="col-span-2 flex items-center justify-center gap-1 relative z-10">
-              <button v-if="draftForMawb(m)" type="button" @click.stop="continueDraft(m)" :title="t('warehouse.draft.continueTitle')"
-                class="mini-act act-draft">&#9654; {{ t('warehouse.draft.continue') }}</button>
+            <div class="col-span-2 flex items-center justify-center gap-1 relative z-10"><button v-if="draftForMawb(m)" type="button" @click.stop="continueDraft(m)" :title="'DRAFT'">DRAFT</button>
               <button type="button" @click.stop="editOrExpandReceipt(m)" :title="t('warehouse.editReceipt')"
                 class="mini-act" :class="{ 'act-edit-has': receiptById[m.id] }">&#9998;</button>
               <button type="button" @click.stop="toggleMawbEvidenceManager(m)" :title="t('warehouse.evidence.title')"
@@ -186,13 +184,13 @@
                   <button v-if="deriveMawbOperationalStatus(m) === 'PENDIENTE'"
                     @click.stop="toggleExpand(m)"
                     class="btn-rec">
-                    {{ t('warehouse.status.receive') }}
+                    {{ 'RECEIVE' }}
                   </button>
                   <span v-else-if="deriveMawbOperationalStatus(m) === 'CARGADA'" class="flex items-center gap-1.5 flex-wrap">
                     <span class="tag-warn" :title="t('warehouse.status.mountedNoReceipt')">&#9888; {{ t('warehouse.status.mountedNoReceipt') }}</span>
                     <button @click.stop="toggleExpand(m)"
                       class="btn-rec">
-                      {{ t('warehouse.status.receive') }}
+                      {{ 'RECEIVE' }}
                     </button>
                   </span>
                   <span v-else-if="isReceiptComplete(m) && deriveMawbOperationalStatus(m) === 'DESPACHADA'" class="flex items-center gap-1.5">
@@ -1544,22 +1542,6 @@
     </Teleport>
 
     <!-- SDD §7: barra sticky Scan MAWB/HAWB siempre visible en móvil -->
-    <div class="scan-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
-      <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
-        @click="openScanModal"
-        :aria-label="t('warehouse.scan.stickyHint')">
-        <component :is="icons.Camera" :size="16" :stroke-width="2" />
-        <span>{{ t('warehouse.scan.stickyLabel') }}</span>
-      </button>
-    </div>
-    <div class="scan-sticky-bar fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-strong px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.10)]">
-      <button type="button" class="w-full flex items-center justify-center gap-2 min-h-[48px] bg-primary text-white font-bold rounded-xl px-6 uppercase tracking-wider text-[14px]"
-        @click="openScanModal"
-        :aria-label="t('warehouse.scan.stickyHint')">
-        <component :is="icons.Camera" :size="16" :stroke-width="2" />
-        <span>{{ t('warehouse.scan.stickyLabel') }}</span>
-      </button>
-    </div>
   </div>
 </template>
 

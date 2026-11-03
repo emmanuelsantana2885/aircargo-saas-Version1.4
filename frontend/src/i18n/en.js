@@ -359,7 +359,7 @@ export default {
     },
     status: {
       BOOKED: 'Pending',
-      RECEIVED: 'Received',
+      RECEIVED: 'RECEIVE',
       MANIFESTED: 'Manifested',
       DEPARTED: 'Dispatched',
       ARRIVED: 'Arrived',
@@ -1048,7 +1048,7 @@ export default {
     draft: {
       badge: 'Draft',
       badgeTitle: 'Saved draft — does not count as received',
-      continue: 'Continue',
+      continue: 'DRAFT',
       continueTitle: 'Resume this draft',
       continueToast: 'Draft for {awb} loaded to continue',
       save: 'Save draft',
@@ -2005,5 +2005,17 @@ export default {
     hint: 'This address does not match any AirCargo view. The link may be outdated or the route may have changed.',
     back: 'Go back',
     home: 'Go to dashboard',
+  },
+  warehouse: {
+    attention: {
+      title: 'Needs attention',
+      whyNoReceipt: 'No receipt',
+      whyLoaded: 'Partially loaded',
+      whyPartial: 'Partially received',
+      whyOverdue: 'Overdue',
+      go: 'Receive',
+      expand: 'Expand',
+      hide: 'Hide',
+    },
   },
 }
